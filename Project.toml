@@ -1,0 +1,13 @@
+name = "PowerSimulationsDynamicsSurrogates"
+uuid = "de933368-4bb5-470a-b916-9fff09bf2720"
+authors = ["Matt Bossart"]
+version = "0.1.0"
+
+[compat]
+julia = "1.1"
+
+[extras]
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
