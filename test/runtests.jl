@@ -1,6 +1,6 @@
+using Revise 
 using PowerSimulationsDynamicsSurrogates
+using Flux 
 using Test
 
-@testset "PowerSimulationsDynamicsSurrogates.jl" begin
-    # Write your tests here.
-end
+include("test_SteadyStateNODE.jl")
