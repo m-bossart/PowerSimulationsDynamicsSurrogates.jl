@@ -36,6 +36,9 @@ export set_exogenous_bias!
 export set_base_power!
 export set_ext
 
+export ChirpVariableSource
+
+import NLsolve
 import PowerSystems
 import PowerSimulationsDynamics
 const PSY = PowerSystems
@@ -44,5 +47,7 @@ const PSID = PowerSimulationsDynamics
 # Write your package code here.
 include("SteadyStateNODE/SteadyStateNODE.jl")
 include("SteadyStateNODE/utils.jl")
+include("ChirpSource/ChirpSource.jl")
+include("ChirpSource/utils.jl")
 
 end
