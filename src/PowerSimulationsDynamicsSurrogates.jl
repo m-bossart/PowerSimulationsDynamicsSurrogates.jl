@@ -1,9 +1,9 @@
 module PowerSimulationsDynamicsSurrogates
 
-export SteadyStateNODE 
+export SteadyStateNODE
 export get_SteadyStateNODE_states
 export initializer_psids
-export get_name
+export get_name #TODO -  remove some getter/setter function
 export get_initializer_structure
 export get_initializer_parameters
 export get_node_structure_exogenous
@@ -36,13 +36,28 @@ export set_exogenous_bias!
 export set_base_power!
 export set_ext
 
+#Data generation exports 
+export PVS
+export VStep
+export GenerationLoadScale
+export GenerateDataParams
+export generate_train_data
+
+import InfrastructureSystems
+import OrdinaryDiffEq
+import PowerFlows
 import PowerSystems
 import PowerSimulationsDynamics
+import NLsolve
+const IS = InfrastructureSystems
 const PSY = PowerSystems
-const PSID = PowerSimulationsDynamics 
+const PSID = PowerSimulationsDynamics
 
 # Write your package code here.
 include("SteadyStateNODE/SteadyStateNODE.jl")
 include("SteadyStateNODE/utils.jl")
+include("generate_data/Perturbations.jl")
+include("generate_data/OperatingPointChanges.jl")
+include("generate_data/Datasets.jl")
 
 end
