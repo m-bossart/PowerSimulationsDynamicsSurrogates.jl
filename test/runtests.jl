@@ -1,4 +1,5 @@
 using Revise
+using NLsolve
 using Plots
 using PowerFlows
 using PowerSystems
@@ -7,6 +8,7 @@ using PowerSimulationsDynamicsSurrogates
 using Sundials
 using Flux
 using Test
+using Random
 
 const PSY = PowerSystems
 const PSID = PowerSimulationsDynamics
