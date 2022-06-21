@@ -36,12 +36,21 @@ export set_exogenous_bias!
 export set_base_power!
 export set_ext
 
-#Data generation exports 
+#export SurrogatePerturbations generation exports 
+export SurrogatePerturbation
 export PVS
 export VStep
+
+#export SurrogateOperatingPoints
+export SurrogateOperatingPoint
 export GenerationLoadScale
-export GenerateDataParams
+
+#export SurrogateTrainDatasets
+export SurrogateTrainDataset
+export SteadyStateNODEData
+
 export generate_train_data
+export GenerateDataParams
 
 import InfrastructureSystems
 import OrdinaryDiffEq
