@@ -55,6 +55,7 @@ function generate_train_data(
 end
 
 mutable struct SteadyStateNODEData <: SurrogateTrainDataset
+    type::String
     tsteps::AbstractArray
     groundtruth_current::AbstractArray
     connecting_impedance::AbstractArray
@@ -62,8 +63,22 @@ mutable struct SteadyStateNODEData <: SurrogateTrainDataset
     branch_order::Array{String}
 end
 
-function SteadyStateNODEData()
-    return SteadyStateNODEData([], [], [], [], [])
+function SteadyStateNODEData(;
+    type = "SteadyStateNODEData",
+    tsteps = [],
+    groundtruth_current = [],
+    connecting_impedance = [],
+    powerflow = [],
+    branch_order = [],
+)
+    return SteadyStateNODEData(
+        type,
+        tsteps,
+        groundtruth_current,
+        connecting_impedance,
+        powerflow,
+        branch_order,
+    )
 end
 
 function fill_surrogate_data!(

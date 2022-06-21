@@ -8,12 +8,26 @@ end
 
 #Showcase two different ways to perturb the system (through a new component, through a PSID perturbation)
 perturbations = [
-    [("InfBus", PVS([2 * pi * 3], [(0.001, 0.01)], [2 * pi * 3], [(0.0, 0.01)]))],
-    [("InfBus", VStep(0.5, 0.05)), ("InfBus", VStep(0.7, -0.05))],
+    [(
+        "InfBus",
+        PVS(
+            internal_voltage_frequencies = [2 * pi * 3],
+            internal_voltage_coefficients = [(0.001, 0.01)],
+            internal_angle_frequencies = [2 * pi * 3],
+            internal_angle_coefficients = [(0.0, 0.01)],
+        ),
+    )],
+    [
+        ("InfBus", VStep(t_step = 0.5, ΔV = 0.05)),
+        ("InfBus", VStep(t_step = 0.7, ΔV = -0.05)),
+    ],
 ]
 
 #Define the ways to change the operating point of the system        
-operating_points = [GenerationLoadScale(1.0, 1.0), GenerationLoadScale(1.1, 1.1)]
+operating_points = [
+    GenerationLoadScale(generation_scale = 1.0, load_scale = 1.0),
+    GenerationLoadScale(generation_scale = 1.1, load_scale = 1.1),
+]
 
 dataset = generate_train_data(
     sys,

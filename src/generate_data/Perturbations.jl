@@ -2,15 +2,36 @@
 abstract type SurrogatePerturbation end
 
 struct PVS <: SurrogatePerturbation
+    type::String
     internal_voltage_frequencies::Vector{Float64}
     internal_voltage_coefficients::Vector{Tuple{Float64, Float64}}
     internal_angle_frequencies::Vector{Float64}
     internal_angle_coefficients::Vector{Tuple{Float64, Float64}}
 end
+function PVS(;
+    type = "PVS",
+    internal_voltage_frequencies = [],
+    internal_voltage_coefficients = [],
+    internal_angle_frequencies = [],
+    internal_angle_coefficients = [],
+)
+    PVS(
+        type,
+        internal_angle_frequencies,
+        internal_voltage_coefficients,
+        internal_angle_frequencies,
+        internal_angle_coefficients,
+    )
+end
 
 struct VStep <: SurrogatePerturbation
+    type::String
     t_step::Float64
     ΔV::Float64
+end
+
+function VStep(; type = "Vstep", t_step = 0.0, ΔV = 0.0)
+    VStep(type, t_step, ΔV)
 end
 
 function add_surrogate_perturbation!(
