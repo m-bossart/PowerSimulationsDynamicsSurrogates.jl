@@ -76,18 +76,31 @@ function PSID.initialize_dynamic_device!(
     I_I = imag(I)
     function f!(out, x)
         exogenous_scaled = _exogenous_scale(dynamic_device, [V_R, V_I])
-        out .= _forward_pass_node(dynamic_device, x, exogenous_scaled)
+        out[1:n_states] .=
+            _forward_pass_node(dynamic_device, x[1:n_states], exogenous_scaled)
+        out[n_states + 1] =
+            _forward_pass_observer(dynamic_device, x[1:n_states])[1] - I_R + x[n_states + 1]
+        out[n_states + 2] =
+            _forward_pass_observer(dynamic_device, x[1:n_states])[2] - I_I + x[n_states + 2]
+        #Network conditions 
+        #Assuming Distance between equilibriums is just a DC offset 
+        #Distance in SS vs distance in dynamics. 
     end
+    #Check x0 vs. solution distance 
     x_scaled = _x_scale(dynamic_device, [P0, Q0, Vm, θ])
-    x0 = _forward_pass_initializer(dynamic_device, x_scaled)
+    x0 = vcat(_forward_pass_initializer(dynamic_device, x_scaled), [0.0, 0.0])
     sol = NLsolve.nlsolve(f!, x0)
     if !NLsolve.converged(sol)
         @warn("Initialization in SteadyStateNODE failed")
     end
-    device_states = sol.zero
-    dynamic_device.ext["initializer_error"] = x0 .- device_states
+    device_states = sol.zero[1:n_states]
+    dynamic_device.ext["initializer_error"] = x0[1:n_states] .- device_states
     dynamic_device.ext["epsilon"] =
         _forward_pass_observer(dynamic_device, device_states) .- [I_R; I_I]
+
+    display(dynamic_device.ext["epsilon"])
+    display(sol.zero[n_states + 1])
+    display(sol.zero[n_states + 2])
     return device_states
 end
 
