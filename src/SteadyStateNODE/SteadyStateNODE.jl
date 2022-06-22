@@ -49,12 +49,8 @@ mutable struct SteadyStateNODE <: PSY.DynamicInjection
     "parameters of the initializer"
     initializer_parameters::Vector{Float64}
     "layers of the initializer"
-    node_structure_exogenous::Vector{Tuple{Int64, Int64, Bool, String}}
+    node_structure::Vector{Tuple{Int64, Int64, Bool, String}}
     "layers of the initializer"
-    node_structure_states::Vector{Tuple{Int64, Int64, Bool, String}}
-    "layers of the initializer"
-    node_structure_common::Vector{Tuple{Int64, Int64, Bool, String}}
-    "parameters of the node"
     node_parameters::Vector{Float64}
     "layers of the initializer"
     observer_structure::Vector{Tuple{Int64, Int64, Bool, String}}
@@ -83,9 +79,7 @@ function SteadyStateNODE(
     name,
     initializer_structure = [(0, 0, true, "init")],
     initializer_parameters = [0.0],
-    node_structure_exogenous = [(0, 0, true, "init")],
-    node_structure_states = [(0, 0, true, "init")],
-    node_structure_common = [(0, 0, true, "init")],
+    node_structure = [(0, 0, true, "init")],
     node_parameters = [0.0],
     observer_structure = [(0, 0, true, "init")],
     observer_parameters = [0.0],
@@ -100,9 +94,7 @@ function SteadyStateNODE(
         name,
         initializer_structure,
         initializer_parameters,
-        node_structure_exogenous,
-        node_structure_states,
-        node_structure_common,
+        node_structure,
         node_parameters,
         observer_structure,
         observer_parameters,
@@ -112,8 +104,8 @@ function SteadyStateNODE(
         exogenous_bias,
         base_power,
         ext,
-        get_SteadyStateNODE_states(initializer_structure[end][2])[1],
-        get_SteadyStateNODE_states(initializer_structure[end][2])[2],
+        get_SteadyStateNODE_states(initializer_structure[end][2] - 2)[1],
+        get_SteadyStateNODE_states(initializer_structure[end][2] - 2)[2],
         IS.InfrastructureSystemsInternal(),
     )
 end
@@ -122,9 +114,7 @@ function SteadyStateNODE(;
     name,
     initializer_structure = [(0, 0, true, "init")],
     initializer_parameters = [0.0],
-    node_structure_exogenous = [(0, 0, true, "init")],
-    node_structure_states = [(0, 0, true, "init")],
-    node_structure_common = [(0, 0, true, "init")],
+    node_structure = [(0, 0, true, "init")],
     node_parameters = [0.0],
     observer_structure = [(0, 0, true, "init")],
     observer_parameters = [0.0],
@@ -133,8 +123,8 @@ function SteadyStateNODE(;
     exogenous_scale = [0.0],
     exogenous_bias = [0.0],
     base_power = 100.0,
-    states = get_SteadyStateNODE_states(initializer_structure[end][2])[1],
-    n_states = get_SteadyStateNODE_states(initializer_structure[end][2])[2],
+    states = get_SteadyStateNODE_states(initializer_structure[end][2] - 2)[1],
+    n_states = get_SteadyStateNODE_states(initializer_structure[end][2] - 2)[2],
     ext = Dict{String, Any}(),
     internal = IS.InfrastructureSystemsInternal(),
 )
@@ -142,9 +132,7 @@ function SteadyStateNODE(;
         name,
         initializer_structure,
         initializer_parameters,
-        node_structure_exogenous,
-        node_structure_states,
-        node_structure_common,
+        node_structure,
         node_parameters,
         observer_structure,
         observer_parameters,
@@ -166,9 +154,7 @@ function SteadyStateNODE(::Nothing)
         name = "init",
         initializer_structure = [(0, 0, true, "init")],
         initializer_parameters = [0],
-        node_structure_exogenous = [(0, 0, true, "init")],
-        node_structure_states = [(0, 0, true, "init")],
-        node_structure_common = [(0, 0, true, "init")],
+        node_structure = [(0, 0, true, "init")],
         node_parameters = [0],
         observer_structure = [(0, 0, true, "init")],
         observer_parameters = Any[0],
@@ -189,12 +175,8 @@ get_initializer_structure(value::SteadyStateNODE) = value.initializer_structure
 """Get [`SteadyStateNODE`](@ref) `initializer_parameters`."""
 get_initializer_parameters(value::SteadyStateNODE) = value.initializer_parameters
 """Get [`SteadyStateNODE`](@ref) `node_structure_exogenous`."""
-get_node_structure_exogenous(value::SteadyStateNODE) = value.node_structure_exogenous
+get_node_structure(value::SteadyStateNODE) = value.node_structure
 """Get [`SteadyStateNODE`](@ref) `node_structure_states`."""
-get_node_structure_states(value::SteadyStateNODE) = value.node_structure_states
-"""Get [`SteadyStateNODE`](@ref) `node_structure_common`."""
-get_node_structure_common(value::SteadyStateNODE) = value.node_structure_common
-"""Get [`SteadyStateNODE`](@ref) `node_parameters`."""
 get_node_parameters(value::SteadyStateNODE) = value.node_parameters
 """Get [`SteadyStateNODE`](@ref) `observer_structure`."""
 get_observer_structure(value::SteadyStateNODE) = value.observer_structure
