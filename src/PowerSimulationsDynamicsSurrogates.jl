@@ -3,7 +3,7 @@ module PowerSimulationsDynamicsSurrogates
 export SteadyStateNODE
 export get_SteadyStateNODE_states
 export initializer_psids
-export get_name #TODO -  remove some getter/setter function
+export get_name #TODO -  remove some getter/setter functions that won't be used
 export get_initializer_structure
 export get_initializer_parameters
 export get_node_structure_exogenous
