@@ -111,7 +111,7 @@ function PSID.DynamicWrapper(
     device_states = PSY.get_states(dynamic_device)
     ext = _allocate_weights_and_biases(dynamic_device)
 
-    return PSID.DynamicWrapper{typeof(dynamic_device)}(
+    return PSID.DynamicWrapper(
         dynamic_device,
         sys_base_power,
         sys_base_freq,
