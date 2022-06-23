@@ -2,8 +2,17 @@
 abstract type SurrogateOperatingPoint end
 
 struct GenerationLoadScale <: SurrogateOperatingPoint
+    type::String
     generation_scale::Float64
     load_scale::Float64
+end
+
+function GenerationLoadScale(;
+    type = "GenerationLoadScale",
+    generation_scale = 0.0,
+    load_scale = 0.0,
+)
+    GenerationLoadScale(type, generation_scale, load_scale)
 end
 
 function update_operating_point!(

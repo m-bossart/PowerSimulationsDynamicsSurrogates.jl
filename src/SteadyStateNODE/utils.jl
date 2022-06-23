@@ -46,7 +46,9 @@ function PSID.device!(
     dynamic_device::PSID.DynamicWrapper{SteadyStateNODE},
     t,
 ) where {T <: PSID.ACCEPTED_REAL_TYPES}
-    output_ode .= _forward_pass_node(dynamic_device, device_states, [voltage_r, voltage_i])
+    v_scaled = _exogenous_scale(dynamic_device, [voltage_r, voltage_i])
+    refs = dynamic_device.ext["refs"]
+    output_ode .= _forward_pass_node(dynamic_device, device_states, v_scaled, refs)
     current_r[1] += _forward_pass_observer(dynamic_device, device_states)[1]
     current_i[1] += _forward_pass_observer(dynamic_device, device_states)[2]
     return
@@ -63,22 +65,36 @@ function PSID.initialize_dynamic_device!(
     #PowerFlow Data
     P0 = PSY.get_active_power(source)
     Q0 = PSY.get_reactive_power(source)
+    S0 = P0 + Q0 * 1im
     Vm = PSY.get_magnitude(PSY.get_bus(source))
     θ = PSY.get_angle(PSY.get_bus(source))
     V_R = Vm * cos(θ)
     V_I = Vm * sin(θ)
-    function f!(out, x) #TODO - explore the parameters of NLsolve, check in PSID
-        out = _forward_pass_node(dynamic_device, x, [V_R, V_I])
+    V = V_R + V_I * 1im
+    I = conj(S0 / V)
+    I_R = real(I)
+    I_I = imag(I)
+    function f!(out, x)
+        exogenous_scaled = _exogenous_scale(dynamic_device, [V_R, V_I])
+        out[1:n_states] .= _forward_pass_node(
+            dynamic_device,
+            x[1:n_states],
+            exogenous_scaled,
+            x[(n_states + 1):(n_states + 2)],
+        )
+        out[n_states + 1] = _forward_pass_observer(dynamic_device, x[1:n_states])[1] - I_R
+        out[n_states + 2] = _forward_pass_observer(dynamic_device, x[1:n_states])[2] - I_I
     end
-    x0 = _forward_pass_initializer(dynamic_device, [P0, Q0, Vm, θ])
-    display(x0)
-    display(_forward_pass_node(dynamic_device, x0, [V_R, V_I]))
+    x_scaled = _x_scale(dynamic_device, [P0, Q0, Vm, θ])
+    x0 = _forward_pass_initializer(dynamic_device, x_scaled)
     sol = NLsolve.nlsolve(f!, x0)
-    display(sol)
     if !NLsolve.converged(sol)
         @warn("Initialization in SteadyStateNODE failed")
     end
-    device_states = sol.zero
+    device_states = sol.zero[1:n_states]
+    refs = sol.zero[(n_states + 1):(n_states + 2)]
+    dynamic_device.ext["refs"] = refs
+    dynamic_device.ext["initializer_error"] = x0 .- sol.zero
     return device_states
 end
 
@@ -132,16 +148,10 @@ function _allocate_weights_and_biases(dynamic_device::SteadyStateNODE)
     #Allocate weights and biases in node
     Ws = []
     bs = []
-    layers_exogenous = get_node_structure_exogenous(dynamic_device)
-    layers_states = get_node_structure_states(dynamic_device)
-    layers_common = get_node_structure_common(dynamic_device)
+    layers = get_node_structure(dynamic_device)
     p = get_node_parameters(dynamic_device)
     p_index_start = 0
-    p_index_intermediate =
-        _push_layer_weights_and_biases!(Ws, bs, layers_exogenous, p, p_index_start)
-    p_index_intermediate =
-        _push_layer_weights_and_biases!(Ws, bs, layers_states, p, p_index_intermediate)
-    _ = _push_layer_weights_and_biases!(Ws, bs, layers_common, p, p_index_intermediate)
+    _ = _push_layer_weights_and_biases!(Ws, bs, layers, p, p_index_start)
     ext["node"] = Dict{String, Vector{AbstractArray}}("W" => Ws, "b" => bs)
 
     #Allocate weights and biases in observer
@@ -188,6 +198,18 @@ get_b_node(wrapper::PSID.DynamicWrapper{SteadyStateNODE}) = wrapper.ext["node"][
 get_W_observer(wrapper::PSID.DynamicWrapper{SteadyStateNODE}) = wrapper.ext["observer"]["W"]
 get_b_observer(wrapper::PSID.DynamicWrapper{SteadyStateNODE}) = wrapper.ext["observer"]["b"]
 
+function _exogenous_scale(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, ex)
+    ex .= ex .* get_exogenous_scale(wrapper.device)
+    ex .= get_exogenous_bias(wrapper.device) .+ ex
+    return ex
+end
+
+function _x_scale(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, x)
+    x .= x .* get_x_scale(wrapper.device)
+    x .= get_x_bias(wrapper.device) .+ x
+    return x
+end
+
 function _forward_pass_initializer(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, x)
     W_index = 1
     b_index = 1
@@ -205,41 +227,22 @@ function _forward_pass_initializer(wrapper::PSID.DynamicWrapper{SteadyStateNODE}
     return x
 end
 
-function _forward_pass_node(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, r, ex)
-    r_start = r
+function _forward_pass_node(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, r, ex, refs)
+    input = vcat(r, ex, refs)
     W_index = 1
     b_index = 1
     W = get_W_node(wrapper)
     b = get_b_node(wrapper)
-    for layer in get_node_structure_exogenous(wrapper.device)
-        ex = W[W_index] * ex
+    for layer in get_node_structure(wrapper.device)
+        input = W[W_index] * input
         W_index += 1
         if layer[3] == true
-            ex += b[b_index]
+            input += b[b_index]
             b_index += 1
         end
-        ex = activation_map(layer[4]).(ex)
+        input = activation_map(layer[4]).(input)
     end
-    for layer in get_node_structure_states(wrapper.device)
-        r = W[W_index] * r
-        W_index += 1
-        if layer[3] == true
-            r += b[b_index]
-            b_index += 1
-        end
-        r = activation_map(layer[4]).(r)
-    end
-    r = ex .+ r
-    for layer in get_node_structure_common(wrapper.device)
-        r = W[W_index] * r
-        W_index += 1
-        if layer[3] == true
-            r += b[b_index]
-            b_index += 1
-        end
-        r = activation_map(layer[4]).(r)
-    end
-    return r .- r_start
+    return input
 end
 
 function _forward_pass_observer(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, r)

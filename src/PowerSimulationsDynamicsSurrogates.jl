@@ -3,7 +3,7 @@ module PowerSimulationsDynamicsSurrogates
 export SteadyStateNODE
 export get_SteadyStateNODE_states
 export initializer_psids
-export get_name #TODO -  remove some getter/setter function
+export get_name #TODO -  remove some getter/setter functions that won't be used
 export get_initializer_structure
 export get_initializer_parameters
 export get_node_structure_exogenous
@@ -36,12 +36,21 @@ export set_exogenous_bias!
 export set_base_power!
 export set_ext
 
-#Data generation exports 
+#export SurrogatePerturbations generation exports 
+export SurrogatePerturbation
 export PVS
 export VStep
+
+#export SurrogateOperatingPoints
+export SurrogateOperatingPoint
 export GenerationLoadScale
-export GenerateDataParams
+
+#export SurrogateTrainDatasets
+export SurrogateTrainDataset
+export SteadyStateNODEData
+
 export generate_train_data
+export GenerateDataParams
 
 export create_subsystem_from_buses
 import InfrastructureSystems
