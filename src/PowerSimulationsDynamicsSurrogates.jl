@@ -43,6 +43,7 @@ export GenerationLoadScale
 export GenerateDataParams
 export generate_train_data
 
+export create_subsystem_from_buses
 import InfrastructureSystems
 import OrdinaryDiffEq
 import PowerFlows
@@ -59,5 +60,6 @@ include("SteadyStateNODE/utils.jl")
 include("generate_data/Perturbations.jl")
 include("generate_data/OperatingPointChanges.jl")
 include("generate_data/Datasets.jl")
+include("build_systems/utils.jl")
 
 end
