@@ -12,8 +12,8 @@ end
     end
 end
 
-@testset "Test SurrogateTrainDataset format" begin
-    for T in subtypes(SurrogateTrainDataset)
+@testset "Test SurrogateDataset format" begin
+    for T in subtypes(SurrogateDataset)
         @test T() !== nothing
         @test in(:type, fieldnames(T))
     end
