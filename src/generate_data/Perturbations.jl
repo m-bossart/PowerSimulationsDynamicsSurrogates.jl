@@ -10,10 +10,10 @@ struct PVS <: SurrogatePerturbation
 end
 function PVS(;
     type = "PVS",
-    internal_voltage_frequencies = [],
-    internal_voltage_coefficients = [],
-    internal_angle_frequencies = [],
-    internal_angle_coefficients = [],
+    internal_voltage_frequencies = [0.0],
+    internal_voltage_coefficients = [(0.0,0.0)],
+    internal_angle_frequencies = [0.0],
+    internal_angle_coefficients = [(0.0,0.0)],
 )
     PVS(
         type,
@@ -30,7 +30,7 @@ struct VStep <: SurrogatePerturbation
     ΔV::Float64
 end
 
-function VStep(; type = "Vstep", t_step = 0.0, ΔV = 0.0)
+function VStep(; type = "VStep", t_step = 0.0, ΔV = 0.0)
     VStep(type, t_step, ΔV)
 end
 
