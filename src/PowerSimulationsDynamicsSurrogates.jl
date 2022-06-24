@@ -45,8 +45,8 @@ export VStep
 export SurrogateOperatingPoint
 export GenerationLoadScale
 
-#export SurrogateTrainDatasets
-export SurrogateTrainDataset
+#export SurrogateDatasets
+export SurrogateDataset
 export SteadyStateNODEData
 
 export generate_train_data

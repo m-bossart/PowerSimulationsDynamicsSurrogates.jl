@@ -1,4 +1,4 @@
-abstract type SurrogateTrainDataset end
+abstract type SurrogateDataset end
 
 struct GenerateDataParams
     solver::String
@@ -37,7 +37,7 @@ function generate_train_data(
     data_name::String,
     data_collection_params::GenerateDataParams,
 ) where {O <: SurrogateOperatingPoint}
-    train_data = SurrogateTrainDataset[]
+    train_data = SurrogateDataset[]
     for o in operating_points
         for p in perturbations
             sys = deepcopy(sys_train)           #new copy of original system for each (o,p) combination
@@ -54,7 +54,7 @@ function generate_train_data(
     return train_data
 end
 
-mutable struct SteadyStateNODEData <: SurrogateTrainDataset
+mutable struct SteadyStateNODEData <: SurrogateDataset
     type::String
     tsteps::AbstractArray
     groundtruth_current::AbstractArray
@@ -86,7 +86,7 @@ function fill_surrogate_data!(
     sys::PSY.System,
     psid_perturbations,
     data_collection::GenerateDataParams,
-) where {T <: SurrogateTrainDataset}
+) where {T <: SurrogateDataset}
     @warn "collect_data not implemented for this type of SurrogateDataSet"
 end
 
