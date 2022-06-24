@@ -17,7 +17,7 @@ function PVS(;
 )
     PVS(
         type,
-        internal_angle_frequencies,
+        internal_voltage_frequencies,
         internal_voltage_coefficients,
         internal_angle_frequencies,
         internal_angle_coefficients,
