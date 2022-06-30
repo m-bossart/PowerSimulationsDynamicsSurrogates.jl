@@ -29,7 +29,7 @@ operating_points = [
     GenerationLoadScale(generation_scale = 1.1, load_scale = 1.1),
 ]
 
-dataset = generate_train_data(
+dataset = generate_surrogate_data(
     sys,
     perturbations,
     operating_points,

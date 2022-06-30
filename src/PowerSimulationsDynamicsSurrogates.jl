@@ -49,7 +49,7 @@ export GenerationLoadScale
 export SurrogateDataset
 export SteadyStateNODEData
 
-export generate_train_data
+export generate_surrogate_data
 export GenerateDataParams
 
 export create_subsystem_from_buses

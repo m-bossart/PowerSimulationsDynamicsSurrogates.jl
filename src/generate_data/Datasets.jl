@@ -21,7 +21,7 @@ function GenerateDataParams(;
 end
 
 """
-    function generate_train_data(
+    function generate_surrogate_data(
         sys_train::PSY.System,
         perturbations::Vector{SurrogatePerturbation},
         operating_points::Vector{SurrogateOperatingPoint},
@@ -30,7 +30,7 @@ end
     )
 - Options for `data_name`: `"SteadyStateNODEData"`
 """
-function generate_train_data(
+function generate_surrogate_data(
     sys_train::PSY.System,
     perturbations,  #TODO - type info
     operating_points::Vector{O},
