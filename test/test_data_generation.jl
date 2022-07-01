@@ -7,7 +7,7 @@ for g in PSY.get_components(Generator, sys)
 end
 
 #Showcase two different ways to perturb the system (through a new component, through a PSID perturbation)
-perturbations = [
+perturbations = Vector{Union{PowerSimulationsDynamics.Perturbation, SurrogatePerturbation}}[
     [
         PVS(
             source_name = "InfBus",

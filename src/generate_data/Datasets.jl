@@ -32,7 +32,7 @@ end
 """
 function generate_surrogate_data(
     sys_train::PSY.System,
-    perturbations::Vector{Vector}, #TODO - add type data 
+    perturbations::Vector{Vector{Union{SurrogatePerturbation, PSID.Perturbation}}},
     operating_points::Vector{O},
     data_name::String,
     data_collection_params::GenerateDataParams,
