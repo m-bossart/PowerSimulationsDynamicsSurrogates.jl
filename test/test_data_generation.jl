@@ -8,18 +8,18 @@ end
 
 #Showcase two different ways to perturb the system (through a new component, through a PSID perturbation)
 perturbations = [
-    [(
-        "InfBus",
+    [
         PVS(
+            source_name = "InfBus",
             internal_voltage_frequencies = [2 * pi * 3],
             internal_voltage_coefficients = [(0.001, 0.01)],
             internal_angle_frequencies = [2 * pi * 3],
             internal_angle_coefficients = [(0.0, 0.01)],
         ),
-    )],
+    ],
     [
-        ("InfBus", VStep(t_step = 0.5, ΔV = 0.05)),
-        ("InfBus", VStep(t_step = 0.7, ΔV = -0.05)),
+        VStep(source_name = "InfBus", t_step = 0.5, ΔV = 0.05),
+        VStep(source_name = "InfBus", t_step = 0.7, ΔV = -0.05),
     ],
 ]
 

@@ -32,7 +32,7 @@ end
 """
 function generate_surrogate_data(
     sys_train::PSY.System,
-    perturbations,  #TODO - type info
+    perturbations::Vector{Vector}, #TODO - add type data 
     operating_points::Vector{O},
     data_name::String,
     data_collection_params::GenerateDataParams,
@@ -238,7 +238,7 @@ function solver_map(key)
     return d[key]
 end
 
-#TODO - replace with the branch or source function for current! 
+#TODO - replace with the branch or source function for current! (branch prerferable because works for any system type)
 function get_total_current_series(sim)
     ir_total = []
     ii_total = []

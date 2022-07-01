@@ -31,7 +31,7 @@ function create_subsystem_from_buses(
                     PSY.get_number(PSY.get_to(PSY.get_arc(x))) ∈ subsystem_bus_numbers,
             connected_branches,
         )
-        if length(subsystem_bus_numbers)>1 && length(x) == 0
+        if length(subsystem_bus_numbers) > 1 && length(x) == 0
             @error "The specified bus numbers do not give a continuous area"
             return false
         end

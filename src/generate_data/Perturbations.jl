@@ -3,20 +3,24 @@ abstract type SurrogatePerturbation end
 
 struct PVS <: SurrogatePerturbation
     type::String
+    source_name::String
     internal_voltage_frequencies::Vector{Float64}
     internal_voltage_coefficients::Vector{Tuple{Float64, Float64}}
     internal_angle_frequencies::Vector{Float64}
     internal_angle_coefficients::Vector{Tuple{Float64, Float64}}
 end
+
 function PVS(;
     type = "PVS",
+    source_name = "init",
     internal_voltage_frequencies = [0.0],
-    internal_voltage_coefficients = [(0.0,0.0)],
+    internal_voltage_coefficients = [(0.0, 0.0)],
     internal_angle_frequencies = [0.0],
-    internal_angle_coefficients = [(0.0,0.0)],
+    internal_angle_coefficients = [(0.0, 0.0)],
 )
     PVS(
         type,
+        source_name,
         internal_voltage_frequencies,
         internal_voltage_coefficients,
         internal_angle_frequencies,
@@ -26,29 +30,33 @@ end
 
 struct VStep <: SurrogatePerturbation
     type::String
+    source_name::String
     t_step::Float64
     ΔV::Float64
 end
 
-function VStep(; type = "VStep", t_step = 0.0, ΔV = 0.0)
-    VStep(type, t_step, ΔV)
+function VStep(; type = "VStep", source_name = "init", t_step = 0.0, ΔV = 0.0)
+    VStep(type, source_name, t_step, ΔV)
 end
 
 function add_surrogate_perturbation!(
     sys::PSY.System,
     psid_perturbations,
-    component::Tuple{String, T},
+    perturbation::T,
 ) where {T <: SurrogatePerturbation}
-    @warn "add_surrogate_component! not implemented for this type of surrogate perturbation"
+    @warn "add_surrogate_perturbation not implemented for this type of surrogate perturbation"
 end
 
 function add_surrogate_perturbation!(
     sys::PSY.System,
     psid_perturbations,
-    component::Tuple{String, PVS},
-)
-    source_name = component[1]
-    perturbation = component[2]
+    perturbation::T,
+) where {T <: PSID.Perturbation}
+    push!(psid_pertubations, perturbation)
+end
+
+function add_surrogate_perturbation!(sys::PSY.System, psid_perturbations, perturbation::PVS)
+    source_name = perturbation.source_name
     source = PSY.get_component(PSY.Source, sys, source_name)
     if source === nothing
         @error "Source not found - check name!"
@@ -60,7 +68,7 @@ function add_surrogate_perturbation!(
         internal_voltage_bias = 0.0,    #set in PSID initialization 
         internal_voltage_frequencies = perturbation.internal_voltage_frequencies,
         internal_voltage_coefficients = perturbation.internal_voltage_coefficients,
-        internal_angle_bias = 0.0,  #set in PSID initialization 
+        internal_angle_bias = 0.0,      #set in PSID initialization 
         internal_angle_frequencies = perturbation.internal_angle_frequencies,
         internal_angle_coefficients = perturbation.internal_angle_coefficients,
     )
@@ -70,11 +78,9 @@ end
 function add_surrogate_perturbation!(
     sys::PSY.System,
     psid_perturbations,
-    component::Tuple{String, VStep},
+    perturbation::VStep,
 )
-    source_name = component[1]
-    perturbation = component[2]
-
+    source_name = perturbation.source_name
     source = PSY.get_component(PSY.Source, sys, source_name)
     if source === nothing
         @error "Source not found - check name!"
