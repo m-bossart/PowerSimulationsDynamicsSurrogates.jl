@@ -139,13 +139,13 @@ function fill_surrogate_data!(
         enable_progress_bar = false,
     )
 
-    ground_truth_current = zeros(2 * length(connecting_branches), length(tsteps))
+    ground_truth_current = zeros(length(connecting_branches), 2, length(tsteps))
     connecting_impedance = zeros(length(connecting_branches), 2)
     powerflow = zeros(length(connecting_branches) * 4)
 
     for (i, branch_name) in enumerate(connecting_branches)
-        ground_truth_current[2 * i - 1, :] = get_total_current_series(sim_full)[1, :]
-        ground_truth_current[2 * i, :] = get_total_current_series(sim_full)[2, :]
+        ground_truth_current[i, 1, :] = get_total_current_series(sim_full)[1, :]
+        ground_truth_current[i, 2, :] = get_total_current_series(sim_full)[2, :]
         #ground_truth_ir[i, :] = get_branch_current(branch_name, :Ir) #TODO:  Get branch current instead when this issue closes: https://github.com/NREL-SIIP/PowerSimulationsDynamics.jl/issues/224
         #ground_truth_ii[i, :] = get_branch_current(branch_name, :Ii)
         connecting_impedance[i, :] =
@@ -153,7 +153,6 @@ function fill_surrogate_data!(
         powerflow[(i * 4 - 3):(i * 4)] =
             _get_powerflow_opposite_source(sys_train, branch_name)
     end
-
     data.tsteps = tsteps
     data.groundtruth_current = ground_truth_current
     data.connecting_impedance = connecting_impedance

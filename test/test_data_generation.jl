@@ -39,6 +39,6 @@ dataset = generate_surrogate_data(
 
 p = plot()
 for d in dataset
-    plot!(p, d.tsteps, d.groundtruth_current[1, :])
+    plot!(p, d.tsteps, d.groundtruth_current[1, 1, :])
 end
 display(p)
