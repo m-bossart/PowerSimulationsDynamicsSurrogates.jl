@@ -1,5 +1,5 @@
 abstract type SurrogateDataset end
-abstract type SurrogateDatasetParams end 
+abstract type SurrogateDatasetParams end
 
 struct GenerateDataParams
     solver::String
@@ -37,35 +37,44 @@ end
 """
 function generate_surrogate_data(
     sys_main::PSY.System,
-    sys_aux::PSY.System,           
+    sys_aux::PSY.System,
     perturbations::Vector{Vector{Union{SurrogatePerturbation, PSID.Perturbation}}},
     operating_points::Vector{O},
     data_params::D,
     data_collection_params::GenerateDataParams;
     seed::Int64 = 1,
-    stable_trajectories::BitVector = trues(size(perturbations)[1]*length(operating_points)), 
+    stable_trajectories::BitVector = trues(
+        size(perturbations)[1] * length(operating_points),
+    ),
 ) where {O <: SurrogateOperatingPoint, D <: SurrogateDatasetParams}
     Random.seed!(seed)
     stable_trajectories_out = copy(stable_trajectories)
-    @assert length(stable_trajectories) == size(perturbations)[1]*length(operating_points)
+    @assert length(stable_trajectories) == size(perturbations)[1] * length(operating_points)
     train_data = SurrogateDataset[]
     for (ix_o, o) in enumerate(operating_points)
         for (ix_p, p) in enumerate(perturbations)
-            sys = deepcopy(sys_main)        
+            sys = deepcopy(sys_main)
             update_operating_point!(sys, o, sys_aux)
             psid_perturbations = PSID.Perturbation[]
             for p_single in p
                 add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
             end
-            if stable_trajectories[(ix_o-1)*size(perturbations)[1]+ix_p] == true 
+            if stable_trajectories[(ix_o - 1) * size(perturbations)[1] + ix_p] == true
                 data = EmptyTrainDataSet(data_params)
-                retcode = fill_surrogate_data!(data, data_params, sys, psid_perturbations, data_collection_params)
+                retcode = fill_surrogate_data!(
+                    data,
+                    data_params,
+                    sys,
+                    psid_perturbations,
+                    data_collection_params,
+                )
                 if retcode == :Success
                     push!(train_data, data)
-                else 
-                    stable_trajectories_out[(ix_o-1)*size(perturbations)[1]+ix_p] = false 
-                end 
-            end 
+                else
+                    stable_trajectories_out[(ix_o - 1) * size(perturbations)[1] + ix_p] =
+                        false
+                end
+            end
         end
     end
     return train_data, stable_trajectories_out
@@ -80,10 +89,7 @@ function SteadyStateNODEDataParams(;
     type = "SteadyStateNODEDataParams",
     connecting_branch_names = [],
 )
-    return SteadyStateNODEDataParams(
-        type,
-        connecting_branch_names,
-    )
+    return SteadyStateNODEDataParams(type, connecting_branch_names)
 end
 
 mutable struct SteadyStateNODEData <: SurrogateDataset
@@ -112,7 +118,7 @@ end
 
 function fill_surrogate_data!(
     data::T,
-    params::P, 
+    params::P,
     sys::PSY.System,
     psid_perturbations,
     data_collection::GenerateDataParams,
@@ -120,7 +126,7 @@ function fill_surrogate_data!(
     @warn "collect_data not implemented for this type of SurrogateDataSet"
 end
 
-function fill_surrogate_data!( 
+function fill_surrogate_data!(
     data::SteadyStateNODEData,
     params::SteadyStateNODEDataParams,
     sys_train::PSY.System,
@@ -137,24 +143,23 @@ function fill_surrogate_data!(
     reltol = data_collection.solver_tols[1]
 
     connecting_branches = params.connecting_branch_names
-    if data_collection.formulation == "MassMatrix"  
+    if data_collection.formulation == "MassMatrix"
         sim_full = PSID.Simulation!(
-            PSID.MassMatrixModel,   
+            PSID.MassMatrixModel,
             sys_train,
             pwd(),
             tspan,
             psid_perturbations,
-    )
-    elseif data_collection.formulation == "Residual" 
-        sim_full = PSID.Simulation!(
-            PSID.ResidualModel,  
-            sys_train,
-            pwd(),
-            tspan,
-            psid_perturbations,
-
         )
-    end 
+    elseif data_collection.formulation == "Residual"
+        sim_full = PSID.Simulation!(
+            PSID.ResidualModel,
+            sys_train,
+            pwd(),
+            tspan,
+            psid_perturbations,
+        )
+    end
     PSID.execute!(
         sim_full,
         solver,
@@ -172,38 +177,46 @@ function fill_surrogate_data!(
         for (i, branch_tuple) in enumerate(connecting_branches)
             branch_name = branch_tuple[1]
             location = branch_tuple[2]
-            if location == :from 
-                ground_truth_current[2 * i - 1, :] = PSID.get_real_current_branch_flow(results, branch_name)[2]
-                ground_truth_current[2 * i, :] = PSID.get_imaginary_current_branch_flow(results, branch_name)[2]
+            if location == :from
+                ground_truth_current[2 * i - 1, :] =
+                    PSID.get_real_current_branch_flow(results, branch_name)[2]
+                ground_truth_current[2 * i, :] =
+                    PSID.get_imaginary_current_branch_flow(results, branch_name)[2]
                 P0 = PSID.get_activepower_branch_flow(results, branch_name, location)[2][1]
-                Q0 = PSID.get_reactivepower_branch_flow(results, branch_name, location)[2][1]
-                branch =   PSY.get_component(PSY.ACBranch, sys_train, branch_name)
+                Q0 =
+                    PSID.get_reactivepower_branch_flow(results, branch_name, location)[2][1]
+                branch = PSY.get_component(PSY.ACBranch, sys_train, branch_name)
                 bus_number = PSY.get_number(PSY.get_from(PSY.get_arc(branch)))
                 V0 = PSID.get_voltage_magnitude_series(results, bus_number)[2][1]
                 θ0 = PSID.get_voltage_angle_series(results, bus_number)[2][1]
             elseif location == :to
-                ground_truth_current[2 * i - 1, :] = PSID.get_real_current_branch_flow(results, branch_name)[2] * -1 
-                ground_truth_current[2 * i, :] = PSID.get_imaginary_current_branch_flow(results, branch_name)[2] * -1 
-                P0 = PSID.get_activepower_branch_flow(results, branch_name, location)[2][1] * -1 
-                Q0 = PSID.get_reactivepower_branch_flow(results, branch_name, location)[2][1] * -1 
-                branch =   PSY.get_component(PSY.ACBranch, sys_train, branch_name)
+                ground_truth_current[2 * i - 1, :] =
+                    PSID.get_real_current_branch_flow(results, branch_name)[2] * -1
+                ground_truth_current[2 * i, :] =
+                    PSID.get_imaginary_current_branch_flow(results, branch_name)[2] * -1
+                P0 =
+                    PSID.get_activepower_branch_flow(results, branch_name, location)[2][1] *
+                    -1
+                Q0 =
+                    PSID.get_reactivepower_branch_flow(results, branch_name, location)[2][1] *
+                    -1
+                branch = PSY.get_component(PSY.ACBranch, sys_train, branch_name)
                 bus_number = PSY.get_number(PSY.get_to(PSY.get_arc(branch)))
                 V0 = PSID.get_voltage_magnitude_series(results, bus_number)[2][1]
                 θ0 = PSID.get_voltage_angle_series(results, bus_number)[2][1]
-            end 
+            end
             connecting_impedance[i, :] =
                 _get_branch_plus_source_impedance(sys_train, branch_tuple[1])
-            powerflow[(i * 4 - 3):(i * 4)] = [P0, Q0, V0, θ0]     
+            powerflow[(i * 4 - 3):(i * 4)] = [P0, Q0, V0, θ0]
         end
         data.tsteps = tsteps
         data.groundtruth_current = ground_truth_current
         data.connecting_impedance = connecting_impedance
         data.powerflow = powerflow
-        return results.solution.retcode 
-    else 
+        return results.solution.retcode
+    else
         return :Failed
-    end 
-    
+    end
 end
 
 function _get_branch_plus_source_impedance(sys_train, branch_name)
@@ -224,9 +237,9 @@ function _get_branch_plus_source_impedance(sys_train, branch_name)
             PSY.get_x(ac_branch) + PSY.get_X_th(source_active),
             PSY.get_r(ac_branch) + PSY.get_R_th(source_active),
         ]
-    else 
-        return [ PSY.get_x(ac_branch)     ,PSY.get_r(ac_branch) ]
-    end 
+    else
+        return [PSY.get_x(ac_branch), PSY.get_r(ac_branch)]
+    end
 end
 
 function instantiate_solver(inputs)
@@ -238,12 +251,10 @@ function solver_map(key)
         "Rodas4" => OrdinaryDiffEq.Rodas4,
         "TRBDF2" => OrdinaryDiffEq.TRBDF2,
         "Tsit5" => OrdinaryDiffEq.Tsit5,
-        "IDA" => Sundials.IDA 
+        "IDA" => Sundials.IDA,
     )
     return d[key]
 end
-
-
 
 function EmptyTrainDataSet(key::SteadyStateNODEDataParams)
     return SteadyStateNODEData()

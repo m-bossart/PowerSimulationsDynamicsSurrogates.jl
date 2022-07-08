@@ -206,7 +206,8 @@ PSY.set_base_power!(value::SteadyStateNODE, val) = value.base_power = val
 """Set [`SteadyStateNODE`](@ref) `ext`."""
 PSY.set_ext!(value::SteadyStateNODE, val) = value.ext = val
 """Set [`SteadyStateNODE`](@ref) `initializer_parameters`."""
-set_initializer_parameters!(value::SteadyStateNODE, val) = value.initializer_parameters = val
+set_initializer_parameters!(value::SteadyStateNODE, val) =
+    value.initializer_parameters = val
 """Set [`SteadyStateNODE`](@ref) `node_parameters`."""
 set_node_parameters!(value::SteadyStateNODE, val) = value.node_parameters = val
 """Set [`SteadyStateNODE`](@ref) `observer_parameters`."""

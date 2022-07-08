@@ -168,7 +168,7 @@ function add_surrogate_perturbation!(
         @error "Trying to trip an AC branch but an ACBranch not found in system"
         return
     end
-    b=nothing 
+    b = nothing
     for i in 1:10
         b = rand(ac_branches)
         if _check_if_connected_to_source(b, sys_aux) == false
@@ -202,7 +202,11 @@ struct RandomLoadChange <: SurrogatePerturbation
     load_multiplier_range::Tuple{Float64, Float64}
 end
 
-function RandomLoadChange(; type = "RandomLoadChange", time = 0.0, load_multiplier_range=(1.0,1.0))
+function RandomLoadChange(;
+    type = "RandomLoadChange",
+    time = 0.0,
+    load_multiplier_range = (1.0, 1.0),
+)
     RandomLoadChange(type, time, load_multiplier_range)
 end
 
@@ -221,7 +225,9 @@ function add_surrogate_perturbation!(
     end
     l = rand(electric_loads)
     l_new = PSY.get_component(typeof(l), sys, PSY.get_name(l))
-    multiplier = rand() * (load_multiplier_range[2] - load_multiplier_range[1]) + load_multiplier_range[1]
+    multiplier =
+        rand() * (load_multiplier_range[2] - load_multiplier_range[1]) +
+        load_multiplier_range[1]
     Pnew = PSY.get_active_power(l_new) * multiplier
     Qnew = PSY.get_reactive_power(l_new) * multiplier
     push!(psid_perturbations, PSID.LoadChange(time, l_new, :P_ref, Pnew))

@@ -93,7 +93,7 @@ function update_operating_point!(
             PSY.get_bus(g_new),
             rand() * (generator_voltage_range[2] - generator_voltage_range[1]) +
             generator_voltage_range[1],
-        ) 
+        )
     end
     for l in PSY.get_components(PSY.ElectricLoad, sys_aux)  #Search in sys_aux, implement in sys
         l_name = PSY.get_name(l)
