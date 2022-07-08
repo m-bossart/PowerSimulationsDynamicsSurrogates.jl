@@ -1076,14 +1076,14 @@ version = "0.1.2"
 
 [[deps.PowerSimulationsDynamics]]
 deps = ["DataStructures", "DelimitedFiles", "DocStringExtensions", "FastClosures", "ForwardDiff", "InfrastructureSystems", "LinearAlgebra", "Logging", "NLsolve", "PowerFlows", "PowerSystems", "PrettyTables", "Random", "SciMLBase", "SparseArrays", "TimerOutputs"]
-git-tree-sha1 = "5edc035c3d8a0b743ecc0be304bc6ba3732b1d3b"
-repo-rev = "master"
+git-tree-sha1 = "2e4cedb4bb19c73fbed22d26db0d879d21f681c6"
+repo-rev = "rh/series_branch_flow"
 repo-url = "https://github.com/NREL-SIIP/PowerSimulationsDynamics.jl.git"
 uuid = "398b2ede-47ed-4edc-b52e-69e4a48b4336"
 version = "0.10.2"
 
 [[deps.PowerSimulationsDynamicsSurrogates]]
-deps = ["InfrastructureSystems", "NLsolve", "OrdinaryDiffEq", "PowerFlows", "PowerSimulationsDynamics", "PowerSystems"]
+deps = ["InfrastructureSystems", "NLsolve", "OrdinaryDiffEq", "PowerFlows", "PowerSimulationsDynamics", "PowerSystems", "Sundials"]
 path = ".."
 uuid = "de933368-4bb5-470a-b916-9fff09bf2720"
 version = "0.1.0"
