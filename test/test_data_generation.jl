@@ -32,7 +32,7 @@
     ]
 
     Random.seed!(2)
-    dataset, stable_trajectories = generate_surrogate_data(
+    dataset = generate_surrogate_data(
         sys,
         sys,
         perturbations,
@@ -48,6 +48,7 @@
     display(p)
 end
 
+@info "9 bus system test is unstable; ignore simulation error message"
 @testset "9 bus system" begin
     sys = System("test/data_tests/9BusSystem.json")
 
@@ -61,7 +62,7 @@ end
         RandomOperatingPointXiao(),
     ]
     Random.seed!(100)
-    dataset, stable_trajectories = generate_surrogate_data(
+    dataset = generate_surrogate_data(
         sys,
         sys,
         perturbations,
@@ -71,7 +72,10 @@ end
     )
     p = plot()
     for d in dataset
-        plot!(p, d.tsteps, d.groundtruth_current[1, :])
+        if d.stable == true
+            plot!(p, d.tsteps, d.groundtruth_current[1, :])
+        end
     end
-    @test stable_trajectories == [1, 1, 0]
+    @test [d.stable for d in dataset] == [0, 0, 0]
+    display(p)
 end

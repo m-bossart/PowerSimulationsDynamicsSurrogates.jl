@@ -48,7 +48,7 @@ function create_subsystem_from_buses(
     end
     connecting_bus_names = []
     connecting_bus_powers = []
-    connecting_branch_names = []
+    connecting_branch_names = Tuple{String, Symbol}[]
     branches = collect(PSY.get_components(PSY.Component, sys, x -> typeof(x) <: PSY.Branch))
     for branch in branches
         bus_number_from = PSY.get_number(PSY.get_from(PSY.get_arc(branch)))

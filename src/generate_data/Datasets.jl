@@ -11,12 +11,12 @@ struct GenerateDataParams
 end
 
 function GenerateDataParams(;
-    solver = "Rodas4",
+    solver = "IDA",
     solver_tols = (1e-6, 1e-6),
     tspan = (0.0, 1.0),
     steps = 100,
     tsteps_spacing = "linear",
-    formulation = "MassMatrix",
+    formulation = "Residual",
 )
     GenerateDataParams(solver, solver_tols, tspan, steps, tsteps_spacing, formulation)
 end
@@ -29,6 +29,10 @@ end
         operating_points::Vector{O},
         data_params::D,
         data_collection_params::GenerateDataParams,
+        seed::Int64 = 1,
+        stable_trajectories::BitVector = trues(
+            size(perturbations)[1] * length(operating_points),
+        ),
     ) where {O <: SurrogateOperatingPoint, D <: SurrogateDatasetParams}
 
 - `sys_main` is the system that is changed and perturbed and used to generate data. \\
@@ -43,13 +47,10 @@ function generate_surrogate_data(
     data_params::D,
     data_collection_params::GenerateDataParams;
     seed::Int64 = 1,
-    stable_trajectories::BitVector = trues(
-        size(perturbations)[1] * length(operating_points),
-    ),
+    dataset_aux = nothing,  #TODO - could possibly combine dataset_aux and stable_trajectories ---> both use data from a prior call of generate_surrogate_data to inform the current one...
 ) where {O <: SurrogateOperatingPoint, D <: SurrogateDatasetParams}
     Random.seed!(seed)
-    stable_trajectories_out = copy(stable_trajectories)
-    @assert length(stable_trajectories) == size(perturbations)[1] * length(operating_points)
+    #@assert length(stable_trajectories) == size(perturbations)[1] * length(operating_points)
     train_data = SurrogateDataset[]
     for (ix_o, o) in enumerate(operating_points)
         for (ix_p, p) in enumerate(perturbations)
@@ -59,25 +60,30 @@ function generate_surrogate_data(
             for p_single in p
                 add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
             end
-            if stable_trajectories[(ix_o - 1) * size(perturbations)[1] + ix_p] == true
-                data = EmptyTrainDataSet(data_params)
-                retcode = fill_surrogate_data!(
+            data = EmptyTrainDataSet(data_params)
+            if dataset_aux === nothing
+                fill_surrogate_data!(
                     data,
                     data_params,
                     sys,
                     psid_perturbations,
                     data_collection_params,
+                    nothing,
                 )
-                if retcode == :Success
-                    push!(train_data, data)
-                else
-                    stable_trajectories_out[(ix_o - 1) * size(perturbations)[1] + ix_p] =
-                        false
-                end
+            else
+                fill_surrogate_data!(
+                    data,
+                    data_params,
+                    sys,
+                    psid_perturbations,
+                    data_collection_params,
+                    dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p],
+                )
             end
+            push!(train_data, data)
         end
     end
-    return train_data, stable_trajectories_out
+    return train_data
 end
 
 mutable struct SteadyStateNODEDataParams <: SurrogateDatasetParams
@@ -96,23 +102,29 @@ mutable struct SteadyStateNODEData <: SurrogateDataset
     type::String
     tsteps::AbstractArray
     groundtruth_current::AbstractArray
+    groundtruth_voltage::AbstractArray
     connecting_impedance::AbstractArray
     powerflow::AbstractArray
+    stable::Bool
 end
 
 function SteadyStateNODEData(;
     type = "SteadyStateNODEData",
     tsteps = [],
     groundtruth_current = [],
+    groundtruth_voltage = [],
     connecting_impedance = [],
     powerflow = [],
+    stable = false,
 )
     return SteadyStateNODEData(
         type,
         tsteps,
         groundtruth_current,
+        groundtruth_voltage,
         connecting_impedance,
         powerflow,
+        stable,
     )
 end
 
@@ -132,6 +144,7 @@ function fill_surrogate_data!(
     sys_train::PSY.System,
     psid_perturbations,
     data_collection::GenerateDataParams,
+    data_aux::Union{SteadyStateNODEData, Nothing},
 )
     tspan = data_collection.tspan
     steps = data_collection.steps
@@ -141,7 +154,23 @@ function fill_surrogate_data!(
     solver = instantiate_solver(data_collection)
     abstol = data_collection.solver_tols[2]
     reltol = data_collection.solver_tols[1]
-
+    #display(PSY.solve_powerflow(sys_train)["bus_results"])
+    #display(PSY.solve_powerflow(sys_train)["flow_results"])
+    if data_aux !== nothing
+        @warn "Updating the operating point based on previously run dataset"
+        for s in PSY.get_components(
+            PSY.Source,
+            sys_train,
+            x -> typeof(PSY.get_dynamic_injector(x)) == SteadyStateNODE,
+        )
+            PSY.set_active_power!(s, data_aux.powerflow[1])
+            PSY.set_reactive_power!(s, data_aux.powerflow[2])
+            PSY.set_internal_voltage!(s, data_aux.powerflow[3])
+            PSY.set_internal_angle!(s, data_aux.powerflow[4])
+        end
+    end
+    #display(PSY.solve_powerflow(sys_train)["bus_results"])
+    #display(PSY.solve_powerflow(sys_train)["flow_results"])
     connecting_branches = params.connecting_branch_names
     if data_collection.formulation == "MassMatrix"
         sim_full = PSID.Simulation!(
@@ -172,6 +201,7 @@ function fill_surrogate_data!(
     results = PSID.read_results(sim_full)
     if sim_full.status == PSID.SIMULATION_FINALIZED
         ground_truth_current = zeros(length(connecting_branches) * 2, length(tsteps))
+        ground_truth_voltage = zeros(length(connecting_branches) * 2, length(tsteps))
         connecting_impedance = zeros(length(connecting_branches), 2)
         powerflow = zeros(length(connecting_branches) * 4)
         for (i, branch_tuple) in enumerate(connecting_branches)
@@ -187,8 +217,12 @@ function fill_surrogate_data!(
                     PSID.get_reactivepower_branch_flow(results, branch_name, location)[2][1]
                 branch = PSY.get_component(PSY.ACBranch, sys_train, branch_name)
                 bus_number = PSY.get_number(PSY.get_from(PSY.get_arc(branch)))
-                V0 = PSID.get_voltage_magnitude_series(results, bus_number)[2][1]
-                θ0 = PSID.get_voltage_angle_series(results, bus_number)[2][1]
+                V = PSID.get_voltage_magnitude_series(results, bus_number)[2]
+                ground_truth_voltage[2 * i - 1, :] = V
+                V0 = V[1]
+                θ = PSID.get_voltage_angle_series(results, bus_number)[2]
+                ground_truth_voltage[2 * i, :] = θ
+                θ0 = θ[1]
             elseif location == :to
                 ground_truth_current[2 * i - 1, :] =
                     PSID.get_real_current_branch_flow(results, branch_name)[2] * -1
@@ -202,8 +236,12 @@ function fill_surrogate_data!(
                     -1
                 branch = PSY.get_component(PSY.ACBranch, sys_train, branch_name)
                 bus_number = PSY.get_number(PSY.get_to(PSY.get_arc(branch)))
-                V0 = PSID.get_voltage_magnitude_series(results, bus_number)[2][1]
-                θ0 = PSID.get_voltage_angle_series(results, bus_number)[2][1]
+                V = PSID.get_voltage_magnitude_series(results, bus_number)[2]
+                ground_truth_voltage[2 * i - 1, :] = V
+                V0 = V[1]
+                θ = PSID.get_voltage_angle_series(results, bus_number)[2]
+                ground_truth_voltage[2 * i, :] = θ
+                θ0 = θ[1]
             end
             connecting_impedance[i, :] =
                 _get_branch_plus_source_impedance(sys_train, branch_tuple[1])
@@ -211,11 +249,10 @@ function fill_surrogate_data!(
         end
         data.tsteps = tsteps
         data.groundtruth_current = ground_truth_current
+        data.groundtruth_voltage = ground_truth_voltage
         data.connecting_impedance = connecting_impedance
         data.powerflow = powerflow
-        return results.solution.retcode
-    else
-        return :Failed
+        data.stable = true
     end
 end
 

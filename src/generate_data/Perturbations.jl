@@ -10,15 +10,6 @@ function add_surrogate_perturbation!(
     @warn "add_surrogate_perturbation not implemented for this type of surrogate perturbation"
 end
 
-function add_surrogate_perturbation!(
-    sys::PSY.System,
-    psid_perturbations,
-    perturbation::T,
-    sys_aux::PSY.System,
-) where {T <: PSID.Perturbation}
-    push!(psid_pertubations, perturbation)
-end
-
 ###############################################################################
 ################################## PVS ########################################
 ###############################################################################
