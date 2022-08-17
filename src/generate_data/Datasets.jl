@@ -1,4 +1,5 @@
 abstract type SurrogateDataset end
+abstract type SurrogateDatasetParams end
 
 struct GenerateDataParams
     solver::String
@@ -10,91 +11,140 @@ struct GenerateDataParams
 end
 
 function GenerateDataParams(;
-    solver = "Rodas4",
+    solver = "IDA",
     solver_tols = (1e-6, 1e-6),
     tspan = (0.0, 1.0),
     steps = 100,
     tsteps_spacing = "linear",
-    formulation = "MassMatrix",
+    formulation = "Residual",
 )
     GenerateDataParams(solver, solver_tols, tspan, steps, tsteps_spacing, formulation)
 end
 
 """
-    function generate_train_data(
-        sys_train::PSY.System,
-        perturbations::Vector{SurrogatePerturbation},
-        operating_points::Vector{SurrogateOperatingPoint},
-        data_name::String,   
+    function generate_surrogate_data(
+        sys_main::PSY.System,
+        sys_aux::PSY.System,          
+        perturbations::Vector{Vector{Union{SurrogatePerturbation, PSID.Perturbation}}},
+        operating_points::Vector{O},
+        data_params::D,
         data_collection_params::GenerateDataParams,
-    )
-- Options for `data_name`: `"SteadyStateNODEData"`
+        seed::Int64 = 1,
+        stable_trajectories::BitVector = trues(
+            size(perturbations)[1] * length(operating_points),
+        ),
+    ) where {O <: SurrogateOperatingPoint, D <: SurrogateDatasetParams}
+
+- `sys_main` is the system that is changed and perturbed and used to generate data. \\
+- `sys_aux` is used by some operating points and perturbations which require randomly choosing components to perturb. \\
+- This function creates a new deepcopy of `sys_main` for each pair of (perturbations, operating_points)
 """
-function generate_train_data(
-    sys_train::PSY.System,
-    perturbations,  #TODO - type info
+function generate_surrogate_data(
+    sys_main::PSY.System,
+    sys_aux::PSY.System,
+    perturbations::Vector{Vector{Union{SurrogatePerturbation, PSID.Perturbation}}},
     operating_points::Vector{O},
-    data_name::String,
-    data_collection_params::GenerateDataParams,
-) where {O <: SurrogateOperatingPoint}
+    data_params::D,
+    data_collection_params::GenerateDataParams;
+    seed::Int64 = 1,
+    dataset_aux = nothing,  #TODO - could possibly combine dataset_aux and stable_trajectories ---> both use data from a prior call of generate_surrogate_data to inform the current one...
+) where {O <: SurrogateOperatingPoint, D <: SurrogateDatasetParams}
+    Random.seed!(seed)
+    #@assert length(stable_trajectories) == size(perturbations)[1] * length(operating_points)
     train_data = SurrogateDataset[]
-    for o in operating_points
-        for p in perturbations
-            sys = deepcopy(sys_train)           #new copy of original system for each (o,p) combination
-            update_operating_point!(sys, o)
+    for (ix_o, o) in enumerate(operating_points)
+        for (ix_p, p) in enumerate(perturbations)
+            sys = deepcopy(sys_main)
+            update_operating_point!(sys, o, sys_aux)
             psid_perturbations = PSID.Perturbation[]
             for p_single in p
-                add_surrogate_perturbation!(sys, psid_perturbations, p_single)
+                add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
             end
-            data = EmptyTrainDataSet(data_name)
-            fill_surrogate_data!(data, sys, psid_perturbations, data_collection_params)
+            data = EmptyTrainDataSet(data_params)
+            if dataset_aux === nothing
+                fill_surrogate_data!(
+                    data,
+                    data_params,
+                    sys,
+                    psid_perturbations,
+                    data_collection_params,
+                    nothing,
+                )
+            else
+                fill_surrogate_data!(
+                    data,
+                    data_params,
+                    sys,
+                    psid_perturbations,
+                    data_collection_params,
+                    dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p],
+                )
+            end
             push!(train_data, data)
         end
     end
     return train_data
 end
 
+mutable struct SteadyStateNODEDataParams <: SurrogateDatasetParams
+    type::String
+    connecting_branch_names::Array{Tuple{String, Symbol}}
+end
+
+function SteadyStateNODEDataParams(;
+    type = "SteadyStateNODEDataParams",
+    connecting_branch_names = [],
+)
+    return SteadyStateNODEDataParams(type, connecting_branch_names)
+end
+
 mutable struct SteadyStateNODEData <: SurrogateDataset
     type::String
     tsteps::AbstractArray
     groundtruth_current::AbstractArray
+    groundtruth_voltage::AbstractArray
     connecting_impedance::AbstractArray
     powerflow::AbstractArray
-    branch_order::Array{String}
+    stable::Bool
 end
 
 function SteadyStateNODEData(;
     type = "SteadyStateNODEData",
     tsteps = [],
     groundtruth_current = [],
+    groundtruth_voltage = [],
     connecting_impedance = [],
     powerflow = [],
-    branch_order = [],
+    stable = false,
 )
     return SteadyStateNODEData(
         type,
         tsteps,
         groundtruth_current,
+        groundtruth_voltage,
         connecting_impedance,
         powerflow,
-        branch_order,
+        stable,
     )
 end
 
 function fill_surrogate_data!(
     data::T,
+    params::P,
     sys::PSY.System,
     psid_perturbations,
     data_collection::GenerateDataParams,
-) where {T <: SurrogateDataset}
+) where {T <: SurrogateDataset, P <: SurrogateDatasetParams}
     @warn "collect_data not implemented for this type of SurrogateDataSet"
 end
 
 function fill_surrogate_data!(
     data::SteadyStateNODEData,
+    params::SteadyStateNODEDataParams,
     sys_train::PSY.System,
     psid_perturbations,
     data_collection::GenerateDataParams,
+    data_aux::Union{SteadyStateNODEData, Nothing},
 )
     tspan = data_collection.tspan
     steps = data_collection.steps
@@ -104,31 +154,41 @@ function fill_surrogate_data!(
     solver = instantiate_solver(data_collection)
     abstol = data_collection.solver_tols[2]
     reltol = data_collection.solver_tols[1]
-
-    sources = collect(PSY.get_components(PSY.Source, sys_train))
-    buses_with_sources = PSY.get_bus.(sources)
-
-    #find connecting branches
-    connecting_branches = String[]
-    for b in PSY.get_components(PSY.ACBranch, sys_train)
-        to_bus = PSY.get_to(PSY.get_arc(b))
-        from_bus = PSY.get_from(PSY.get_arc(b))
-        if (from_bus in buses_with_sources) || (to_bus in buses_with_sources)
-            push!(connecting_branches, PSY.get_name(b))
+    #display(PSY.solve_powerflow(sys_train)["bus_results"])
+    #display(PSY.solve_powerflow(sys_train)["flow_results"])
+    if data_aux !== nothing
+        @warn "Updating the operating point based on previously run dataset"
+        for s in PSY.get_components(
+            PSY.Source,
+            sys_train,
+            x -> typeof(PSY.get_dynamic_injector(x)) == SteadyStateNODE,
+        )
+            PSY.set_active_power!(s, data_aux.powerflow[1])
+            PSY.set_reactive_power!(s, data_aux.powerflow[2])
+            PSY.set_internal_voltage!(s, data_aux.powerflow[3])
+            PSY.set_internal_angle!(s, data_aux.powerflow[4])
         end
     end
-
-    sim_full = PSID.Simulation!(
-        PSID.MassMatrixModel,   #todo -set from parameters 
-        sys_train,
-        pwd(),
-        tspan,
-        psid_perturbations,
-        #console_level = PSID_CONSOLE_LEVEL,
-        # file_level = PSID_FILE_LEVEL,
-    )
-    display(sim_full)
-
+    #display(PSY.solve_powerflow(sys_train)["bus_results"])
+    #display(PSY.solve_powerflow(sys_train)["flow_results"])
+    connecting_branches = params.connecting_branch_names
+    if data_collection.formulation == "MassMatrix"
+        sim_full = PSID.Simulation!(
+            PSID.MassMatrixModel,
+            sys_train,
+            pwd(),
+            tspan,
+            psid_perturbations,
+        )
+    elseif data_collection.formulation == "Residual"
+        sim_full = PSID.Simulation!(
+            PSID.ResidualModel,
+            sys_train,
+            pwd(),
+            tspan,
+            psid_perturbations,
+        )
+    end
     PSID.execute!(
         sim_full,
         solver,
@@ -138,27 +198,62 @@ function fill_surrogate_data!(
         saveat = tsteps,
         enable_progress_bar = false,
     )
-
-    ground_truth_current = zeros(2 * length(connecting_branches), length(tsteps))
-    connecting_impedance = zeros(length(connecting_branches), 2)
-    powerflow = zeros(length(connecting_branches) * 4)
-
-    for (i, branch_name) in enumerate(connecting_branches)
-        ground_truth_current[2 * i - 1, :] = get_total_current_series(sim_full)[1, :]
-        ground_truth_current[2 * i, :] = get_total_current_series(sim_full)[2, :]
-        #ground_truth_ir[i, :] = get_branch_current(branch_name, :Ir) #TODO:  Get branch current instead when this issue closes: https://github.com/NREL-SIIP/PowerSimulationsDynamics.jl/issues/224
-        #ground_truth_ii[i, :] = get_branch_current(branch_name, :Ii)
-        connecting_impedance[i, :] =
-            _get_branch_plus_source_impedance(sys_train, branch_name)
-        powerflow[(i * 4 - 3):(i * 4)] =
-            _get_powerflow_opposite_source(sys_train, branch_name)
+    results = PSID.read_results(sim_full)
+    if sim_full.status == PSID.SIMULATION_FINALIZED
+        ground_truth_current = zeros(length(connecting_branches) * 2, length(tsteps))
+        ground_truth_voltage = zeros(length(connecting_branches) * 2, length(tsteps))
+        connecting_impedance = zeros(length(connecting_branches), 2)
+        powerflow = zeros(length(connecting_branches) * 4)
+        for (i, branch_tuple) in enumerate(connecting_branches)
+            branch_name = branch_tuple[1]
+            location = branch_tuple[2]
+            if location == :from
+                ground_truth_current[2 * i - 1, :] =
+                    PSID.get_real_current_branch_flow(results, branch_name)[2]
+                ground_truth_current[2 * i, :] =
+                    PSID.get_imaginary_current_branch_flow(results, branch_name)[2]
+                P0 = PSID.get_activepower_branch_flow(results, branch_name, location)[2][1]
+                Q0 =
+                    PSID.get_reactivepower_branch_flow(results, branch_name, location)[2][1]
+                branch = PSY.get_component(PSY.ACBranch, sys_train, branch_name)
+                bus_number = PSY.get_number(PSY.get_from(PSY.get_arc(branch)))
+                V = PSID.get_voltage_magnitude_series(results, bus_number)[2]
+                ground_truth_voltage[2 * i - 1, :] = V
+                V0 = V[1]
+                θ = PSID.get_voltage_angle_series(results, bus_number)[2]
+                ground_truth_voltage[2 * i, :] = θ
+                θ0 = θ[1]
+            elseif location == :to
+                ground_truth_current[2 * i - 1, :] =
+                    PSID.get_real_current_branch_flow(results, branch_name)[2] * -1
+                ground_truth_current[2 * i, :] =
+                    PSID.get_imaginary_current_branch_flow(results, branch_name)[2] * -1
+                P0 =
+                    PSID.get_activepower_branch_flow(results, branch_name, location)[2][1] *
+                    -1
+                Q0 =
+                    PSID.get_reactivepower_branch_flow(results, branch_name, location)[2][1] *
+                    -1
+                branch = PSY.get_component(PSY.ACBranch, sys_train, branch_name)
+                bus_number = PSY.get_number(PSY.get_to(PSY.get_arc(branch)))
+                V = PSID.get_voltage_magnitude_series(results, bus_number)[2]
+                ground_truth_voltage[2 * i - 1, :] = V
+                V0 = V[1]
+                θ = PSID.get_voltage_angle_series(results, bus_number)[2]
+                ground_truth_voltage[2 * i, :] = θ
+                θ0 = θ[1]
+            end
+            connecting_impedance[i, :] =
+                _get_branch_plus_source_impedance(sys_train, branch_tuple[1])
+            powerflow[(i * 4 - 3):(i * 4)] = [P0, Q0, V0, θ0]
+        end
+        data.tsteps = tsteps
+        data.groundtruth_current = ground_truth_current
+        data.groundtruth_voltage = ground_truth_voltage
+        data.connecting_impedance = connecting_impedance
+        data.powerflow = powerflow
+        data.stable = true
     end
-
-    data.tsteps = tsteps
-    data.groundtruth_current = ground_truth_current
-    data.connecting_impedance = connecting_impedance
-    data.powerflow = powerflow
-    data.branch_order = connecting_branches
 end
 
 function _get_branch_plus_source_impedance(sys_train, branch_name)
@@ -173,55 +268,14 @@ function _get_branch_plus_source_impedance(sys_train, branch_name)
             x -> PSY.get_available(x) && PSY.get_bus(x) in [bus_from, bus_to],
         ),
     )
-    @assert length(source_active) == 1
-    source_active = source_active[1]
-    return [
-        PSY.get_x(ac_branch) + PSY.get_X_th(source_active),
-        PSY.get_r(ac_branch) + PSY.get_R_th(source_active),
-    ]
-end
-
-#TODO - don't use run_powerflow, just use the first value from the dynamic simualtion. Will be much easier to keep track of 
-function _get_powerflow_opposite_source(sys_train, branch_name)
-    flow_results = PowerFlows.run_powerflow(sys_train)["flow_results"]
-    bus_results = PowerFlows.run_powerflow(sys_train)["bus_results"]
-    display(flow_results)
-    display(bus_results)
-
-    connecting_branch_results = filter(row -> row.line_name == branch_name, flow_results)
-    @assert size(connecting_branch_results)[1] == 1
-
-    bus_from = connecting_branch_results.bus_from[1]
-    bus_to = connecting_branch_results.bus_to[1]
-
-    source_active = collect(
-        PSY.get_components(
-            PSY.Source,
-            sys_train,
-            x ->
-                PSY.get_available(x) &&
-                    PSY.get_number(PSY.get_bus(x)) in [bus_from, bus_to],
-        ),
-    )
-    @assert length(source_active) == 1
-    source_active = source_active[1]
-
-    if PSY.get_number(PSY.get_bus(source_active)) == bus_from
-        P_pf = connecting_branch_results.P_to_from[1] / PSY.get_base_power(sys_train)
-        Q_pf = connecting_branch_results.Q_to_from[1] / PSY.get_base_power(sys_train)
-        opposite_source_bus_results = filter(row -> row.bus_number == bus_to, bus_results)
-        V_pf = opposite_source_bus_results.Vm[1]
-        θ_pf = opposite_source_bus_results.θ[1]
-        return [P_pf, Q_pf, V_pf, θ_pf]
-    elseif PSY.get_number(PSY.get_bus(source_active)) == bus_to
-        P_pf = connecting_branch_results.P_from_to[1] / PSY.get_base_power(sys_train)
-        Q_pf = connecting_branch_results.Q_from_to[1] / PSY.get_base_power(sys_train)
-        opposite_source_bus_results = filter(row -> row.bus_number == bus_from, bus_results)
-        V_pf = opposite_source_bus_results.Vm[1]
-        θ_pf = opposite_source_bus_results.θ[1]
-        return [P_pf, Q_pf, V_pf, θ_pf]
+    if length(source_active) == 1
+        source_active = source_active[1]
+        return [
+            PSY.get_x(ac_branch) + PSY.get_X_th(source_active),
+            PSY.get_r(ac_branch) + PSY.get_R_th(source_active),
+        ]
     else
-        @error "Didn't find a source at the correct bus"
+        return [PSY.get_x(ac_branch), PSY.get_r(ac_branch)]
     end
 end
 
@@ -234,37 +288,11 @@ function solver_map(key)
         "Rodas4" => OrdinaryDiffEq.Rodas4,
         "TRBDF2" => OrdinaryDiffEq.TRBDF2,
         "Tsit5" => OrdinaryDiffEq.Tsit5,
+        "IDA" => Sundials.IDA,
     )
     return d[key]
 end
 
-#TODO - replace with the branch or source function for current! 
-function get_total_current_series(sim)
-    ir_total = []
-    ii_total = []
-    for (i, g) in enumerate(
-        PSY.get_components(
-            PSY.DynamicInjection,
-            sim.sys,
-            x -> typeof(x) !== PSY.PeriodicVariableSource,
-        ),
-    )
-        results = PSID.read_results(sim)
-        if i == 1
-            ir_total = PSID.get_real_current_series(results, PSY.get_name(g))[2]
-            ii_total = PSID.get_imaginary_current_series(results, PSY.get_name(g))[2]
-        else
-            ir_total .+= PSID.get_real_current_series(results, PSY.get_name(g))[2]
-            ii_total .+= PSID.get_imaginary_current_series(results, PSY.get_name(g))[2]
-        end
-    end
-    data_array = zeros(Float64, (2, length(ir_total)))
-    data_array[1, :] .= ir_total
-    data_array[2, :] .= ii_total
-    return data_array
-end
-
-function EmptyTrainDataSet(key)
-    d = Dict("SteadyStateNODEData" => SteadyStateNODEData)
-    return d[key]()
+function EmptyTrainDataSet(key::SteadyStateNODEDataParams)
+    return SteadyStateNODEData()
 end
