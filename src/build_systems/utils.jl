@@ -31,7 +31,7 @@ function create_subsystem_from_buses(
                     PSY.get_number(PSY.get_to(PSY.get_arc(x))) ∈ subsystem_bus_numbers,
             connected_branches,
         )
-        if length(x) == 0
+        if length(subsystem_bus_numbers) > 1 && length(x) == 0
             @error "The specified bus numbers do not give a continuous area"
             return false
         end
@@ -48,6 +48,7 @@ function create_subsystem_from_buses(
     end
     connecting_bus_names = []
     connecting_bus_powers = []
+    connecting_branch_names = Tuple{String, Symbol}[]
     branches = collect(PSY.get_components(PSY.Component, sys, x -> typeof(x) <: PSY.Branch))
     for branch in branches
         bus_number_from = PSY.get_number(PSY.get_from(PSY.get_arc(branch)))
@@ -64,6 +65,7 @@ function create_subsystem_from_buses(
             P = df_row.P_to_from[1]
             push!(connecting_bus_names, connecting_bus_name)
             push!(connecting_bus_powers, P)
+            push!(connecting_branch_names, (PSY.get_name(branch), :from))
         elseif (bus_number_from ∉ subsystem_bus_numbers) &&
                (bus_number_to ∈ subsystem_bus_numbers)
             connecting_bus_name = PSY.get_name(PSY.get_from(PSY.get_arc(branch)))
@@ -71,6 +73,7 @@ function create_subsystem_from_buses(
             P = df_row.P_from_to[1]
             push!(connecting_bus_names, connecting_bus_name)
             push!(connecting_bus_powers, P)
+            push!(connecting_branch_names, (PSY.get_name(branch), :to))
         elseif (bus_number_from ∈ subsystem_bus_numbers) &&
                (bus_number_to ∈ subsystem_bus_numbers)
         else
@@ -141,5 +144,5 @@ function create_subsystem_from_buses(
             ),
         ) == 1
     end
-    return sys
+    return sys, connecting_branch_names
 end

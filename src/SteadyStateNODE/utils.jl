@@ -7,8 +7,16 @@ function get_SteadyStateNODE_states(dim_r::Int64)
     return states, dim_r
 end
 
+function hardtanh(x)
+    max(-1, min(1, x))
+end
+
+function relu(x)
+    max(0, x)
+end
+
 function activation_map(activation)
-    d = Dict("tanh" => tanh)
+    d = Dict("tanh" => tanh, "hardtanh" => hardtanh, "relu" => relu, "identity" => (x) -> x)
     return d[activation]
 end
 
@@ -199,14 +207,14 @@ get_W_observer(wrapper::PSID.DynamicWrapper{SteadyStateNODE}) = wrapper.ext["obs
 get_b_observer(wrapper::PSID.DynamicWrapper{SteadyStateNODE}) = wrapper.ext["observer"]["b"]
 
 function _exogenous_scale(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, ex)
-    ex .= ex .* get_exogenous_scale(wrapper.device)
     ex .= get_exogenous_bias(wrapper.device) .+ ex
+    ex .= ex .* get_exogenous_scale(wrapper.device)
     return ex
 end
 
 function _x_scale(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, x)
-    x .= x .* get_x_scale(wrapper.device)
     x .= get_x_bias(wrapper.device) .+ x
+    x .= x .* get_x_scale(wrapper.device)
     return x
 end
 
