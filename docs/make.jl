@@ -22,7 +22,12 @@ makedocs(;
     pages = ["Home" => "index.md"],
 )
 
-deploydocs(;
+# For running local web server of docs 
+using LiveServer
+serve(dir = "docs/build")
+
+# Need to make repo public to use GitHub pages to deploy docs 
+#= deploydocs(;
     repo = "github.com/m-bossart/PowerSimulationsDynamicsSurrogates.jl",
     devbranch = "main",
-)
+) =#
