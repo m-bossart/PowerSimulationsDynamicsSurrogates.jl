@@ -29,15 +29,19 @@ end
         operating_points::Vector{O},
         data_params::D,
         data_collection_params::GenerateDataParams,
-        seed::Int64 = 1,
-        stable_trajectories::BitVector = trues(
-            size(perturbations)[1] * length(operating_points),
-        ),
+        seed::Int64 = 1;
+        dataset_aux = nothing,
     ) where {O <: SurrogateOperatingPoint, D <: SurrogateDatasetParams}
 
+This function creates a new deepcopy of `sys_main` for each pair of (`perturbations`, `operating_points`) and then generates a dataset acording to `data_params` and `data_collection_params`.
 - `sys_main` is the system that is changed and perturbed and used to generate data. \\
 - `sys_aux` is used by some operating points and perturbations which require randomly choosing components to perturb. \\
-- This function creates a new deepcopy of `sys_main` for each pair of (perturbations, operating_points)
+- `perturbations` is a vector of perturbations to be implemented combinatorially with `operating_points` \\
+- `operating_points` is a vector of operating points to be implemented combinatorially with `perturbations` \\
+- `data_params` are the parameters for generating a specific type of dataset. \\
+- `data_collection_params` are the generic parameters for generating time series data.
+- `seed` is a random seed. Both `perturbations` and `operating_points` may rely on randomness, therefore a seed is needed for repeatability of the dataset.
+- `dataset_aux` - An auxiliary dataset. If provided, is passed to `fill_surrogate_data!`. One possible use of this fucntionality it to avoid re-running unstable cases.  
 """
 function generate_surrogate_data(
     sys_main::PSY.System,
@@ -47,7 +51,7 @@ function generate_surrogate_data(
     data_params::D,
     data_collection_params::GenerateDataParams;
     seed::Int64 = 1,
-    dataset_aux = nothing,  #TODO - could possibly combine dataset_aux and stable_trajectories ---> both use data from a prior call of generate_surrogate_data to inform the current one...
+    dataset_aux = nothing,
 ) where {O <: SurrogateOperatingPoint, D <: SurrogateDatasetParams}
     Random.seed!(seed)
     #@assert length(stable_trajectories) == size(perturbations)[1] * length(operating_points)

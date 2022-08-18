@@ -48,10 +48,11 @@ export SteadyStateNODEData
 export SurrogateDatasetParams
 export SteadyStateNODEDataParams
 
-export generate_surrogate_data
 export GenerateDataParams
 
+export generate_surrogate_data
 export create_subsystem_from_buses
+
 import InfrastructureSystems
 import OrdinaryDiffEq
 import PowerFlows
