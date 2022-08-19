@@ -209,7 +209,7 @@ function add_surrogate_perturbation!(
 )
     time = perturbation.time
     load_multiplier_range = perturbation.load_multiplier_range
-    electric_loads = collect(PSY.get_components(PSY.ElectricLoad, sys_aux))
+    electric_loads = collect(PSY.get_components(PSY.StaticLoad, sys_aux))
     if length(electric_loads) === 0
         @error "Trying to change a load but an electric load not found in system"
         return
