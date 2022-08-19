@@ -37,13 +37,25 @@ function update_operating_point!(
     for g in PSY.get_components(PSY.Generator, sys_aux) #Search in sys_aux, implement in sys
         g_name = PSY.get_name(g)
         g_new = PSY.get_component(typeof(g), sys, g_name)
+        if g_new === nothing
+            @error "Device from auxiliary system not found in main system"
+        end
         PSY.set_active_power!(g_new, PSY.get_active_power(g_new) * generation_scale)
     end
     for l in PSY.get_components(PSY.ElectricLoad, sys_aux)  #Search in sys_aux, implement in sys
         l_name = PSY.get_name(l)
         l_new = PSY.get_component(typeof(l), sys, l_name)
-        PSY.set_active_power!(l_new, PSY.get_active_power(l_new) * load_scale)
-        PSY.set_reactive_power!(l_new, PSY.get_reactive_power(l_new) * load_scale)
+        if l_new === nothing
+            @error "Device from auxiliary system not found in main system"
+        end
+        if typeof(l) <: PSY.StaticLoad
+            PSY.set_active_power!(l_new, PSY.get_active_power(l_new) * load_scale)
+            PSY.set_reactive_power!(l_new, PSY.get_reactive_power(l_new) * load_scale)
+        elseif typeof(l) <: PSY.FixedAdmittance
+            PSY.set_Y!(l_new, PSY.get_Y(l_new) * load_scale)
+        else
+            @error "Not sure how to scale load model"
+        end
     end
 end
 
@@ -84,6 +96,9 @@ function update_operating_point!(
     for g in PSY.get_components(PSY.Generator, sys_aux) #Search in sys_aux, implement in sys
         g_name = PSY.get_name(g)
         g_new = PSY.get_component(typeof(g), sys, g_name)
+        if g_new === nothing
+            @error "Device from auxiliary system not found in main system"
+        end
         PSY.set_active_power!(
             g_new,
             rand() * (generator_power_range[2] - generator_power_range[1]) +
@@ -98,19 +113,34 @@ function update_operating_point!(
     for l in PSY.get_components(PSY.ElectricLoad, sys_aux)  #Search in sys_aux, implement in sys
         l_name = PSY.get_name(l)
         l_new = PSY.get_component(typeof(l), sys, l_name)
-        PSY.set_active_power!(
-            l_new,
-            PSY.get_active_power(l_new) * (
-                rand() * (load_multiplier_range[2] - load_multiplier_range[1]) +
-                load_multiplier_range[1]
-            ),
-        )
-        PSY.set_reactive_power!(
-            l_new,
-            PSY.get_reactive_power(l_new) * (
-                rand() * (load_multiplier_range[2] - load_multiplier_range[1]) +
-                load_multiplier_range[1]
-            ),
-        )
+        if l_new === nothing
+            @error "Device from auxiliary system not found in main system"
+        end
+        if typeof(l) <: PSY.StaticLoad
+            PSY.set_active_power!(
+                l_new,
+                PSY.get_active_power(l_new) * (
+                    rand() * (load_multiplier_range[2] - load_multiplier_range[1]) +
+                    load_multiplier_range[1]
+                ),
+            )
+            PSY.set_reactive_power!(
+                l_new,
+                PSY.get_reactive_power(l_new) * (
+                    rand() * (load_multiplier_range[2] - load_multiplier_range[1]) +
+                    load_multiplier_range[1]
+                ),
+            )
+        elseif typeof(l) <: PSY.FixedAdmittance
+            PSY.set_Y!(
+                l_new,
+                PSY.get_Y(l_new) * (
+                    rand() * (load_multiplier_range[2] - load_multiplier_range[1]) +
+                    load_multiplier_range[1]
+                ),
+            )
+        else
+            @error "Not sure how to scale load model"
+        end
     end
 end
