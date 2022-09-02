@@ -36,17 +36,22 @@ function PSID.device!(
     V_R = device_states[1] * cos(device_states[2])
     V_I = device_states[1] * sin(device_states[2])
 
-
-    tstart= get_tstart(PSID.get_device(dynamic_device))
-    N= get_N(PSID.get_device(dynamic_device))
-    ω1= get_ω1(PSID.get_device(dynamic_device))
-    ω2= get_ω2(PSID.get_device(dynamic_device))
-    V_amp= get_V_amp(PSID.get_device(dynamic_device))
-    θ_amp= get_θ_amp(PSID.get_device(dynamic_device))
+    tstart = get_tstart(PSID.get_device(dynamic_device))
+    N = get_N(PSID.get_device(dynamic_device))
+    ω1 = get_ω1(PSID.get_device(dynamic_device))
+    ω2 = get_ω2(PSID.get_device(dynamic_device))
+    V_amp = get_V_amp(PSID.get_device(dynamic_device))
+    θ_amp = get_θ_amp(PSID.get_device(dynamic_device))
 
     if t >= tstart && t < N
-        output_ode[1] = V_amp*cos(ω1*(t-tstart) + (ω2-ω1)*(t-tstart)^2/(2*N))*(ω1 + (ω2-ω1)*(t-tstart)/N)
-        output_ode[2] = θ_amp*cos(ω1*(t-tstart) + (ω2-ω1)*(t-tstart)^2/(2*N))*(ω1 + (ω2-ω1)*(t-tstart)/N)
+        output_ode[1] =
+            V_amp *
+            cos(ω1 * (t - tstart) + (ω2 - ω1) * (t - tstart)^2 / (2 * N)) *
+            (ω1 + (ω2 - ω1) * (t - tstart) / N)
+        output_ode[2] =
+            θ_amp *
+            cos(ω1 * (t - tstart) + (ω2 - ω1) * (t - tstart)^2 / (2 * N)) *
+            (ω1 + (ω2 - ω1) * (t - tstart) / N)
     else
         output_ode[1] = 0
         output_ode[2] = 0
@@ -88,8 +93,10 @@ function PSID.initialize_dynamic_device!(
         V_R_internal = x[1]
         V_I_internal = x[2]
 
-        out[1] = R_th * (V_R_internal - V_R) / Zmag + X_th * (V_I_internal - V_I) / Zmag - I_R
-        out[2] = R_th * (V_I_internal - V_I) / Zmag - X_th * (V_R_internal - V_R) / Zmag - I_I
+        out[1] =
+            R_th * (V_R_internal - V_R) / Zmag + X_th * (V_I_internal - V_I) / Zmag - I_R
+        out[2] =
+            R_th * (V_I_internal - V_I) / Zmag - X_th * (V_R_internal - V_R) / Zmag - I_I
     end
     x0 = [V_R, V_I]
     sol = NLsolve.nlsolve(f!, x0)

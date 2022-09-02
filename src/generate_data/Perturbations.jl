@@ -16,8 +16,8 @@ function add_surrogate_perturbation!(
     perturbation::T,
     sys_aux::PSY.System,
 ) where {T <: PSID.Perturbation}
-push!(psid_perturbations, perturbation)
-end 
+    push!(psid_perturbations, perturbation)
+end
 
 ###############################################################################
 ################################## PVS ########################################

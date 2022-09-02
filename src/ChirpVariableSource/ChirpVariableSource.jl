@@ -60,28 +60,85 @@ mutable struct ChirpVariableSource <: PSY.DynamicInjection
     internal::PSY.InfrastructureSystemsInternal
 end
 
-function ChirpVariableSource(name, R_th, X_th, ω1=1.0, ω2=2.0, tstart=1000.0, N=100.0, V_amp=0.0, θ_amp=0.0, base_power=100.0, ext=Dict{String, Any}(), )
-    ChirpVariableSource(name, R_th, X_th, ω1, ω2, tstart, N, V_amp, θ_amp, base_power, ext, [:Vt, :θt], 2, PSY.InfrastructureSystemsInternal(), )
+function ChirpVariableSource(
+    name,
+    R_th,
+    X_th,
+    ω1 = 1.0,
+    ω2 = 2.0,
+    tstart = 1000.0,
+    N = 100.0,
+    V_amp = 0.0,
+    θ_amp = 0.0,
+    base_power = 100.0,
+    ext = Dict{String, Any}(),
+)
+    ChirpVariableSource(
+        name,
+        R_th,
+        X_th,
+        ω1,
+        ω2,
+        tstart,
+        N,
+        V_amp,
+        θ_amp,
+        base_power,
+        ext,
+        [:Vt, :θt],
+        2,
+        PSY.InfrastructureSystemsInternal(),
+    )
 end
 
-function ChirpVariableSource(; name, R_th, X_th,  ω1=1.0, ω2=2.0, tstart=1000.0, N=100.0, V_amp=0.0, θ_amp=0.0, base_power=100.0, states=[:Vt, :θt], n_states=2, ext=Dict{String, Any}(), internal=PSY.InfrastructureSystemsInternal(), )
-    ChirpVariableSource(name, R_th, X_th,  ω1, ω2, tstart, N, V_amp, θ_amp, base_power, states, n_states, ext, internal, )
+function ChirpVariableSource(;
+    name,
+    R_th,
+    X_th,
+    ω1 = 1.0,
+    ω2 = 2.0,
+    tstart = 1000.0,
+    N = 100.0,
+    V_amp = 0.0,
+    θ_amp = 0.0,
+    base_power = 100.0,
+    states = [:Vt, :θt],
+    n_states = 2,
+    ext = Dict{String, Any}(),
+    internal = PSY.InfrastructureSystemsInternal(),
+)
+    ChirpVariableSource(
+        name,
+        R_th,
+        X_th,
+        ω1,
+        ω2,
+        tstart,
+        N,
+        V_amp,
+        θ_amp,
+        base_power,
+        states,
+        n_states,
+        ext,
+        internal,
+    )
 end
 
 # Constructor for demo purposes; non-functional.
 function ChirpVariableSource(::Nothing)
     ChirpVariableSource(;
-        name="init",
-        R_th=0,
-        X_th=0,
-        ω1=1.0,
-        ω2=2.0,
-        tstart=1,
-        N=10,
-        V_amp=0.1,
-        θ_amp=0.05,
-        base_power=0,
-        ext=Dict{String, Any}(),
+        name = "init",
+        R_th = 0,
+        X_th = 0,
+        ω1 = 1.0,
+        ω2 = 2.0,
+        tstart = 1,
+        N = 10,
+        V_amp = 0.1,
+        θ_amp = 0.05,
+        base_power = 0,
+        ext = Dict{String, Any}(),
     )
 end
 

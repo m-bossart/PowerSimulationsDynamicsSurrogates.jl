@@ -24,7 +24,17 @@ function GenerateDataParams(;
     all_lines_dynamic = false,
     seed = 1,
 )
-    GenerateDataParams(solver, solver_tols, tspan, steps, tsteps_spacing, formulation, all_branches_dynamic, all_lines_dynamic, seed)
+    GenerateDataParams(
+        solver,
+        solver_tols,
+        tspan,
+        steps,
+        tsteps_spacing,
+        formulation,
+        all_branches_dynamic,
+        all_lines_dynamic,
+        seed,
+    )
 end
 
 """
@@ -200,11 +210,11 @@ function fill_surrogate_data!(
             all_lines_dynamic = data_collection.all_lines_dynamic,
         )
     end
-#=     ss = PSID.small_signal_analysis(sim_full)       #state with index x not found in the global index 
-    if !(ss.stable)
-        display(ss.eigenvalues)
-        @error "system not small signal stable" 
-    end   =#
+    #=     ss = PSID.small_signal_analysis(sim_full)       #state with index x not found in the global index 
+        if !(ss.stable)
+            display(ss.eigenvalues)
+            @error "system not small signal stable" 
+        end   =#
     PSID.execute!(
         sim_full,
         solver,
