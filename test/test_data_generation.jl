@@ -48,34 +48,4 @@
     display(p)
 end
 
-@info "9 bus system test is unstable; ignore simulation error message"
-@testset "9 bus system" begin
-    sys = System("test/data_tests/9BusSystem.json")
-
-    perturbations =
-        Vector{Union{PowerSimulationsDynamics.Perturbation, SurrogatePerturbation}}[[
-            RandomLoadChange(time = 0.2, load_multiplier_range = (0.8, 1.0)),
-        ]]
-    operating_points = [
-        GenerationLoadScale(generation_scale = 1.0, load_scale = 1.0),
-        RandomOperatingPointXiao(),
-        RandomOperatingPointXiao(),
-    ]
-    Random.seed!(100)
-    dataset = generate_surrogate_data(
-        sys,
-        sys,
-        perturbations,
-        operating_points,
-        SteadyStateNODEDataParams(connecting_branch_names = [("Bus 2-Bus 7-i_8", :from)]),
-        GenerateDataParams(solver_tols = (1e-2, 1e-2)),
-    )
-    p = plot()
-    for d in dataset
-        if d.stable == true
-            plot!(p, d.tsteps, d.groundtruth_current[1, :])
-        end
-    end
-    @test [d.stable for d in dataset] == [0, 0, 0]
-    display(p)
-end
+#TODO - add a test for a larger (stable) system
