@@ -8,6 +8,9 @@ struct GenerateDataParams
     steps::Int64
     tsteps_spacing::String
     formulation::String
+    all_branches_dynamic::Bool
+    all_lines_dynamic::Bool
+    seed::Int64
 end
 
 function GenerateDataParams(;
@@ -17,8 +20,11 @@ function GenerateDataParams(;
     steps = 100,
     tsteps_spacing = "linear",
     formulation = "Residual",
+    all_branches_dynamic = false,
+    all_lines_dynamic = false,
+    seed = 1,
 )
-    GenerateDataParams(solver, solver_tols, tspan, steps, tsteps_spacing, formulation)
+    GenerateDataParams(solver, solver_tols, tspan, steps, tsteps_spacing, formulation, all_branches_dynamic, all_lines_dynamic, seed)
 end
 
 """
@@ -29,7 +35,6 @@ end
         operating_points::Vector{O},
         data_params::D,
         data_collection_params::GenerateDataParams,
-        seed::Int64 = 1;
         dataset_aux = nothing,
     ) where {O <: SurrogateOperatingPoint, D <: SurrogateDatasetParams}
 
@@ -40,7 +45,6 @@ This function creates a new deepcopy of `sys_main` for each pair of (`perturbati
 - `operating_points` is a vector of operating points to be implemented combinatorially with `perturbations` \\
 - `data_params` are the parameters for generating a specific type of dataset. \\
 - `data_collection_params` are the generic parameters for generating time series data.
-- `seed` is a random seed. Both `perturbations` and `operating_points` may rely on randomness, therefore a seed is needed for repeatability of the dataset.
 - `dataset_aux` - An auxiliary dataset. If provided, is passed to `fill_surrogate_data!`. One possible use of this fucntionality it to avoid re-running unstable cases.  
 """
 function generate_surrogate_data(
@@ -50,12 +54,11 @@ function generate_surrogate_data(
     operating_points::Vector{O},
     data_params::D,
     data_collection_params::GenerateDataParams;
-    seed::Int64 = 1,
     dataset_aux = nothing,
 ) where {O <: SurrogateOperatingPoint, D <: SurrogateDatasetParams}
-    Random.seed!(seed)
+    Random.seed!(data_collection_params.seed)
     #@assert length(stable_trajectories) == size(perturbations)[1] * length(operating_points)
-    train_data = SurrogateDataset[]
+    train_data = typeof(EmptyTrainDataSet(data_params))[]
     for (ix_o, o) in enumerate(operating_points)
         for (ix_p, p) in enumerate(perturbations)
             sys = deepcopy(sys_main)
@@ -177,22 +180,31 @@ function fill_surrogate_data!(
     #display(PSY.solve_powerflow(sys_train)["flow_results"])
     connecting_branches = params.connecting_branch_names
     if data_collection.formulation == "MassMatrix"
-        sim_full = PSID.Simulation!(
+        sim_full = PSID.Simulation(
             PSID.MassMatrixModel,
             sys_train,
             pwd(),
             tspan,
-            psid_perturbations,
+            psid_perturbations;
+            all_branches_dynamic = data_collection.all_branches_dynamic,
+            all_lines_dynamic = data_collection.all_lines_dynamic,
         )
     elseif data_collection.formulation == "Residual"
-        sim_full = PSID.Simulation!(
+        sim_full = PSID.Simulation(
             PSID.ResidualModel,
             sys_train,
             pwd(),
             tspan,
-            psid_perturbations,
+            psid_perturbations;
+            all_branches_dynamic = data_collection.all_branches_dynamic,
+            all_lines_dynamic = data_collection.all_lines_dynamic,
         )
     end
+#=     ss = PSID.small_signal_analysis(sim_full)       #state with index x not found in the global index 
+    if !(ss.stable)
+        display(ss.eigenvalues)
+        @error "system not small signal stable" 
+    end   =#
     PSID.execute!(
         sim_full,
         solver,
@@ -290,6 +302,7 @@ end
 function solver_map(key)
     d = Dict(
         "Rodas4" => OrdinaryDiffEq.Rodas4,
+        "Rodas5" => OrdinaryDiffEq.Rodas5,
         "TRBDF2" => OrdinaryDiffEq.TRBDF2,
         "Tsit5" => OrdinaryDiffEq.Tsit5,
         "IDA" => Sundials.IDA,
