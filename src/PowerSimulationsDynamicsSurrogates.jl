@@ -1,5 +1,7 @@
 module PowerSimulationsDynamicsSurrogates
 
+export ChirpVariableSource
+
 export SteadyStateNODE
 export get_SteadyStateNODE_states
 export initializer_psids
@@ -69,6 +71,8 @@ const PSID = PowerSimulationsDynamics
 # Write your package code here.
 include("SteadyStateNODE/SteadyStateNODE.jl")
 include("SteadyStateNODE/utils.jl")
+include("ChirpSource/ChirpSource.jl")
+include("ChirpSource/utils.jl")
 include("generate_data/Perturbations.jl")
 include("generate_data/OperatingPointChanges.jl")
 include("generate_data/Datasets.jl")
