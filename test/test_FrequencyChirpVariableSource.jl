@@ -95,8 +95,6 @@ end
             tspan,
         )
         x0_init = read_initial_conditions(sim)
-        display(x0_init)
-
         # Test Initial Condition
         # diff_val = [0.0]
         # res = PSID.get_init_values_for_comparison(sim)
