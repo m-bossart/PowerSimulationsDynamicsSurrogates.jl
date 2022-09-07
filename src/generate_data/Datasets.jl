@@ -233,15 +233,14 @@ function fill_surrogate_data!(
         for (i, branch_tuple) in enumerate(connecting_branches)
             branch_name = branch_tuple[1]
             location = branch_tuple[2]
+            Ir_from_to =  PSID.get_real_current_branch_flow(results, branch_name)[2] 
+            Ii_from_to =  PSID.get_imaginary_current_branch_flow(results, branch_name)[2] 
+            branch = PSY.get_component(PSY.ACBranch, sys_train, branch_name)
             if location == :from
-                ground_truth_current[2 * i - 1, :] =
-                    PSID.get_real_current_branch_flow(results, branch_name)[2]
-                ground_truth_current[2 * i, :] =
-                    PSID.get_imaginary_current_branch_flow(results, branch_name)[2]
-                P0 = PSID.get_activepower_branch_flow(results, branch_name, location)[2][1]
-                Q0 =
-                    PSID.get_reactivepower_branch_flow(results, branch_name, location)[2][1]
-                branch = PSY.get_component(PSY.ACBranch, sys_train, branch_name)
+                ground_truth_current[2 * i - 1, :] = Ir_from_to
+                ground_truth_current[2 * i, :] = Ii_from_to
+                Ir0 = Ir_from_to[1]
+                Ii0 = Ii_from_to[1]
                 bus_number = PSY.get_number(PSY.get_from(PSY.get_arc(branch)))
                 V = PSID.get_voltage_magnitude_series(results, bus_number)[2]
                 ground_truth_voltage[2 * i - 1, :] = V
@@ -250,17 +249,10 @@ function fill_surrogate_data!(
                 ground_truth_voltage[2 * i, :] = θ
                 θ0 = θ[1]
             elseif location == :to
-                ground_truth_current[2 * i - 1, :] =
-                    PSID.get_real_current_branch_flow(results, branch_name)[2] * -1
-                ground_truth_current[2 * i, :] =
-                    PSID.get_imaginary_current_branch_flow(results, branch_name)[2] * -1
-                P0 =
-                    PSID.get_activepower_branch_flow(results, branch_name, location)[2][1] *
-                    -1
-                Q0 =
-                    PSID.get_reactivepower_branch_flow(results, branch_name, location)[2][1] *
-                    -1
-                branch = PSY.get_component(PSY.ACBranch, sys_train, branch_name)
+                ground_truth_current[2 * i - 1, :] = Ir_from_to * -1
+                ground_truth_current[2 * i, :] = Ii_from_to * -1
+                Ir0 = Ir_from_to[1] * -1 
+                Ii0 = Ii_from_to[1] * -1 
                 bus_number = PSY.get_number(PSY.get_to(PSY.get_arc(branch)))
                 V = PSID.get_voltage_magnitude_series(results, bus_number)[2]
                 ground_truth_voltage[2 * i - 1, :] = V
@@ -271,7 +263,7 @@ function fill_surrogate_data!(
             end
             connecting_impedance[i, :] =
                 _get_branch_plus_source_impedance(sys_train, branch_tuple[1])
-            powerflow[(i * 4 - 3):(i * 4)] = [P0, Q0, V0, θ0]
+            powerflow[(i * 4 - 3):(i * 4)] = [Ir0, Ii0, V0, θ0]
         end
         data.tsteps = tsteps
         data.groundtruth_current = ground_truth_current
