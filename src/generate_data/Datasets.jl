@@ -59,7 +59,7 @@ This function creates a new deepcopy of `sys_main` for each pair of (`perturbati
 """
 function generate_surrogate_data(
     sys_main::PSY.System,
-    sys_aux::PSY.System,
+    sys_aux::PSY.System,    #TODO make this optional
     perturbations::Vector{Vector{Union{SurrogatePerturbation, PSID.Perturbation}}},
     operating_points::Vector{O},
     data_params::D,
@@ -232,44 +232,55 @@ function fill_surrogate_data!(
         powerflow = zeros(length(connecting_branches) * 4)
         for (i, branch_tuple) in enumerate(connecting_branches)
             branch_name = branch_tuple[1]
-            location = branch_tuple[2]
+            surrogate_location = branch_tuple[2]
             Ir_from_to =  PSID.get_real_current_branch_flow(results, branch_name)[2] 
             Ii_from_to =  PSID.get_imaginary_current_branch_flow(results, branch_name)[2] 
             branch = PSY.get_component(PSY.ACBranch, sys_train, branch_name)
-            if location == :from
+            if surrogate_location == :from
                 ground_truth_current[2 * i - 1, :] = Ir_from_to
                 ground_truth_current[2 * i, :] = Ii_from_to
                 Ir0 = Ir_from_to[1]
                 Ii0 = Ii_from_to[1]
-                bus_number = PSY.get_number(PSY.get_from(PSY.get_arc(branch)))
-                V = PSID.get_voltage_magnitude_series(results, bus_number)[2]
-                ground_truth_voltage[2 * i - 1, :] = V
-                V0 = V[1]
-                θ = PSID.get_voltage_angle_series(results, bus_number)[2]
-                ground_truth_voltage[2 * i, :] = θ
-                θ0 = θ[1]
-            elseif location == :to
-                ground_truth_current[2 * i - 1, :] = Ir_from_to * -1
-                ground_truth_current[2 * i, :] = Ii_from_to * -1
+                bus_number_surrogate = PSY.get_number(PSY.get_from(PSY.get_arc(branch)))
+                bus_number_opposite = PSY.get_number(PSY.get_to(PSY.get_arc(branch)))
+                V_surrogate = PSID.get_voltage_magnitude_series(results, bus_number_surrogate)[2]
+                θ_surrogate = PSID.get_voltage_angle_series(results, bus_number_surrogate)[2]
+                V_opposite = PSID.get_voltage_magnitude_series(results, bus_number_opposite)[2]
+                θ_opposite = PSID.get_voltage_angle_series(results, bus_number_opposite)[2]
+                Vr_surrogate = V_surrogate .* cos.(θ_surrogate)
+                Vi_surrogate = V_surrogate .* sin.(θ_surrogate)
+                Vr_opposite = V_opposite .* cos.(θ_opposite)
+                Vi_opposite = V_opposite .* sin.(θ_opposite)
+            elseif surrogate_location == :to
+                ground_truth_current[2 * i - 1, :] = Ir_from_to .* -1
+                ground_truth_current[2 * i, :] = Ii_from_to .* -1 
                 Ir0 = Ir_from_to[1] * -1 
                 Ii0 = Ii_from_to[1] * -1 
-                bus_number = PSY.get_number(PSY.get_to(PSY.get_arc(branch)))
-                V = PSID.get_voltage_magnitude_series(results, bus_number)[2]
-                ground_truth_voltage[2 * i - 1, :] = V
-                V0 = V[1]
-                θ = PSID.get_voltage_angle_series(results, bus_number)[2]
-                ground_truth_voltage[2 * i, :] = θ
-                θ0 = θ[1]
+                bus_number_surrogate = PSY.get_number(PSY.get_to(PSY.get_arc(branch)))
+                bus_number_opposite = PSY.get_number(PSY.get_from(PSY.get_arc(branch)))
+                V_surrogate = PSID.get_voltage_magnitude_series(results, bus_number_surrogate)[2]
+                θ_surrogate = PSID.get_voltage_angle_series(results, bus_number_surrogate)[2]
+                V_opposite = PSID.get_voltage_magnitude_series(results, bus_number_opposite)[2]
+                θ_opposite = PSID.get_voltage_angle_series(results, bus_number_opposite)[2]
+                Vr_surrogate = V_surrogate .* cos.(θ_surrogate)
+                Vi_surrogate = V_surrogate .* sin.(θ_surrogate)
+                Vr_opposite = V_opposite .* cos.(θ_opposite)
+                Vi_opposite = V_opposite .* sin.(θ_opposite)
             end
+            #NOTE BELOW: powerflow comes from surrogate side, V(t) comes from opposite side
+            ground_truth_voltage[2 * i - 1, :] = Vr_opposite   
+            Vr0 = Vr_surrogate[1]
+            ground_truth_voltage[2 * i, :] = Vi_opposite
+            Vi0 = Vi_surrogate[1]
             connecting_impedance[i, :] =
                 _get_branch_plus_source_impedance(sys_train, branch_tuple[1])
-            powerflow[(i * 4 - 3):(i * 4)] = [Ir0, Ii0, V0, θ0]
+            powerflow[(i * 4 - 3):(i * 4)] = [Ir0, Ii0, Vr0, Vi0]
         end
         data.tsteps = tsteps
         data.groundtruth_current = ground_truth_current
         data.groundtruth_voltage = ground_truth_voltage
         data.connecting_impedance = connecting_impedance
-        data.powerflow = powerflow
+        data.powerflow = powerflow 
         data.stable = true
     end
 end

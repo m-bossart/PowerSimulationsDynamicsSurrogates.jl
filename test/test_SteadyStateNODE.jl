@@ -19,15 +19,15 @@ end
     tspan = (0.0, 1.0)
     tstep = 0.01
     tsteps = tspan[1]:tstep:tspan[2]
-    x_scale = [1.1, 1.0, 1.0, 1.0]
-    x_bias = [0.0, 0.1, 0.0, 0.0]
+    x_scale = [1.1, 1.0, 1.0]  
+    x_bias = [0.1, 0.0, 0.0]  
     exogenous_scale = [0.9, 1.0]
     exogenous_bias = [0.0, -0.1]
 
-    initializer = Chain((x) -> x .* x_scale .+ x_bias, Dense(4, 5, tanh; bias = true))
+    initializer = Chain((x) -> (x .+ x_bias) .* x_scale , Dense(3, 5, tanh; bias = true)) 
 
     node = Chain(
-        Parallel(vcat, (x) -> x .* exogenous_scale .+ exogenous_bias, (x) -> x, (x) -> x),
+        Parallel(vcat, (x) -> (x .+ exogenous_bias) .* exogenous_scale, (x) -> x, (x) -> x),
         Dense(7, 3, tanh; bias = true),
     )
     observer = Dense(3, 2, tanh; bias = true)
@@ -35,7 +35,7 @@ end
     function SteadyStateNODE_simple(source)
         return SteadyStateNODE(
             name = get_name(source),
-            initializer_structure = [(4, 5, true, "tanh")],
+            initializer_structure = [(3, 5, true, "tanh")],
             initializer_parameters = Flux.destructure(initializer)[1],
             node_structure = [(7, 3, true, "tanh")],
             node_parameters = Flux.destructure(node)[1],
@@ -67,7 +67,7 @@ end
         x -> typeof(x) == PSID.DynamicWrapper{SteadyStateNODE},
         sim.inputs.dynamic_injectors,
     )[1]
-    x_flux = rand(4)
+    x_flux = rand(3)
     x_psid = copy(x_flux)
     ex_flux = rand(2)
     ex_psid = copy(ex_flux)
@@ -106,13 +106,7 @@ end
         atol = 1e-14,
     )
 
-    @test surrogate_wrapper.ext["initializer_error"] == [
-        -4.386322232139217,
-        -0.4206483293928726,
-        -3.9028691898982757,
-        10.913356268448265,
-        -10.016331673714097,
-    ]
+    @test surrogate_wrapper.ext["initializer_error"] ==  [4.070287639046474, -5.816393308943194, 1.0694845124363734, 2.702392818105256, -3.283026002598994]
 
     @test execute!(sim, IDA(), saveat = tsteps) == PSID.SIMULATION_FINALIZED
     results = read_results(sim)

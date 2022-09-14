@@ -54,11 +54,16 @@ function PSID.device!(
     dynamic_device::PSID.DynamicWrapper{SteadyStateNODE},
     t,
 ) where {T <: PSID.ACCEPTED_REAL_TYPES}
-    v_scaled = _exogenous_scale(dynamic_device, [voltage_r, voltage_i])
+    θ = dynamic_device.ext["θ0"]
+    vd, vq =  PSID.ri_dq(θ) * [voltage_r, voltage_i]
+    v_scaled = _exogenous_scale(dynamic_device, [vd, vq])
     refs = dynamic_device.ext["refs"]
     output_ode .= _forward_pass_node(dynamic_device, device_states, v_scaled, refs)
-    current_r[1] += _forward_pass_observer(dynamic_device, device_states)[1]
-    current_i[1] += _forward_pass_observer(dynamic_device, device_states)[2]
+    id =  _forward_pass_observer(dynamic_device, device_states)[1]
+    iq = _forward_pass_observer(dynamic_device, device_states)[2]
+    ir, ii = PSID.dq_ri(θ) * [id, iq]
+    current_r[1] += ir 
+    current_i[1] += ii 
     return
 end
 
@@ -82,18 +87,21 @@ function PSID.initialize_dynamic_device!(
     I = conj(S0 / V)
     I_R = real(I)
     I_I = imag(I)
+
+    Vd, Vq = PSID.ri_dq(θ) * [V_R, V_I] #Vd should be zero by definition 
+    Id, Iq = PSID.ri_dq(θ) * [I_R, I_I]
     function f!(out, x)
-        exogenous_scaled = _exogenous_scale(dynamic_device, [V_R, V_I])
+        exogenous_scaled = _exogenous_scale(dynamic_device, [Vd, Vq])
         out[1:n_states] .= _forward_pass_node(
             dynamic_device,
             x[1:n_states],
             exogenous_scaled,
             x[(n_states + 1):(n_states + 2)],
         )
-        out[n_states + 1] = _forward_pass_observer(dynamic_device, x[1:n_states])[1] - I_R
-        out[n_states + 2] = _forward_pass_observer(dynamic_device, x[1:n_states])[2] - I_I
+        out[n_states + 1] = _forward_pass_observer(dynamic_device, x[1:n_states])[1] - Id
+        out[n_states + 2] = _forward_pass_observer(dynamic_device, x[1:n_states])[2] - Iq
     end
-    x_scaled = _x_scale(dynamic_device, [P0, Q0, Vm, θ])
+    x_scaled = _x_scale(dynamic_device, [Vq, Id, Iq])    
     x0 = _forward_pass_initializer(dynamic_device, x_scaled)
     sol = NLsolve.nlsolve(f!, x0)
     if !NLsolve.converged(sol)
@@ -101,6 +109,7 @@ function PSID.initialize_dynamic_device!(
     end
     device_states = sol.zero[1:n_states]
     refs = sol.zero[(n_states + 1):(n_states + 2)]
+    dynamic_device.ext["θ0"] = θ
     dynamic_device.ext["refs"] = refs
     dynamic_device.ext["initializer_error"] = x0 .- sol.zero
     return device_states
