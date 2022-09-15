@@ -12,6 +12,7 @@ using Random
 
 const PSY = PowerSystems
 const PSID = PowerSimulationsDynamics
+const PSIDS = PowerSimulationsDynamicsSurrogates
 
 #include data for tests
 include("data_tests/data_utils.jl")

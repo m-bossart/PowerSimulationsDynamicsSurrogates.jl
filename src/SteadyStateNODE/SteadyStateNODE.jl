@@ -9,9 +9,12 @@
         node_parameters::Vector{Float64}
         observer_structure::Vector{Tuple{Int64, Int64, Bool, String}}
         observer_parameters::Vector{Float64}
-        x_scale::Vector{Float64}
-        x_bias::Vector{Float64}
-        exogenous_scale::Vector{Float64}
+        input_min::Vector{Float64}
+        input_max::Vector{Float64}
+        input_lims::Tuple{Float64, Float64}
+        target_min::Vector{Float64}
+        target_max::Vector{Float64}
+        target_lims::Tuple{Float64, Float64}
         exogenous_bias::Vector{Float64}
         base_power::Float64
         states::Vector{Symbol}
@@ -32,10 +35,12 @@ Experimental surrogate
 - `node_parameters::Vector{Float64}`: parameters of the node
 - `observer_structure::Vector{Tuple{Int64, Int64, Bool, String}}`: layers of the initializer
 - `observer_parameters::Vector{Float64}`: parameters of the node
-- `x_scale::Vector{Float64}`: scale for x input
-- `x_bias::Vector{Float64}`: bias for x input
-- `exogenous_scale::Vector{Float64}`: scale for exogenous input
-- `exogenous_bias::Vector{Float64}`: bias for exogenous input
+- `input_min::Vector{Float64}`: minimum values of inputs
+- `input_max::Vector{Float64}`: maximum values of inputs
+- `input_lims::Tuple{Float64, Float64}`: limits for inputs
+- `target_min::Vector{Float64}`: minimum values of targets
+- `target_max::Vector{Float64}`: maximum values of targets
+- `target_lims::Tuplse{Float64, Float64`: limits for targets
 - `base_power::Float64`: Base power
 - `states::Vector{Symbol}`: The states of GenericDER depend on the Flags
 - `n_states::Int`: The states of GenericDER depend on the Flags
@@ -56,14 +61,26 @@ mutable struct SteadyStateNODE <: PSY.DynamicInjection
     observer_structure::Vector{Tuple{Int64, Int64, Bool, String}}
     "parameters of the node"
     observer_parameters::Vector{Float64}
-    "scale for x input"
+    "minimum values of inputs"
+    input_min::Vector{Float64}
+    "maximum values of inputs"
+    input_max::Vector{Float64}
+    "limits for inputs"
+    input_lims::Tuple{Float64, Float64}
+    "minimum values of targets"
+    target_min::Vector{Float64}
+    "maximum values of targets"
+    target_max::Vector{Float64}
+    "limits for targets"
+    target_lims::Tuple{Float64, Float64}
+#=     "scale for x input"
     x_scale::Vector{Float64}
     "bias for x input"
     x_bias::Vector{Float64}
     "scale for exogenous input"
     exogenous_scale::Vector{Float64}
     "bias for exogenous input"
-    exogenous_bias::Vector{Float64}
+    exogenous_bias::Vector{Float64} =#
     "Base power"
     base_power::Float64
     "The states of GenericDER depend on the Flags"
@@ -83,10 +100,16 @@ function SteadyStateNODE(
     node_parameters = [0.0],
     observer_structure = [(0, 0, true, "init")],
     observer_parameters = [0.0],
-    x_scale = [0.0],
+    input_min = [0.0],
+    input_max = [0.0],
+    input_lims = (-1, 1), 
+    target_min = [0.0],
+    target_max = [0.0],
+    target_lims = (-1, 1),
+#=     x_scale = [0.0],
     x_bias = [0.0],
     exogenous_scale = [0.0],
-    exogenous_bias = [0.0],
+    exogenous_bias = [0.0], =#
     base_power = 100.0,
     ext = Dict{String, Any}(),
 )
@@ -98,10 +121,16 @@ function SteadyStateNODE(
         node_parameters,
         observer_structure,
         observer_parameters,
-        x_scale,
+        input_min,
+        input_max, 
+        input_lims,
+        target_min,
+        target_max, 
+        target_lims, 
+#=         x_scale,
         x_bias,
         exogenous_scale,
-        exogenous_bias,
+        exogenous_bias, =#
         base_power,
         ext,
         get_SteadyStateNODE_states(initializer_structure[end][2] - 2)[1],
@@ -118,10 +147,16 @@ function SteadyStateNODE(;
     node_parameters = [0.0],
     observer_structure = [(0, 0, true, "init")],
     observer_parameters = [0.0],
-    x_scale = [0.0],
+    input_min = [0.0],
+    input_max = [0.0],
+    input_lims = (-1, 1), 
+    target_min = [0.0],
+    target_max = [0.0],
+    target_lims = (-1, 1),
+#=     x_scale = [0.0],
     x_bias = [0.0],
     exogenous_scale = [0.0],
-    exogenous_bias = [0.0],
+    exogenous_bias = [0.0], =#
     base_power = 100.0,
     states = get_SteadyStateNODE_states(initializer_structure[end][2] - 2)[1],
     n_states = get_SteadyStateNODE_states(initializer_structure[end][2] - 2)[2],
@@ -136,10 +171,16 @@ function SteadyStateNODE(;
         node_parameters,
         observer_structure,
         observer_parameters,
-        x_scale,
+        input_min,
+        input_max, 
+        input_lims,
+        target_min,
+        target_max, 
+        target_lims, 
+#=         x_scale,
         x_bias,
         exogenous_scale,
-        exogenous_bias,
+        exogenous_bias, =#
         base_power,
         states,
         n_states,
@@ -158,10 +199,12 @@ function SteadyStateNODE(::Nothing)
         node_parameters = [0],
         observer_structure = [(0, 0, true, "init")],
         observer_parameters = Any[0],
-        x_scale = [0],
-        x_bias = [0],
-        exogenous_scale = [0],
-        exogenous_bias = [0],
+        input_min = [0.0],
+        input_max = [0.0],
+        input_lims = (-1, 1), 
+        target_min = [0.0],
+        target_max = [0.0],
+        target_lims = (-1, 1),
         base_power = 0,
         ext = Dict{String, Any}(),
     )
@@ -182,14 +225,18 @@ get_node_parameters(value::SteadyStateNODE) = value.node_parameters
 get_observer_structure(value::SteadyStateNODE) = value.observer_structure
 """Get [`SteadyStateNODE`](@ref) `observer_parameters`."""
 get_observer_parameters(value::SteadyStateNODE) = value.observer_parameters
-"""Get [`SteadyStateNODE`](@ref) `x_scale`."""
-get_x_scale(value::SteadyStateNODE) = value.x_scale
-"""Get [`SteadyStateNODE`](@ref) `x_bias`."""
-get_x_bias(value::SteadyStateNODE) = value.x_bias
-"""Get [`SteadyStateNODE`](@ref) `exogenous_scale`."""
-get_exogenous_scale(value::SteadyStateNODE) = value.exogenous_scale
-"""Get [`SteadyStateNODE`](@ref) `exogenous_bias`."""
-get_exogenous_bias(value::SteadyStateNODE) = value.exogenous_bias
+"""Get [`SteadyStateNODE`](@ref) `input_min`."""
+get_input_min(value::SteadyStateNODE) = value.input_min
+"""Get [`SteadyStateNODE`](@ref) `input_max`."""
+get_input_max(value::SteadyStateNODE) = value.input_max
+"""Get [`SteadyStateNODE`](@ref) `input_lims`."""
+get_input_lims(value::SteadyStateNODE) = value.input_lims
+"""Get [`SteadyStateNODE`](@ref) `target_min`."""
+get_target_min(value::SteadyStateNODE) = value.target_min
+"""Get [`SteadyStateNODE`](@ref) `target_max`."""
+get_target_max(value::SteadyStateNODE) = value.target_max
+"""Get [`SteadyStateNODE`](@ref) `target_lims`."""
+get_target_lims(value::SteadyStateNODE) = value.target_lims
 """Get [`SteadyStateNODE`](@ref) `base_power`."""
 PSY.get_base_power(value::SteadyStateNODE) = value.base_power
 """Get [`SteadyStateNODE`](@ref) `states`."""

@@ -56,11 +56,12 @@ function PSID.device!(
 ) where {T <: PSID.ACCEPTED_REAL_TYPES}
     θ = dynamic_device.ext["θ0"]
     vd, vq =  PSID.ri_dq(θ) * [voltage_r, voltage_i]
-    v_scaled = _exogenous_scale(dynamic_device, [vd, vq])
+    v_scaled = _input_scale(dynamic_device, [vd, vq])
     refs = dynamic_device.ext["refs"]
     output_ode .= _forward_pass_node(dynamic_device, device_states, v_scaled, refs)
-    id =  _forward_pass_observer(dynamic_device, device_states)[1]
-    iq = _forward_pass_observer(dynamic_device, device_states)[2]
+    id_scale =  _forward_pass_observer(dynamic_device, device_states)[1]
+    iq_scale = _forward_pass_observer(dynamic_device, device_states)[2]
+    id, iq = _target_scale_inverse(dynamic_device, [id_scale, iq_scale])
     ir, ii = PSID.dq_ri(θ) * [id, iq]
     current_r[1] += ir 
     current_i[1] += ii 
@@ -90,19 +91,20 @@ function PSID.initialize_dynamic_device!(
 
     Vd, Vq = PSID.ri_dq(θ) * [V_R, V_I] #Vd should be zero by definition 
     Id, Iq = PSID.ri_dq(θ) * [I_R, I_I]
+    _, Vq_scale = _input_scale(dynamic_device, [Vd, Vq])
+    Id_scale, Iq_scale = _input_scale(dynamic_device, [Id, Iq])
     function f!(out, x)
-        exogenous_scaled = _exogenous_scale(dynamic_device, [Vd, Vq])
+        input_scaled = _input_scale(dynamic_device, [Vd, Vq])
         out[1:n_states] .= _forward_pass_node(
             dynamic_device,
             x[1:n_states],
-            exogenous_scaled,
+            input_scaled,
             x[(n_states + 1):(n_states + 2)],
         )
-        out[n_states + 1] = _forward_pass_observer(dynamic_device, x[1:n_states])[1] - Id
-        out[n_states + 2] = _forward_pass_observer(dynamic_device, x[1:n_states])[2] - Iq
+        out[n_states + 1] = _forward_pass_observer(dynamic_device, x[1:n_states])[1] - Id_scale
+        out[n_states + 2] = _forward_pass_observer(dynamic_device, x[1:n_states])[2] - Iq_scale
     end
-    x_scaled = _x_scale(dynamic_device, [Vq, Id, Iq])    
-    x0 = _forward_pass_initializer(dynamic_device, x_scaled)
+    x0 = _forward_pass_initializer(dynamic_device, Vq_scale,  [Id_scale, Iq_scale])
     sol = NLsolve.nlsolve(f!, x0)
     if !NLsolve.converged(sol)
         @warn("Initialization in SteadyStateNODE failed")
@@ -215,19 +217,39 @@ get_b_node(wrapper::PSID.DynamicWrapper{SteadyStateNODE}) = wrapper.ext["node"][
 get_W_observer(wrapper::PSID.DynamicWrapper{SteadyStateNODE}) = wrapper.ext["observer"]["W"]
 get_b_observer(wrapper::PSID.DynamicWrapper{SteadyStateNODE}) = wrapper.ext["observer"]["b"]
 
-function _exogenous_scale(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, ex)
-    ex .= get_exogenous_bias(wrapper.device) .+ ex
-    ex .= ex .* get_exogenous_scale(wrapper.device)
-    return ex
+function _input_scale(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, x)
+    xmin = get_input_min(wrapper.device)
+    xmax = get_input_max(wrapper.device)
+    l, u = get_input_lims(wrapper.device)
+    return min_max_normalization(x, xmin, xmax, u, l)
 end
 
-function _x_scale(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, x)
-    x .= get_x_bias(wrapper.device) .+ x
-    x .= x .* get_x_scale(wrapper.device)
-    return x
+function _target_scale(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, x)
+    xmin = get_target_min(wrapper.device)
+    xmax = get_target_max(wrapper.device)
+    l, u = get_target_lims(wrapper.device)
+    return min_max_normalization(x, xmin, xmax, u, l)
 end
 
-function _forward_pass_initializer(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, x)
+function _target_scale_inverse(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, x)
+    xmin = get_target_min(wrapper.device)
+    xmax = get_target_max(wrapper.device)
+    l, u = get_target_lims(wrapper.device)
+    return min_max_normalization_inverse(x, xmin, xmax, u, l)
+end
+
+function min_max_normalization(x, xmin, xmax, u, l)  #https://www.baeldung.com/cs/normalizing-inputs-artificial-neural-network
+    x_prime = (x .- xmin)./(xmax .- xmin) .* (u .- l) .+ l 
+    return x_prime 
+end  
+
+function min_max_normalization_inverse(x_prime, xmin, xmax, u, l)
+    x = (x_prime .- l) .* (xmax .- xmin) ./ (u .- l) .+ xmin
+    return x 
+end 
+
+function _forward_pass_initializer(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, input, target)
+    x = vcat(input, target)
     W_index = 1
     b_index = 1
     W = get_W_initializer(wrapper)
