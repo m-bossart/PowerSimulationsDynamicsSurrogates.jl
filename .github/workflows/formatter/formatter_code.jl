@@ -4,9 +4,9 @@ Pkg.instantiate()
 
 using JuliaFormatter
 
-main_paths = ["."]
+main_paths = ["src", "test"]
 for main_path in main_paths
-    format(
+   format(
         main_path;
         whitespace_ops_in_indices = true,
         remove_extra_newlines = true,
@@ -14,5 +14,5 @@ for main_path in main_paths
         always_for_in = true,
         whitespace_typedefs = true,
         # always_use_return = true. # Disabled since it throws a lot of false positives
-    )
+    ) 
 end

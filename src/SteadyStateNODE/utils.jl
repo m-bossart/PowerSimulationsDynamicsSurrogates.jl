@@ -55,16 +55,16 @@ function PSID.device!(
     t,
 ) where {T <: PSID.ACCEPTED_REAL_TYPES}
     θ = dynamic_device.ext["θ0"]
-    vd, vq =  PSID.ri_dq(θ) * [voltage_r, voltage_i]
+    vd, vq = PSID.ri_dq(θ) * [voltage_r, voltage_i]
     v_scaled = _input_scale(dynamic_device, [vd, vq])
     refs = dynamic_device.ext["refs"]
     output_ode .= _forward_pass_node(dynamic_device, device_states, v_scaled, refs)
-    id_scale =  _forward_pass_observer(dynamic_device, device_states)[1]
+    id_scale = _forward_pass_observer(dynamic_device, device_states)[1]
     iq_scale = _forward_pass_observer(dynamic_device, device_states)[2]
     id, iq = _target_scale_inverse(dynamic_device, [id_scale, iq_scale])
     ir, ii = PSID.dq_ri(θ) * [id, iq]
-    current_r[1] += ir 
-    current_i[1] += ii 
+    current_r[1] += ir
+    current_i[1] += ii
     return
 end
 
@@ -92,7 +92,7 @@ function PSID.initialize_dynamic_device!(
     Vd, Vq = PSID.ri_dq(θ) * [V_R, V_I] #Vd should be zero by definition 
     Id, Iq = PSID.ri_dq(θ) * [I_R, I_I]
     _, Vq_scale = _input_scale(dynamic_device, [Vd, Vq])
-    Id_scale, Iq_scale = _input_scale(dynamic_device, [Id, Iq])
+    Id_scale, Iq_scale = _target_scale(dynamic_device, [Id, Iq])    #Was input_scale! bug fixed
     function f!(out, x)
         input_scaled = _input_scale(dynamic_device, [Vd, Vq])
         out[1:n_states] .= _forward_pass_node(
@@ -101,10 +101,12 @@ function PSID.initialize_dynamic_device!(
             input_scaled,
             x[(n_states + 1):(n_states + 2)],
         )
-        out[n_states + 1] = _forward_pass_observer(dynamic_device, x[1:n_states])[1] - Id_scale
-        out[n_states + 2] = _forward_pass_observer(dynamic_device, x[1:n_states])[2] - Iq_scale
+        out[n_states + 1] =
+            _forward_pass_observer(dynamic_device, x[1:n_states])[1] - Id_scale
+        out[n_states + 2] =
+            _forward_pass_observer(dynamic_device, x[1:n_states])[2] - Iq_scale
     end
-    x0 = _forward_pass_initializer(dynamic_device, Vq_scale,  [Id_scale, Iq_scale])
+    x0 = _forward_pass_initializer(dynamic_device, Vq_scale, [Id_scale, Iq_scale])
     sol = NLsolve.nlsolve(f!, x0)
     if !NLsolve.converged(sol)
         @warn("Initialization in SteadyStateNODE failed")
@@ -239,16 +241,20 @@ function _target_scale_inverse(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, x)
 end
 
 function min_max_normalization(x, xmin, xmax, u, l)  #https://www.baeldung.com/cs/normalizing-inputs-artificial-neural-network
-    x_prime = (x .- xmin)./(xmax .- xmin) .* (u .- l) .+ l 
-    return x_prime 
-end  
+    x_prime = (x .- xmin) ./ (xmax .- xmin) .* (u .- l) .+ l
+    return x_prime
+end
 
 function min_max_normalization_inverse(x_prime, xmin, xmax, u, l)
     x = (x_prime .- l) .* (xmax .- xmin) ./ (u .- l) .+ xmin
-    return x 
-end 
+    return x
+end
 
-function _forward_pass_initializer(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, input, target)
+function _forward_pass_initializer(
+    wrapper::PSID.DynamicWrapper{SteadyStateNODE},
+    input,
+    target,
+)
     x = vcat(input, target)
     W_index = 1
     b_index = 1

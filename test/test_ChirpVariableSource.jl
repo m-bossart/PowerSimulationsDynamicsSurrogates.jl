@@ -111,9 +111,9 @@ end
         Vt_sim = get_state_series(results, ("InfBus", :Vt))
         θt_sim = get_state_series(results, ("InfBus", :θt))
 
-#=         p = plot()
-        plot!(p, Vt_sim)
-        display(plot!(p, θt_sim)) =#
+        #=         p = plot()
+                plot!(p, Vt_sim)
+                display(plot!(p, θt_sim)) =#
     finally
         @info("removing test files")
         rm(path, force = true, recursive = true)

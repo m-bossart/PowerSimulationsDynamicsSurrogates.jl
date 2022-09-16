@@ -20,23 +20,54 @@ end
     tstep = 0.01
     tsteps = tspan[1]:tstep:tspan[2]
     input_min = [0.0, 0.0]
-    input_max =  [1.0, 1.0]
+    input_max = [1.0, 1.0]
     input_lims = (-1.0, 1.0)
     target_min = [0.0, 0.0]
     target_max = [1.0, 1.0]
     target_lims = (-1.0, 1.0)
 
     #THESE LAYERS DO THE SCALING WITHIN THE FLUX NNs
-    layer_initializer_input = Parallel(vcat, (x) -> PowerSimulationsDynamicsSurrogates.min_max_normalization(x, input_min[2], input_max[2], input_lims[2], input_lims[1]) , (x) -> PowerSimulationsDynamicsSurrogates.min_max_normalization(x, target_min, target_max, target_lims[2], target_lims[1]))  #Second output only 
-    layer_node_input =  Parallel(vcat, (x) -> x, (x) -> PowerSimulationsDynamicsSurrogates.min_max_normalization(x ,input_min, input_max, input_lims[2], input_lims[1]),  (x) -> x)
-    layer_observer_output = (x) ->  PowerSimulationsDynamicsSurrogates.min_max_normalization_inverse(x, target_min, target_max, target_lims[2], target_lims[1])
-
-    initializer = Chain(layer_initializer_input, Dense(3, 5, tanh; bias = true)) 
-    node = Chain(
-        layer_node_input,
-        Dense(7, 3, tanh; bias = true),
+    layer_initializer_input = Parallel(
+        vcat,
+        (x) -> PowerSimulationsDynamicsSurrogates.min_max_normalization(
+            x,
+            input_min[2],
+            input_max[2],
+            input_lims[2],
+            input_lims[1],
+        ),
+        (x) -> PowerSimulationsDynamicsSurrogates.min_max_normalization(
+            x,
+            target_min,
+            target_max,
+            target_lims[2],
+            target_lims[1],
+        ),
+    )  #Second output only 
+    layer_node_input = Parallel(
+        vcat,
+        (x) -> x,
+        (x) -> PowerSimulationsDynamicsSurrogates.min_max_normalization(
+            x,
+            input_min,
+            input_max,
+            input_lims[2],
+            input_lims[1],
+        ),
+        (x) -> x,
     )
-    observer = Chain(Dense(3, 2, tanh; bias = true), layer_observer_output) 
+    layer_observer_output =
+        (x) -> PowerSimulationsDynamicsSurrogates.min_max_normalization_inverse(
+            x,
+            target_min,
+            target_max,
+            target_lims[2],
+            target_lims[1],
+        )
+
+    initializer = Chain(layer_initializer_input, Dense(3, 5, tanh; bias = true))
+    node = Chain(layer_node_input, Dense(7, 3, tanh; bias = true))
+    observer = Chain(Dense(3, 2, tanh; bias = true), layer_observer_output)
 
     function SteadyStateNODE_simple(source)
         return SteadyStateNODE(
@@ -49,10 +80,10 @@ end
             observer_parameters = Flux.destructure(observer)[1],
             input_min = input_min,
             input_max = input_max,
-            input_lims = input_lims, 
-            target_min =target_min, 
-            target_max =target_max, 
-            target_lims = target_lims, 
+            input_lims = input_lims,
+            target_min = target_min,
+            target_max = target_max,
+            target_lims = target_lims,
         )
     end
 
@@ -70,14 +101,13 @@ end
         pwd(),
         tspan,
         PSID.BranchTrip(0.5, PSY.Line, "BUS 1-BUS 2-i_1"),
-    ) 
+    )
     surrogate_wrapper = filter(
         x -> typeof(x) == PSID.DynamicWrapper{SteadyStateNODE},
         sim.inputs.dynamic_injectors,
     )[1]
 
-
-    target_flux = rand(2)  
+    target_flux = rand(2)
     target_psid = copy(target_flux)
     input_flux = rand(2)
     input_psid = copy(input_flux)
@@ -86,7 +116,8 @@ end
     ref_flux = rand(2)
     ref_psid = copy(ref_flux)
 
-    target_scaled = PowerSimulationsDynamicsSurrogates._target_scale(surrogate_wrapper, target_psid)
+    target_scaled =
+        PowerSimulationsDynamicsSurrogates._target_scale(surrogate_wrapper, target_psid)
     input_scaled =
         PowerSimulationsDynamicsSurrogates._input_scale(surrogate_wrapper, input_psid)
     @test isapprox(
@@ -111,14 +142,23 @@ end
     )
     @test isapprox(
         observer(r_flux),
-        PowerSimulationsDynamicsSurrogates._target_scale_inverse(surrogate_wrapper, PowerSimulationsDynamicsSurrogates._forward_pass_observer(
+        PowerSimulationsDynamicsSurrogates._target_scale_inverse(
             surrogate_wrapper,
-            r_psid,
-        ));
+            PowerSimulationsDynamicsSurrogates._forward_pass_observer(
+                surrogate_wrapper,
+                r_psid,
+            ),
+        );
         atol = 1e-14,
     )
 
-    @test surrogate_wrapper.ext["initializer_error"] ==  [3.771190226036233, -3.1373435157716756, 1.303626410331343, -0.9691214719159313, -5.093673030310098]
+    @test surrogate_wrapper.ext["initializer_error"] == [
+        3.771190226036233,
+        -3.1373435157716756,
+        1.303626410331343,
+        -0.9691214719159313,
+        -5.093673030310098,
+    ]
 
     @test execute!(sim, IDA(), saveat = tsteps) == PSID.SIMULATION_FINALIZED
     results = read_results(sim)

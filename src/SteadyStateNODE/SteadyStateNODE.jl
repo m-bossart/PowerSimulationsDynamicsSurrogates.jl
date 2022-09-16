@@ -3,9 +3,7 @@
         name::String
         initializer_structure::Vector{Tuple{Int64, Int64, Bool, String}}
         initializer_parameters::Vector{Float64}
-        node_structure_exogenous::Vector{Tuple{Int64, Int64, Bool, String}}
-        node_structure_states::Vector{Tuple{Int64, Int64, Bool, String}}
-        node_structure_common::Vector{Tuple{Int64, Int64, Bool, String}}
+        node_structure::Vector{Tuple{Int64, Int64, Bool, String}}
         node_parameters::Vector{Float64}
         observer_structure::Vector{Tuple{Int64, Int64, Bool, String}}
         observer_parameters::Vector{Float64}
@@ -15,7 +13,6 @@
         target_min::Vector{Float64}
         target_max::Vector{Float64}
         target_lims::Tuple{Float64, Float64}
-        exogenous_bias::Vector{Float64}
         base_power::Float64
         states::Vector{Symbol}
         n_states::Int
@@ -29,9 +26,7 @@ Experimental surrogate
 - `name::String`
 - `initializer_structure::Vector{Tuple{Int64, Int64, Bool, String}}`: layers of the initializer
 - `initializer_parameters::Vector{Float64}`: parameters of the initializer
-- `node_structure_exogenous::Vector{Tuple{Int64, Int64, Bool, String}}`: layers of the initializer
-- `node_structure_states::Vector{Tuple{Int64, Int64, Bool, String}}`: layers of the initializer
-- `node_structure_common::Vector{Tuple{Int64, Int64, Bool, String}}`: layers of the initializer
+- `node_structure::Vector{Tuple{Int64, Int64, Bool, String}}`: layers of the node 
 - `node_parameters::Vector{Float64}`: parameters of the node
 - `observer_structure::Vector{Tuple{Int64, Int64, Bool, String}}`: layers of the initializer
 - `observer_parameters::Vector{Float64}`: parameters of the node
@@ -73,14 +68,6 @@ mutable struct SteadyStateNODE <: PSY.DynamicInjection
     target_max::Vector{Float64}
     "limits for targets"
     target_lims::Tuple{Float64, Float64}
-#=     "scale for x input"
-    x_scale::Vector{Float64}
-    "bias for x input"
-    x_bias::Vector{Float64}
-    "scale for exogenous input"
-    exogenous_scale::Vector{Float64}
-    "bias for exogenous input"
-    exogenous_bias::Vector{Float64} =#
     "Base power"
     base_power::Float64
     "The states of GenericDER depend on the Flags"
@@ -102,14 +89,10 @@ function SteadyStateNODE(
     observer_parameters = [0.0],
     input_min = [0.0],
     input_max = [0.0],
-    input_lims = (-1, 1), 
+    input_lims = (-1, 1),
     target_min = [0.0],
     target_max = [0.0],
     target_lims = (-1, 1),
-#=     x_scale = [0.0],
-    x_bias = [0.0],
-    exogenous_scale = [0.0],
-    exogenous_bias = [0.0], =#
     base_power = 100.0,
     ext = Dict{String, Any}(),
 )
@@ -122,15 +105,11 @@ function SteadyStateNODE(
         observer_structure,
         observer_parameters,
         input_min,
-        input_max, 
+        input_max,
         input_lims,
         target_min,
-        target_max, 
-        target_lims, 
-#=         x_scale,
-        x_bias,
-        exogenous_scale,
-        exogenous_bias, =#
+        target_max,
+        target_lims,
         base_power,
         ext,
         get_SteadyStateNODE_states(initializer_structure[end][2] - 2)[1],
@@ -149,14 +128,10 @@ function SteadyStateNODE(;
     observer_parameters = [0.0],
     input_min = [0.0],
     input_max = [0.0],
-    input_lims = (-1, 1), 
+    input_lims = (-1, 1),
     target_min = [0.0],
     target_max = [0.0],
     target_lims = (-1, 1),
-#=     x_scale = [0.0],
-    x_bias = [0.0],
-    exogenous_scale = [0.0],
-    exogenous_bias = [0.0], =#
     base_power = 100.0,
     states = get_SteadyStateNODE_states(initializer_structure[end][2] - 2)[1],
     n_states = get_SteadyStateNODE_states(initializer_structure[end][2] - 2)[2],
@@ -172,15 +147,11 @@ function SteadyStateNODE(;
         observer_structure,
         observer_parameters,
         input_min,
-        input_max, 
+        input_max,
         input_lims,
         target_min,
-        target_max, 
-        target_lims, 
-#=         x_scale,
-        x_bias,
-        exogenous_scale,
-        exogenous_bias, =#
+        target_max,
+        target_lims,
         base_power,
         states,
         n_states,
@@ -201,7 +172,7 @@ function SteadyStateNODE(::Nothing)
         observer_parameters = Any[0],
         input_min = [0.0],
         input_max = [0.0],
-        input_lims = (-1, 1), 
+        input_lims = (-1, 1),
         target_min = [0.0],
         target_max = [0.0],
         target_lims = (-1, 1),
@@ -217,7 +188,7 @@ PSY.get_name(value::SteadyStateNODE) = value.name
 get_initializer_structure(value::SteadyStateNODE) = value.initializer_structure
 """Get [`SteadyStateNODE`](@ref) `initializer_parameters`."""
 get_initializer_parameters(value::SteadyStateNODE) = value.initializer_parameters
-"""Get [`SteadyStateNODE`](@ref) `node_structure_exogenous`."""
+"""Get [`SteadyStateNODE`](@ref) `node_structure`."""
 get_node_structure(value::SteadyStateNODE) = value.node_structure
 """Get [`SteadyStateNODE`](@ref) `node_structure_states`."""
 get_node_parameters(value::SteadyStateNODE) = value.node_parameters

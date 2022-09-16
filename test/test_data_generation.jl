@@ -43,7 +43,7 @@
 
     p = plot()
     for d in dataset
-        plot!(p, d.tsteps, d.groundtruth_current[1, :])
+        plot!(p, d.tsteps, d.branch_real_current[1, :])
     end
     display(p)
 end
