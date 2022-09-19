@@ -186,16 +186,24 @@ function fill_surrogate_data!(
     #display(PSY.solve_powerflow(sys_train)["bus_results"])
     #display(PSY.solve_powerflow(sys_train)["flow_results"])
     if data_aux !== nothing
-        @warn "Updating the operating point based on previously run dataset"
         for s in PSY.get_components(
             PSY.Source,
             sys_train,
             x -> typeof(PSY.get_dynamic_injector(x)) == SteadyStateNODE,
         )
-            PSY.set_active_power!(s, data_aux.powerflow[1])
-            PSY.set_reactive_power!(s, data_aux.powerflow[2])
-            PSY.set_internal_voltage!(s, data_aux.powerflow[3])
-            PSY.set_internal_angle!(s, data_aux.powerflow[4])
+            Vr0 = data_aux.surrogate_real_voltage[1]
+            Vi0 = data_aux.surrogate_imag_voltage[1]
+            Ir0 = data_aux.branch_real_current[1]
+            Ii0 = data_aux.branch_imag_current[1]
+            P0 = Vr0 * Ir0 + Vi0 * Ii0
+            Q0 = Vi0 * Ir0 - Vr0 * Ii0
+            Vm0 = sqrt(Vr0^2 + Vi0^2)
+            θ0 = atan(Vi0,Vr0)
+            @warn P0,Q0, Vm0, θ0
+            PSY.set_active_power!(s, P0)
+            PSY.set_reactive_power!(s, Q0)
+            PSY.set_internal_voltage!(s, Vm0)
+            PSY.set_internal_angle!(s, θ0)
         end
     end
     #display(PSY.solve_powerflow(sys_train)["bus_results"])
