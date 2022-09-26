@@ -199,7 +199,6 @@ function fill_surrogate_data!(
             Q0 = Vi0 * Ir0 - Vr0 * Ii0
             Vm0 = sqrt(Vr0^2 + Vi0^2)
             θ0 = atan(Vi0,Vr0)
-            @warn P0,Q0, Vm0, θ0
             PSY.set_active_power!(s, P0)
             PSY.set_reactive_power!(s, Q0)
             PSY.set_internal_voltage!(s, Vm0)
