@@ -141,7 +141,7 @@ function SteadyStateNODEData(;
     surrogate_imag_voltage = [],
     opposite_real_voltage = [],
     opposite_imag_voltage = [],
-    tstops = [], 
+    tstops = [],
     stable = false,
 )
     return SteadyStateNODEData(
@@ -155,7 +155,7 @@ function SteadyStateNODEData(;
         surrogate_imag_voltage,
         opposite_real_voltage,
         opposite_imag_voltage,
-        tstops, 
+        tstops,
         stable,
     )
 end
@@ -197,7 +197,7 @@ function fill_surrogate_data!(
             P0 = Vr0 * Ir0 + Vi0 * Ii0
             Q0 = Vi0 * Ir0 - Vr0 * Ii0
             Vm0 = sqrt(Vr0^2 + Vi0^2)
-            θ0 = atan(Vi0,Vr0)
+            θ0 = atan(Vi0, Vr0)
             PSY.set_active_power!(s, P0)
             PSY.set_reactive_power!(s, Q0)
             PSY.set_internal_voltage!(s, Vm0)
@@ -239,18 +239,18 @@ function fill_surrogate_data!(
         abstol = abstol,
         reltol = reltol,
         tstops = union(data_collection.tstops, sim_full.tstops),
-        save_everystep = true, 
+        save_everystep = true,
         saveat = data_collection.tsave,
         reset_simulation = false,
         enable_progress_bar = false,
-    )    
+    )
     @assert issubset(data_collection.tsave, union(data_collection.tstops, sim_full.tstops))
     results = PSID.read_results(sim_full)
-    if length(data_collection.tsave) == 0 
+    if length(data_collection.tsave) == 0
         save_indices = 1:length(unique(results.solution.t))
-    else 
+    else
         save_indices = indexin(data_collection.tsave, unique(results.solution.t))
-    end 
+    end
     n_save_points = length(save_indices)
     if sim_full.status == PSID.SIMULATION_FINALIZED
         results = PSID.read_results(sim_full)
@@ -261,12 +261,14 @@ function fill_surrogate_data!(
         surrogate_real_voltage = zeros(length(connecting_branches), n_save_points)
         surrogate_imag_voltage = zeros(length(connecting_branches), n_save_points)
         opposite_real_voltage = zeros(length(connecting_branches), n_save_points)
-        opposite_imag_voltage = zeros(length(connecting_branches), n_save_points) 
+        opposite_imag_voltage = zeros(length(connecting_branches), n_save_points)
         for (i, branch_tuple) in enumerate(connecting_branches)
             branch_name = branch_tuple[1]
             surrogate_location = branch_tuple[2]
-            Ir_from_to = PSID.get_real_current_branch_flow(results, branch_name)[2][save_indices]
-            Ii_from_to = PSID.get_imaginary_current_branch_flow(results, branch_name)[2][save_indices]
+            Ir_from_to =
+                PSID.get_real_current_branch_flow(results, branch_name)[2][save_indices]
+            Ii_from_to =
+                PSID.get_imaginary_current_branch_flow(results, branch_name)[2][save_indices]
             branch = PSY.get_component(PSY.ACBranch, sys_train, branch_name)
             if surrogate_location == :from
                 branch_real_current[i, :] = Ir_from_to
@@ -279,7 +281,8 @@ function fill_surrogate_data!(
                     PSID.get_voltage_angle_series(results, bus_number_surrogate)[2][save_indices]
                 V_opposite =
                     PSID.get_voltage_magnitude_series(results, bus_number_opposite)[2][save_indices]
-                θ_opposite = PSID.get_voltage_angle_series(results, bus_number_opposite)[2][save_indices]
+                θ_opposite =
+                    PSID.get_voltage_angle_series(results, bus_number_opposite)[2][save_indices]
                 Vr_surrogate = V_surrogate .* cos.(θ_surrogate)
                 Vi_surrogate = V_surrogate .* sin.(θ_surrogate)
                 Vr_opposite = V_opposite .* cos.(θ_opposite)
@@ -295,7 +298,8 @@ function fill_surrogate_data!(
                     PSID.get_voltage_angle_series(results, bus_number_surrogate)[2][save_indices]
                 V_opposite =
                     PSID.get_voltage_magnitude_series(results, bus_number_opposite)[2][save_indices]
-                θ_opposite = PSID.get_voltage_angle_series(results, bus_number_opposite)[2][save_indices]
+                θ_opposite =
+                    PSID.get_voltage_angle_series(results, bus_number_opposite)[2][save_indices]
                 Vr_surrogate = V_surrogate .* cos.(θ_surrogate)
                 Vi_surrogate = V_surrogate .* sin.(θ_surrogate)
                 Vr_opposite = V_opposite .* cos.(θ_opposite)

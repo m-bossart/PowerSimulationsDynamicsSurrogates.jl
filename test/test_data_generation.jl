@@ -22,7 +22,6 @@
                     internal_angle_coefficients = [(0.0, 0.01)],
                 ),
             ],
-
         ]
 
     #Define the ways to change the operating point of the system        
