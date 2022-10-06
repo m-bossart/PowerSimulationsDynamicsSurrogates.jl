@@ -10,6 +10,10 @@
     perturbations =
         Vector{Union{PowerSimulationsDynamics.Perturbation, SurrogatePerturbation}}[
             [
+                VStep(source_name = "InfBus", t_step = 0.5, ΔV = 0.04),
+                VStep(source_name = "InfBus", t_step = 0.7, ΔV = -0.05),
+            ],
+            [
                 PVS(
                     source_name = "InfBus",
                     internal_voltage_frequencies = [2 * pi * 3],
@@ -18,10 +22,7 @@
                     internal_angle_coefficients = [(0.0, 0.01)],
                 ),
             ],
-            [
-                VStep(source_name = "InfBus", t_step = 0.5, ΔV = 0.05),
-                VStep(source_name = "InfBus", t_step = 0.7, ΔV = -0.05),
-            ],
+
         ]
 
     #Define the ways to change the operating point of the system        

@@ -5,8 +5,8 @@ struct GenerateDataParams
     solver::String
     solver_tols::Tuple{Float64, Float64}
     tspan::Tuple{Float64, Float64}
-    steps::Int64
-    tsteps_spacing::String
+    tstops::Vector{Float64}
+    tsave::Vector{Float64}
     formulation::String
     all_branches_dynamic::Bool
     all_lines_dynamic::Bool
@@ -17,8 +17,8 @@ function GenerateDataParams(;
     solver = "IDA",
     solver_tols = (1e-6, 1e-6),
     tspan = (0.0, 1.0),
-    steps = 100,
-    tsteps_spacing = "linear",
+    tstops = [],
+    tsave = [],
     formulation = "Residual",
     all_branches_dynamic = false,
     all_lines_dynamic = false,
@@ -28,8 +28,8 @@ function GenerateDataParams(;
         solver,
         solver_tols,
         tspan,
-        steps,
-        tsteps_spacing,
+        tstops,
+        tsave,
         formulation,
         all_branches_dynamic,
         all_lines_dynamic,
@@ -126,6 +126,7 @@ mutable struct SteadyStateNODEData <: SurrogateDataset
     surrogate_imag_voltage::AbstractArray
     opposite_real_voltage::AbstractArray
     opposite_imag_voltage::AbstractArray
+    tstops::AbstractArray
     stable::Bool
 end
 
@@ -140,6 +141,7 @@ function SteadyStateNODEData(;
     surrogate_imag_voltage = [],
     opposite_real_voltage = [],
     opposite_imag_voltage = [],
+    tstops = [], 
     stable = false,
 )
     return SteadyStateNODEData(
@@ -153,6 +155,7 @@ function SteadyStateNODEData(;
         surrogate_imag_voltage,
         opposite_real_voltage,
         opposite_imag_voltage,
+        tstops, 
         stable,
     )
 end
@@ -176,10 +179,6 @@ function fill_surrogate_data!(
     data_aux::Union{SteadyStateNODEData, Nothing},
 )
     tspan = data_collection.tspan
-    steps = data_collection.steps
-    if data_collection.tsteps_spacing == "linear"
-        tsteps = tspan[1]:((tspan[2] - tspan[1]) / steps):tspan[2]
-    end
     solver = instantiate_solver(data_collection)
     abstol = data_collection.solver_tols[2]
     reltol = data_collection.solver_tols[1]
@@ -239,25 +238,35 @@ function fill_surrogate_data!(
         solver,
         abstol = abstol,
         reltol = reltol,
+        tstops = union(data_collection.tstops, sim_full.tstops),
+        save_everystep = true, 
+        saveat = data_collection.tsave,
         reset_simulation = false,
-        saveat = tsteps,
         enable_progress_bar = false,
-    )
+    )    
+    @assert issubset(data_collection.tsave, union(data_collection.tstops, sim_full.tstops))
     results = PSID.read_results(sim_full)
+    if length(data_collection.tsave) == 0 
+        save_indices = 1:length(unique(results.solution.t))
+    else 
+        save_indices = indexin(data_collection.tsave, unique(results.solution.t))
+    end 
+    n_save_points = length(save_indices)
     if sim_full.status == PSID.SIMULATION_FINALIZED
-        branch_real_current = zeros(length(connecting_branches), length(tsteps))
-        branch_imag_current = zeros(length(connecting_branches), length(tsteps))
+        results = PSID.read_results(sim_full)
+        branch_real_current = zeros(length(connecting_branches), n_save_points)
+        branch_imag_current = zeros(length(connecting_branches), n_save_points)
         connecting_resistance = zeros(length(connecting_branches))
         connecting_reactance = zeros(length(connecting_branches))
-        surrogate_real_voltage = zeros(length(connecting_branches), length(tsteps))
-        surrogate_imag_voltage = zeros(length(connecting_branches), length(tsteps))
-        opposite_real_voltage = zeros(length(connecting_branches), length(tsteps))
-        opposite_imag_voltage = zeros(length(connecting_branches), length(tsteps))
+        surrogate_real_voltage = zeros(length(connecting_branches), n_save_points)
+        surrogate_imag_voltage = zeros(length(connecting_branches), n_save_points)
+        opposite_real_voltage = zeros(length(connecting_branches), n_save_points)
+        opposite_imag_voltage = zeros(length(connecting_branches), n_save_points) 
         for (i, branch_tuple) in enumerate(connecting_branches)
             branch_name = branch_tuple[1]
             surrogate_location = branch_tuple[2]
-            Ir_from_to = PSID.get_real_current_branch_flow(results, branch_name)[2]
-            Ii_from_to = PSID.get_imaginary_current_branch_flow(results, branch_name)[2]
+            Ir_from_to = PSID.get_real_current_branch_flow(results, branch_name)[2][save_indices]
+            Ii_from_to = PSID.get_imaginary_current_branch_flow(results, branch_name)[2][save_indices]
             branch = PSY.get_component(PSY.ACBranch, sys_train, branch_name)
             if surrogate_location == :from
                 branch_real_current[i, :] = Ir_from_to
@@ -265,12 +274,12 @@ function fill_surrogate_data!(
                 bus_number_surrogate = PSY.get_number(PSY.get_from(PSY.get_arc(branch)))
                 bus_number_opposite = PSY.get_number(PSY.get_to(PSY.get_arc(branch)))
                 V_surrogate =
-                    PSID.get_voltage_magnitude_series(results, bus_number_surrogate)[2]
+                    PSID.get_voltage_magnitude_series(results, bus_number_surrogate)[2][save_indices]
                 θ_surrogate =
-                    PSID.get_voltage_angle_series(results, bus_number_surrogate)[2]
+                    PSID.get_voltage_angle_series(results, bus_number_surrogate)[2][save_indices]
                 V_opposite =
-                    PSID.get_voltage_magnitude_series(results, bus_number_opposite)[2]
-                θ_opposite = PSID.get_voltage_angle_series(results, bus_number_opposite)[2]
+                    PSID.get_voltage_magnitude_series(results, bus_number_opposite)[2][save_indices]
+                θ_opposite = PSID.get_voltage_angle_series(results, bus_number_opposite)[2][save_indices]
                 Vr_surrogate = V_surrogate .* cos.(θ_surrogate)
                 Vi_surrogate = V_surrogate .* sin.(θ_surrogate)
                 Vr_opposite = V_opposite .* cos.(θ_opposite)
@@ -281,12 +290,12 @@ function fill_surrogate_data!(
                 bus_number_surrogate = PSY.get_number(PSY.get_to(PSY.get_arc(branch)))
                 bus_number_opposite = PSY.get_number(PSY.get_from(PSY.get_arc(branch)))
                 V_surrogate =
-                    PSID.get_voltage_magnitude_series(results, bus_number_surrogate)[2]
+                    PSID.get_voltage_magnitude_series(results, bus_number_surrogate)[2][save_indices]
                 θ_surrogate =
-                    PSID.get_voltage_angle_series(results, bus_number_surrogate)[2]
+                    PSID.get_voltage_angle_series(results, bus_number_surrogate)[2][save_indices]
                 V_opposite =
-                    PSID.get_voltage_magnitude_series(results, bus_number_opposite)[2]
-                θ_opposite = PSID.get_voltage_angle_series(results, bus_number_opposite)[2]
+                    PSID.get_voltage_magnitude_series(results, bus_number_opposite)[2][save_indices]
+                θ_opposite = PSID.get_voltage_angle_series(results, bus_number_opposite)[2][save_indices]
                 Vr_surrogate = V_surrogate .* cos.(θ_surrogate)
                 Vi_surrogate = V_surrogate .* sin.(θ_surrogate)
                 Vr_opposite = V_opposite .* cos.(θ_opposite)
@@ -301,7 +310,8 @@ function fill_surrogate_data!(
             connecting_reactance[i] =
                 _get_branch_plus_source_impedance(sys_train, branch_tuple[1])[1]
         end
-        data.tsteps = tsteps
+        data.tstops = unique(results.solution.t)
+        data.tsteps = unique(results.solution.t)[save_indices]
         data.branch_real_current = branch_real_current
         data.branch_imag_current = branch_imag_current
         data.connecting_resistance = connecting_resistance
