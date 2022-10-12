@@ -268,8 +268,10 @@ function fill_surrogate_data!(
             surrogate_location = branch_tuple[2]
             #TODO - get rid of the if/else logic below after this PSID issue is resolve: https://github.com/NREL-SIIP/PowerSimulationsDynamics.jl/issues/283
             if data_collection.all_lines_dynamic
-                Ir_from_to = PSID.get_state_series(results, (branch_name, :Il_R))[2][save_indices]
-                Ii_from_to = PSID.get_state_series(results, (branch_name, :Il_I))[2][save_indices]
+                Ir_from_to =
+                    PSID.get_state_series(results, (branch_name, :Il_R))[2][save_indices]
+                Ii_from_to =
+                    PSID.get_state_series(results, (branch_name, :Il_I))[2][save_indices]
             else
                 Ir_from_to =
                     PSID.get_real_current_branch_flow(results, branch_name)[2][save_indices]
