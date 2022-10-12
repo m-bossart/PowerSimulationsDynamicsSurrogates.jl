@@ -245,14 +245,15 @@ function fill_surrogate_data!(
         enable_progress_bar = false,
     )
     @assert issubset(data_collection.tsave, union(data_collection.tstops, sim_full.tstops))
-    results = PSID.read_results(sim_full)
-    if length(data_collection.tsave) == 0
-        save_indices = 1:length(unique(results.solution.t))
-    else
-        save_indices = indexin(data_collection.tsave, unique(results.solution.t))
-    end
-    n_save_points = length(save_indices)
+
     if sim_full.status == PSID.SIMULATION_FINALIZED
+        results = PSID.read_results(sim_full)
+        if length(data_collection.tsave) == 0
+            save_indices = 1:length(unique(results.solution.t))
+        else
+            save_indices = indexin(data_collection.tsave, unique(results.solution.t))
+        end
+        n_save_points = length(save_indices)
         results = PSID.read_results(sim_full)
         branch_real_current = zeros(length(connecting_branches), n_save_points)
         branch_imag_current = zeros(length(connecting_branches), n_save_points)
