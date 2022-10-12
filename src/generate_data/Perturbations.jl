@@ -83,11 +83,11 @@ struct VStep <: SurrogatePerturbation
     type::String
     source_name::String
     t_step::Float64
-    ΔV::Float64
+    V_step::Float64
 end
 
-function VStep(; type = "VStep", source_name = "init", t_step = 0.0, ΔV = 0.0)
-    VStep(type, source_name, t_step, ΔV)
+function VStep(; type = "VStep", source_name = "init", t_step = 0.0, V_step = 0.0)
+    VStep(type, source_name, t_step, V_step)
 end
 
 function add_surrogate_perturbation!(
@@ -101,14 +101,14 @@ function add_surrogate_perturbation!(
     if source === nothing
         @error "Source not found - check name!"
     end
-    V0_source = PSY.get_internal_voltage(source)
+    #V0_source = PSY.get_internal_voltage(source) 
     push!(
         psid_perturbations,
         PSID.SourceBusVoltageChange(
             perturbation.t_step,
             source,
             :V_ref,
-            V0_source + perturbation.ΔV,
+            perturbation.V_step,
         ),
     )
 end
