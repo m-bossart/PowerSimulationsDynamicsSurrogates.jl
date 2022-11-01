@@ -1,3 +1,5 @@
+const SOURCE_X_TH = 1e-6
+const SOURCE_R_TH = 1e-6   #If using a source to implement a load step for training, important to have non-zero resistance if lines are dynamic and there is capacitance at the bus. 
 """
     subsystem, connecting_branch_names = create_subsystem_from_buses(sys_full::PSY.System, subsystem_bus_numbers::Vector{Int64}) 
 
@@ -117,8 +119,8 @@ function create_subsystem_from_buses(
             available = true,
             reactive_power = 0.0,
             bus = bus,
-            R_th = 1e-6, #0.0
-            X_th = 1e-6, #5e-6
+            R_th = SOURCE_R_TH,
+            X_th = SOURCE_X_TH,
             internal_voltage = 0.0,
             internal_angle = 0.0,
         )
