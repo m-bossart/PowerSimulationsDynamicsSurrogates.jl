@@ -3,7 +3,7 @@ abstract type SurrogateDatasetParams end
 
 struct GenerateDataParams
     solver::String
-    solver_tols::Tuple{Float64, Float64}
+    solver_tols::NamedTuple{(:reltol, :abstol), Tuple{Float64, Float64}}
     tspan::Tuple{Float64, Float64}
     tstops::Vector{Float64}
     tsave::Vector{Float64}
@@ -15,7 +15,7 @@ end
 
 function GenerateDataParams(;
     solver = "IDA",
-    solver_tols = (1e-6, 1e-6),
+    solver_tols = (reltol = 1e-6, abstol = 1e-6),
     tspan = (0.0, 1.0),
     tstops = [],
     tsave = [],
@@ -180,8 +180,8 @@ function fill_surrogate_data!(
 )
     tspan = data_collection.tspan
     solver = instantiate_solver(data_collection)
-    abstol = data_collection.solver_tols[2]
-    reltol = data_collection.solver_tols[1]
+    abstol = data_collection.solver_tols.abstol
+    reltol = data_collection.solver_tols.reltol
     #display(PSY.solve_powerflow(sys_train)["bus_results"])
     #display(PSY.solve_powerflow(sys_train)["flow_results"])
     if data_aux !== nothing
