@@ -238,7 +238,7 @@ function fill_surrogate_data!(
         solver,
         abstol = abstol,
         reltol = reltol,
-        tstops = union(data_collection.tstops, sim_full.tstops),
+        tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
         save_everystep = true,
         saveat = data_collection.tsave,
         reset_simulation = false,
