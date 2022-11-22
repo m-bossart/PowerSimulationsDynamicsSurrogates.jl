@@ -76,6 +76,58 @@ function add_surrogate_perturbation!(
 end
 
 ###############################################################################
+################################## Chirp ######################################
+###############################################################################
+struct Chirp <: SurrogatePerturbation
+    type::String
+    source_name::String
+    ω1::Float64
+    ω2::Float64
+    tstart::Float64
+    N::Float64
+    V_amp::Float64
+    ω_amp::Float64
+end
+
+function Chirp(;
+    type = "Chirp",
+    source_name = "init",
+    ω1 = 0.0,
+    ω2 = 0.0,
+    tstart = 0.0,
+    N = 0.0,
+    V_amp = 0.0,
+    ω_amp = 0.0,
+)
+    Chirp(type, source_name, ω1, ω2, tstart, N, V_amp, ω_amp)
+end
+
+function add_surrogate_perturbation!(
+    sys::PSY.System,
+    psid_perturbations,
+    perturbation::Chirp,
+    sys_aux::PSY.System,
+)
+    source_name = perturbation.source_name
+    source = PSY.get_component(PSY.Source, sys, source_name)
+    if source === nothing
+        @error "Source not found - check name!"
+    end
+    chirp = FrequencyChirpVariableSource(
+        name = PSY.get_name(source),
+        R_th = PSY.get_R_th(source),
+        X_th = PSY.get_X_th(source),
+        ω1 = perturbation.ω1,
+        ω2 = perturbation.ω2,
+        tstart = perturbation.tstart,
+        N = perturbation.N,
+        V_amp = perturbation.V_amp,
+        ω_amp = perturbation.ω_amp,
+    )
+    PSY.add_component!(sys, chirp, source)
+end
+
+###############################################################################
 ################################# VStep #######################################
 ###############################################################################
 

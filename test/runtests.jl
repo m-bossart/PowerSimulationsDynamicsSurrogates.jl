@@ -20,6 +20,7 @@ include("data_tests/dynamic_test_data.jl")
 
 #run tests
 include("test_build_systems.jl")
+include("test_onebus.jl")
 include("test_SteadyStateNODE.jl")
 include("test_type_format.jl")
 include("test_data_generation.jl")
