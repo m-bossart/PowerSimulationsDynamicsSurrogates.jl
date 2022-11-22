@@ -82,8 +82,8 @@ function create_train_system_from_buses(
     end
     _add_sources!(sys, connecting_branch_data, :outer)
     _ensure_a_reference_bus!(sys)
-    location_of_data_collection =      #TODO - change this to be the sourcename and :source 
-        [(x.connecting_branch_name, x.inner_terminal) for x in connecting_branch_data]
+    location_of_data_collection =
+        [("source_$ix", :source) for (ix, x) in enumerate(connecting_branch_data)]
     return sys, location_of_data_collection
 end
 

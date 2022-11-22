@@ -3,20 +3,14 @@
     surrogate_buses = [2]
 
     sys_full_flow = run_powerflow(sys_full)["flow_results"]
-    sys_train, connected_branches_names_1 =
-        create_train_system_from_buses(sys_full, surrogate_buses)
+    sys_train, _ = create_train_system_from_buses(sys_full, surrogate_buses)
     sys_train_flow = run_powerflow(sys_train)["flow_results"]
-    sys_test, connected_branches_names_2 =
-        create_validation_system_from_buses(sys_full, surrogate_buses)
+    sys_test, _ = create_validation_system_from_buses(sys_full, surrogate_buses)
     sys_test_flow = run_powerflow(sys_test)["flow_results"]
 
     display(sys_full_flow)
     display(sys_train_flow)
     display(sys_test_flow)
-
-    for (ix, b) in enumerate(connected_branches_names_1)
-        @test b[1] == connected_branches_names_2[ix][1]
-    end
 
     for sys_full_row in eachrow(sys_full_flow)
         for sys_train_row in eachrow(sys_train_flow)
@@ -49,20 +43,14 @@ end
     surrogate_buses = [102, 103]
 
     sys_full_flow = run_powerflow(sys_full)["flow_results"]
-    sys_train, connected_branches_names_1 =
-        create_train_system_from_buses(sys_full, surrogate_buses)
+    sys_train, _ = create_train_system_from_buses(sys_full, surrogate_buses)
     sys_train_flow = run_powerflow(sys_train)["flow_results"]
-    sys_test, connected_branches_names_2 =
-        create_validation_system_from_buses(sys_full, surrogate_buses)
+    sys_test, _ = create_validation_system_from_buses(sys_full, surrogate_buses)
     sys_test_flow = run_powerflow(sys_test)["flow_results"]
 
     display(sys_full_flow)
     display(sys_train_flow)
     display(sys_test_flow)
-
-    for (ix, b) in enumerate(connected_branches_names_1)
-        @test b[1] == connected_branches_names_2[ix][1]
-    end
 
     for sys_full_row in eachrow(sys_full_flow)
         for sys_train_row in eachrow(sys_train_flow)
@@ -103,10 +91,6 @@ end
     display(sys_full_flow)
     display(sys_train_flow)
     display(sys_test_flow)
-
-    for (ix, b) in enumerate(connected_branches_names_1)
-        @test b[1] == connected_branches_names_2[ix][1]
-    end
 
     for sys_full_row in eachrow(sys_full_flow)
         for sys_train_row in eachrow(sys_train_flow)
