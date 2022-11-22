@@ -33,6 +33,7 @@ export set_ext!
 #export SurrogatePerturbations generation exports 
 export SurrogatePerturbation
 export PVS
+export Chirp
 export VStep
 export RandomLoadTrip
 export RandomBranchTrip
@@ -54,7 +55,8 @@ export SteadyStateNODEDataParams
 export GenerateDataParams
 
 export generate_surrogate_data
-export create_subsystem_from_buses
+export create_validation_system_from_buses
+export create_train_system_from_buses
 
 import InfrastructureSystems
 import OrdinaryDiffEq
