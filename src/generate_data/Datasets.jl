@@ -285,15 +285,19 @@ function _fill_data_source!(data, results, connecting_sources, save_indices, sys
         source_name = source_tuple[1]
         source = PSY.get_component(PSY.Source, sys_train, source_name)
         dyn_source = PSY.get_dynamic_injector(source)
+        #Note: currents multiplied by -1 to get current out of the surrogate (into the perturbing source)
         if dyn_source === nothing
             real_current[i, :] =
+                -1 .*
                 PSID.get_source_real_current_series(results, source_name)[2][save_indices]
             imag_current[i, :] =
+                -1 .*
                 PSID.get_source_imaginary_current_series(results, source_name)[2][save_indices]
         else
             real_current[i, :] =
-                PSID.get_real_current_series(results, source_name)[2][save_indices]
+                -1 .* PSID.get_real_current_series(results, source_name)[2][save_indices]
             imag_current[i, :] =
+                -1 .*
                 PSID.get_imaginary_current_series(results, source_name)[2][save_indices]
         end
         bus_number_source = PSY.get_number(PSY.get_bus(source))
