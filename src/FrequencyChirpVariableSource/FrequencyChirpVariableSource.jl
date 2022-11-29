@@ -85,7 +85,7 @@ function FrequencyChirpVariableSource(
         ω_amp,
         base_power,
         ext,
-        [:Vt, :θt, :ωt],
+        [:Vt, :θt, :ω],
         3,
         PSY.InfrastructureSystemsInternal(),
     )
@@ -102,7 +102,7 @@ function FrequencyChirpVariableSource(;
     V_amp = 0.0,
     ω_amp = 0.0,
     base_power = 100.0,
-    states = [:Vt, :θt, :ωt],
+    states = [:Vt, :θt, :ω],
     n_states = 3,
     ext = Dict{String, Any}(),
     internal = PSY.InfrastructureSystemsInternal(),

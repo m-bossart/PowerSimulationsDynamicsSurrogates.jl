@@ -110,19 +110,19 @@ end
         # Obtain data for source
         Vt_source = get_state_series(results, ("InfBus", :Vt))
         θt_source = get_state_series(results, ("InfBus", :θt))
-        ωt_source = get_state_series(results, ("InfBus", :ωt))
+        ω_source = get_state_series(results, ("InfBus", :ω))
 
         # Obtain data for get
         Vt_gen = get_voltage_magnitude_series(results, 102)
         θt_gen = get_voltage_angle_series(results, 102)
-        ωt_gen = get_state_series(results, ("generator-102-1", :ω))
+        ω_gen = get_state_series(results, ("generator-102-1", :ω))
 
         #=         p1 = plot(Vt_source, label = "Vt-source")
                 p2 = plot(θt_source, label = "θt-source")
-                p3 = plot(ωt_source, label = "ωt-source")
+                p3 = plot(ω_source, label = "ω-source")
                 plot!(p1, Vt_gen, label = "Vt-gen")
                 plot!(p2, θt_gen, label = "θt-gen")
-                plot!(p3, ωt_gen, label = "ωt-gen") 
+                plot!(p3, ω_gen, label = "ω-gen") 
                 display(plot(p1, p2, p3, layout = (3,1))) =#
     finally
         @info("removing test files")
