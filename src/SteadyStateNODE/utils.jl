@@ -306,3 +306,30 @@ function _forward_pass_observer(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, r
     end
     return r
 end
+
+#TODO - this function doesn't work yet. Need the dynamic wrapper to computer the output current.
+#Issue is similar to this: https://github.com/NREL-SIIP/PowerSimulationsDynamics.jl/issues/269
+#= function PSID.compute_output_current(
+    res::PSID.SimulationResults,
+    dynamic_device::SteadyStateNODE,
+    V_R::Vector{Float64},
+    V_I::Vector{Float64},
+    dt::Union{Nothing, Float64},
+)
+    name = PSY.get_name(dynamic_device)
+    n_states = PSY.get_n_states(dynamic_device)
+    ts, _ = PSID.post_proc_state_series(res, (name, :r1), dt)
+    states = []
+    for ix in 1:n_states
+        _, r = PSID.post_proc_state_series(res, (name, Symbol("r$(ix)")), dt)
+        if ix == 1
+            states = r'
+        else
+            hcat(states, r')
+        end
+    end
+    I_R = _forward_pass_observer.(states)[1, :]
+    I_I = _forward_pass_observer.(states)[2, :]
+
+    return ts, I_R, I_I
+end =#
