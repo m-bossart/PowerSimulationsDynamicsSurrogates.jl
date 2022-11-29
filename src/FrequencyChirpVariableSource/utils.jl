@@ -1,5 +1,5 @@
 function PSID._get_frequency_state(d::PSID.DynamicWrapper{FrequencyChirpVariableSource})
-    return PSID.get_global_index(d)[:ωt]
+    return PSID.get_global_index(d)[:ω]
 end
 
 #= function PSID._get_frequency_state(d::PSID.DynamicWrapper{FrequencyChirpVariableSource})
@@ -114,7 +114,6 @@ function PSID.initialize_dynamic_device!(
         #Update terminal voltages
         V_internal = sqrt(sol_x0[1]^2 + sol_x0[2]^2)
         θ_internal = atan(sol_x0[2], sol_x0[1])
-
         device_states[1] = V_internal
         device_states[2] = θ_internal
         device_states[3] = 1.0
@@ -139,14 +138,11 @@ function PSID.compute_output_current(
     name = PSY.get_name(dynamic_device)
     ts, Vt_internal = PSID.post_proc_state_series(res, (name, :Vt), dt)
     _, θt_internal = PSID.post_proc_state_series(res, (name, :θt), dt)
-
     Vr_internal = Vt_internal .* cos.(θt_internal)
     Vi_internal = Vt_internal .* sin.(θt_internal)
-
     R_th = PSY.get_R_th(dynamic_device)
     X_th = PSY.get_X_th(dynamic_device)
     Z_sq = R_th^2 + X_th^2
-
     I_R = R_th * (Vr_internal .- V_R) / Z_sq + X_th * (Vi_internal .- V_I) / Z_sq
     I_I = R_th * (Vi_internal .- V_I) / Z_sq - X_th * (Vr_internal .- V_R) / Z_sq
 
