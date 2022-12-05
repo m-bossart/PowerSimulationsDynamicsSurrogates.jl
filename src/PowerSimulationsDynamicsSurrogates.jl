@@ -41,6 +41,7 @@ export RandomLoadChange
 
 #export SurrogateOperatingPoints
 export SurrogateOperatingPoint
+export ScaleSource
 export GenerationLoadScale
 export RandomOperatingPointXiao
 

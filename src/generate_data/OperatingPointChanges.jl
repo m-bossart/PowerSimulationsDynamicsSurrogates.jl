@@ -10,6 +10,48 @@ function update_operating_point!(
 end
 
 ###############################################################################
+############################## ScaleSource ####################################
+###############################################################################
+
+struct ScaleSource <: SurrogateOperatingPoint
+    type::String
+    source_name::String
+    V_scale::Float64
+    θ_scale::Float64
+    P_scale::Float64
+    Q_scale::Float64
+end
+
+function ScaleSource(;
+    type = "ScaleSource",
+    source_name = "init",
+    V_scale = 1.0,
+    θ_scale = 1.0,
+    P_scale = 1.0,
+    Q_scale = 1.0,
+)
+    ScaleSource(type, source_name, V_scale, θ_scale, P_scale, Q_scale)
+end
+
+function update_operating_point!(
+    sys::PSY.System,
+    condition::ScaleSource,
+    sys_aux::PSY.System,
+)
+    source = PSY.get_component(PSY.Source, sys, condition.source_name)
+    if source === nothing
+        @error "Source not found for ScaleSource operating point change"
+    end
+    PSY.set_active_power!(source, PSY.get_active_power(source) * condition.P_scale)
+    PSY.set_reactive_power!(source, PSY.get_reactive_power(source) * condition.Q_scale)
+
+    bus = PSY.get_bus(source)
+    PSY.set_magnitude!(bus, PSY.get_magnitude(bus) * condition.V_scale)
+    PSY.set_angle!(bus, PSY.get_angle(bus) * condition.θ_scale)
+    return
+end
+
+###############################################################################
 ######################### GenerationLoadScale #################################
 ###############################################################################
 
