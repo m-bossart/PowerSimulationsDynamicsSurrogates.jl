@@ -1,4 +1,4 @@
-@testset "Add SteadyStateNODE to system" begin
+@testset "Add SteadyStateNODEObs to system" begin
     sys = System(100)
     bus = Bus(nothing)
     set_bustype!(bus, BusTypes.SLACK)
@@ -6,9 +6,9 @@
     source = Source(nothing)
     set_bus!(source, bus)
     add_component!(sys, source)
-    ssnode = SteadyStateNODE(nothing)
+    ssnode = SteadyStateNODEObs(nothing)
     add_component!(sys, ssnode, source)
-    @test get_components(SteadyStateNODE, sys) !== nothing
+    @test get_components(SteadyStateNODEObs, sys) !== nothing
 end
 
 @testset "Compare to flux + execute simulation - Untrained Params" begin
@@ -56,17 +56,28 @@ end
         ),
         (x) -> x,
     )
+    layer_observer_output =
+        (x) -> PowerSimulationsDynamicsSurrogates.min_max_normalization_inverse(
+            x,
+            target_min,
+            target_max,
+            target_lims[2],
+            target_lims[1],
+        )
 
     initializer = Chain(layer_initializer_input, Dense(3, 5, tanh; bias = true))
     node = Chain(layer_node_input, Dense(7, 3, tanh; bias = true))
+    observer = Chain(Dense(3, 2, tanh; bias = true), layer_observer_output)
 
-    function SteadyStateNODE_simple(source)
-        return SteadyStateNODE(
+    function SteadyStateNODEObs_simple(source)
+        return SteadyStateNODEObs(
             name = get_name(source),
             initializer_structure = [(3, 5, true, "tanh")],
             initializer_parameters = Flux.destructure(initializer)[1],
             node_structure = [(7, 3, true, "tanh")],
             node_parameters = Flux.destructure(node)[1],
+            observer_structure = [(3, 2, true, "tanh")],
+            observer_parameters = Flux.destructure(observer)[1],
             input_min = input_min,
             input_max = input_max,
             input_lims = input_lims,
@@ -77,7 +88,7 @@ end
     end
 
     source_surrogate = [s for s in get_components(Source, sys)][1]
-    ssnode = SteadyStateNODE_simple(source_surrogate)
+    ssnode = SteadyStateNODEObs_simple(source_surrogate)
     add_component!(sys, ssnode, source_surrogate)
     for g in PSY.get_components(Generator, sys)
         dyn_g = dyn_gen_second_order(g)
@@ -92,7 +103,7 @@ end
         PSID.BranchTrip(0.5, PSY.Line, "BUS 1-BUS 2-i_1"),
     )
     surrogate_wrapper = filter(
-        x -> typeof(x) == PSID.DynamicWrapper{SteadyStateNODE},
+        x -> typeof(x) == PSID.DynamicWrapper{SteadyStateNODEObs},
         sim.inputs.dynamic_injectors,
     )[1]
 
@@ -129,13 +140,24 @@ end
         );
         atol = 1e-14,
     )
+    @test isapprox(
+        observer(r_flux),
+        PowerSimulationsDynamicsSurrogates._target_scale_inverse(
+            surrogate_wrapper,
+            PowerSimulationsDynamicsSurrogates._forward_pass_observer(
+                surrogate_wrapper,
+                r_psid,
+            ),
+        );
+        atol = 1e-14,
+    )
 
     @test surrogate_wrapper.ext["initializer_error"] == [
-        0.8620012947569395,
-        -1.5949281018523056,
-        0.4659432222369323,
-        0.3382842835463008,
-        -1.0813953262722793,
+        3.771190226036233,
+        -3.1373435157716756,
+        1.303626410331343,
+        -0.9691214719159313,
+        -5.093673030310098,
     ]
 
     @test execute!(sim, IDA(), saveat = tsteps) == PSID.SIMULATION_FINALIZED

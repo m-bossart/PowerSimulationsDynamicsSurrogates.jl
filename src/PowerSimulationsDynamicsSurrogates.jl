@@ -3,6 +3,8 @@ module PowerSimulationsDynamicsSurrogates
 export ChirpVariableSource
 export FrequencyChirpVariableSource
 
+export SteadyStateNODEObs
+export get_SteadyStateNODEObs_states
 export SteadyStateNODE
 export get_SteadyStateNODE_states
 export initializer_psids
@@ -73,8 +75,9 @@ const PSY = PowerSystems
 const PSID = PowerSimulationsDynamics
 
 # Write your package code here.
-include("SteadyStateNODE/SteadyStateNODE.jl")
-include("SteadyStateNODE/utils.jl")
+include("SurrogateComponents/SteadyStateNODE.jl")
+include("SurrogateComponents/SteadyStateNODEObs.jl")
+include("SurrogateComponents/utils.jl")
 include("ChirpVariableSource/ChirpVariableSource.jl")
 include("ChirpVariableSource/utils.jl")
 include("FrequencyChirpVariableSource/FrequencyChirpVariableSource.jl")
