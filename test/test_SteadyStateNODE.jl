@@ -133,9 +133,9 @@ end
     @test surrogate_wrapper.ext["initializer_error"] == [
         0.8620012947569395,
         -1.5949281018523056,
-        0.4659432222369323,
-        0.3382842835463008,
-        -1.0813953262722793,
+        0.4659432191772678,
+        0.33828428454870624,
+        -1.0813953248504555,
     ]
 
     @test execute!(sim, IDA(), saveat = tsteps) == PSID.SIMULATION_FINALIZED

@@ -296,8 +296,9 @@ function PSID.initialize_dynamic_device!(
             input_scaled,
             x[(n_states + 1):(n_states + 2)],
         )
-        out[n_states + 1] = x[1] - Id_scale
-        out[n_states + 2] = x[2] - Iq_scale
+        x1, x2 = _target_scale_inverse(dynamic_device, [x[1], x[2]])
+        out[n_states + 1] = x1 - Id
+        out[n_states + 2] = x2 - Iq
     end
     x0 = _forward_pass_initializer(dynamic_device, Vq_scale, [Id_scale, Iq_scale])
     sol = NLsolve.nlsolve(f!, x0)
