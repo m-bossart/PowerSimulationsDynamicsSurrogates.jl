@@ -32,6 +32,16 @@ export set_observer_parameters!
 export set_base_power!
 export set_ext!
 
+#export SurrogateParams
+export SteadyStateNODEParams
+export SteadyStateNODEObsParams
+export ClassicGenParams
+export GFLParams
+export GFMParams
+export ZIPParams
+export MultiDeviceParams
+export MultiDeviceLineParams
+
 #export SurrogatePerturbations generation exports 
 export SurrogatePerturbation
 export PVS
@@ -74,10 +84,10 @@ const IS = InfrastructureSystems
 const PSY = PowerSystems
 const PSID = PowerSimulationsDynamics
 
-# Write your package code here.
 include("SurrogateComponents/SteadyStateNODE.jl")
 include("SurrogateComponents/SteadyStateNODEObs.jl")
 include("SurrogateComponents/utils.jl")
+include("SurrogateComponents/ModelTypes.jl")
 include("ChirpVariableSource/ChirpVariableSource.jl")
 include("ChirpVariableSource/utils.jl")
 include("FrequencyChirpVariableSource/FrequencyChirpVariableSource.jl")
