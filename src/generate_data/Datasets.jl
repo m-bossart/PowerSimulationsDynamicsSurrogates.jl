@@ -65,6 +65,7 @@ function generate_surrogate_data(
     data_params::D,
     data_collection_params::GenerateDataParams;
     dataset_aux = nothing,
+    surrogate_params = nothing,
 ) where {O <: SurrogateOperatingPoint, D <: SurrogateDatasetParams}
     Random.seed!(data_collection_params.seed)
     #@assert length(stable_trajectories) == size(perturbations)[1] * length(operating_points)
@@ -86,6 +87,7 @@ function generate_surrogate_data(
                     psid_perturbations,
                     data_collection_params,
                     nothing,
+                    nothing,
                 )
             else
                 fill_surrogate_data!(
@@ -95,6 +97,7 @@ function generate_surrogate_data(
                     psid_perturbations,
                     data_collection_params,
                     dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p],
+                    surrogate_params,
                 )
             end
             push!(train_data, data)
@@ -171,6 +174,7 @@ function fill_surrogate_data!(
     psid_perturbations,
     data_collection::GenerateDataParams,
     data_aux::Union{SteadyStateNODEData, Nothing},
+    surrogate_params,
 )
     tspan = data_collection.tspan
     solver = instantiate_solver(data_collection)
@@ -179,24 +183,7 @@ function fill_surrogate_data!(
     #display(PSY.solve_powerflow(sys_train)["bus_results"])
     #display(PSY.solve_powerflow(sys_train)["flow_results"])
     if data_aux !== nothing
-        for s in PSY.get_components(
-            PSY.Source,
-            sys_train,
-            x -> typeof(PSY.get_dynamic_injector(x)) == SteadyStateNODE,
-        )
-            Vr0 = data_aux.surrogate_real_voltage[1]
-            Vi0 = data_aux.surrogate_imag_voltage[1]
-            Ir0 = data_aux.real_current[1]
-            Ii0 = data_aux.imag_current[1]
-            P0 = Vr0 * Ir0 + Vi0 * Ii0
-            Q0 = Vi0 * Ir0 - Vr0 * Ii0
-            Vm0 = sqrt(Vr0^2 + Vi0^2)
-            θ0 = atan(Vi0, Vr0)
-            PSY.set_active_power!(s, P0)
-            PSY.set_reactive_power!(s, Q0)
-            PSY.set_internal_voltage!(s, Vm0)
-            PSY.set_internal_angle!(s, θ0)
-        end
+        match_operating_point(sys_train, data_aux, surrogate_params)
     end
     #display(PSY.solve_powerflow(sys_train)["bus_results"])
     #display(PSY.solve_powerflow(sys_train)["flow_results"])
@@ -270,6 +257,131 @@ function fill_surrogate_data!(
         else
             @error "Invaled entry for data collection location"
         end
+    end
+end
+
+"""
+Matches the operating point from the ground truth dataset when generating the dataset for a surrogate model. 
+"""
+function match_operating_point(sys, data_aux, surrogate_params)
+    Vr0 = data_aux.surrogate_real_voltage[1]
+    Vi0 = data_aux.surrogate_imag_voltage[1]
+    Ir0 = data_aux.real_current[1]
+    Ii0 = data_aux.imag_current[1]
+    P0 = Vr0 * Ir0 + Vi0 * Ii0
+    Q0 = Vi0 * Ir0 - Vr0 * Ii0
+    Vm0 = sqrt(Vr0^2 + Vi0^2)
+    θ0 = atan(Vi0, Vr0)
+    _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params)
+end
+
+function _match_operating_point(
+    sys,
+    P0,
+    Q0,
+    Vm0,
+    θ0,
+    surrogate_params::Union{SteadyStateNODEObsParams, SteadyStateNODEParams},
+)
+    for s in PSY.get_components(
+        PSY.Source,
+        sys,
+        x -> typeof(PSY.get_dynamic_injector(x)) == SteadyStateNODE,
+    )
+        PSY.set_active_power!(s, P0)
+        PSY.set_reactive_power!(s, Q0)
+        PSY.set_internal_voltage!(s, Vm0)
+        PSY.set_internal_angle!(s, θ0)
+    end
+end
+
+function _match_operating_point(
+    sys,
+    P0,
+    Q0,
+    Vm0,
+    θ0,
+    surrogate_params::Union{ClassicGenParams, GFLParams, GFMParams},
+)
+    for s in PSY.get_components(
+        PSY.StaticInjection,
+        sys,
+        x -> PSY.get_name(x) == surrogate_params.name,
+    )
+        PSY.set_active_power!(s, P0)
+        PSY.set_reactive_power!(s, Q0)
+    end
+end
+
+function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::ZIPParams)
+    loadZ = PSY.get_component(PSY.PowerLoad, sys, string(surrogate_params.name, "_Z"))
+    loadI = PSY.get_component(PSY.PowerLoad, sys, string(surrogate_params.name, "_I"))
+    loadP = PSY.get_component(PSY.PowerLoad, sys, string(surrogate_params.name, "_P"))
+    total_P =
+        PSY.get_max_active_power(loadZ) +
+        PSY.get_max_active_power(loadI) +
+        PSY.get_max_active_power(loadP)
+    total_Q =
+        PSY.get_max_reactive_power(loadZ) +
+        PSY.get_max_reactive_power(loadI) +
+        PSY.get_max_reactive_power(loadP)
+
+    P_loadZ = P0 * PSY.get_max_active_power(loadZ) / total_P
+    Q_loadZ = Q0 * PSY.get_max_reactive_power(loadZ) / total_Q
+    PSY.set_active_power!(loadZ, -P_loadZ)
+    PSY.set_reactive_power!(loadZ, -Q_loadZ)
+    P_loadI = P0 * PSY.get_max_active_power(loadI) / total_P
+    Q_loadI = Q0 * PSY.get_max_reactive_power(loadI) / total_Q
+    PSY.set_active_power!(loadI, -P_loadI)
+    PSY.set_reactive_power!(loadI, -Q_loadI)
+    P_loadP = P0 * PSY.get_max_active_power(loadP) / total_P
+    Q_loadP = Q0 * PSY.get_max_reactive_power(loadP) / total_Q
+
+    PSY.set_active_power!(loadP, -P_loadP)
+    PSY.set_reactive_power!(loadP, -Q_loadP)
+end
+
+function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::MultiDeviceParams)
+    P_device_available = []
+    Q_device_available = []
+    for s in surrogate_params.static_devices
+        if typeof(s) == ZIPParams
+            active_power_available = 0.0
+            reactive_power_available = 0.0
+            device1 = PSY.get_component(PSY.PowerLoad, sys, string(s.name, "_Z"))
+            active_power_available += PSY.get_max_active_power(device1)
+            reactive_power_available += PSY.get_max_reactive_power(device1)
+            device2 = PSY.get_component(PSY.PowerLoad, sys, string(s.name, "_I"))
+            active_power_available += PSY.get_max_active_power(device2)
+            reactive_power_available += PSY.get_max_reactive_power(device2)
+            device3 = PSY.get_component(PSY.PowerLoad, sys, string(s.name, "_P"))
+            active_power_available += PSY.get_max_active_power(device3)
+            reactive_power_available += PSY.get_max_reactive_power(device3)
+            push!(P_device_available, active_power_available)
+            push!(Q_device_available, reactive_power_available)
+        else
+            device = PSY.get_component(PSY.Component, sys, s.name)
+            push!(P_device_available, PSY.get_max_active_power(device))
+            push!(Q_device_available, PSY.get_max_reactive_power(device))
+        end
+    end
+    for s in surrogate_params.dynamic_devices
+        device = PSY.get_component(PSY.StaticInjection, sys, s.name)
+        push!(P_device_available, PSY.get_max_active_power(device))
+        push!(Q_device_available, PSY.get_max_reactive_power(device))
+    end
+    P_total_available = sum(P_device_available)
+    Q_total_available = sum(Q_device_available)
+    P_device = P_device_available ./ P_total_available .* P0
+    Q_device = Q_device_available ./ Q_total_available .* Q0
+    ix = 1
+    for s in surrogate_params.static_devices
+        _match_operating_point(sys, P_device[ix], Q_device[ix], Vm0, θ0, s)
+        ix += 1
+    end
+    for s in surrogate_params.dynamic_devices
+        _match_operating_point(sys, P_device[ix], Q_device[ix], Vm0, θ0, s)
+        ix += 1
     end
 end
 
