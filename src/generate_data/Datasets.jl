@@ -70,6 +70,41 @@ function generate_surrogate_data(
     Random.seed!(data_collection_params.seed)
     #@assert length(stable_trajectories) == size(perturbations)[1] * length(operating_points)
     train_data = typeof(EmptyTrainDataSet(data_params))[]
+    ########################################################################################
+    #Run full simulation for first operating point and perturbation in order to precompile
+    #all code and avoid including in timing.
+    ########################################################################################
+    sys = deepcopy(sys_main)
+    update_operating_point!(sys, operating_points[1], sys_aux)
+    psid_perturbations = PSID.Perturbation[]
+    for p_single in perturbations[1]
+        add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
+    end
+    dummy_data = EmptyTrainDataSet(data_params)
+    if dataset_aux === nothing
+        fill_surrogate_data!(
+            dummy_data,
+            data_params,
+            sys,
+            psid_perturbations,
+            data_collection_params,
+            nothing,
+            nothing,
+        )
+    else
+        fill_surrogate_data!(
+            dummy_data,
+            data_params,
+            sys,
+            psid_perturbations,
+            data_collection_params,
+            dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p],
+            surrogate_params,
+        )
+    end
+   ########################################################################################
+   ########################################################################################
+
     for (ix_o, o) in enumerate(operating_points)
         for (ix_p, p) in enumerate(perturbations)
             sys = deepcopy(sys_main)
@@ -129,6 +164,7 @@ mutable struct SteadyStateNODEData <: SurrogateDataset
     surrogate_imag_voltage::AbstractArray
     tstops::AbstractArray
     stable::Bool
+    solve_time::Float64
 end
 
 function SteadyStateNODEData(;
@@ -142,6 +178,7 @@ function SteadyStateNODEData(;
     surrogate_imag_voltage = [],
     tstops = [],
     stable = false,
+    solve_time = 0.0, 
 )
     return SteadyStateNODEData(
         type,
@@ -154,6 +191,7 @@ function SteadyStateNODEData(;
         surrogate_imag_voltage,
         tstops,
         stable,
+        solve_time,
     )
 end
 
@@ -234,7 +272,6 @@ function fill_surrogate_data!(
         else
             save_indices = indexin(data_collection.tsave, unique(results.solution.t))
         end
-        results = PSID.read_results(sim_full)
         location_data_collection = params.location_of_data_collection
 
         if location_data_collection[1][2] == :from || location_data_collection[1][2] == :to
@@ -431,6 +468,7 @@ function _fill_data_source!(data, results, connecting_sources, save_indices, sys
     data.surrogate_real_voltage = surrogate_real_voltage
     data.surrogate_imag_voltage = surrogate_imag_voltage
     data.stable = true
+    data.solve_time = results.time_log[:timed_solve_time]
 end
 
 function _fill_data_branch!(
@@ -504,6 +542,7 @@ function _fill_data_branch!(
     data.surrogate_real_voltage = surrogate_real_voltage
     data.surrogate_imag_voltage = surrogate_imag_voltage
     data.stable = true
+    data.solve_time = results.time_log[:timed_solve_time]
 end
 
 function _get_branch_plus_source_impedance(sys_train, branch_name)
