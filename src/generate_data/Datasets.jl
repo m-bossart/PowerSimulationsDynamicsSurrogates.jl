@@ -98,12 +98,12 @@ function generate_surrogate_data(
             sys,
             psid_perturbations,
             data_collection_params,
-            dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p],
+            dataset_aux[1],
             surrogate_params,
         )
     end
-   ########################################################################################
-   ########################################################################################
+    ########################################################################################
+    ########################################################################################
 
     for (ix_o, o) in enumerate(operating_points)
         for (ix_p, p) in enumerate(perturbations)
@@ -131,7 +131,7 @@ function generate_surrogate_data(
                     sys,
                     psid_perturbations,
                     data_collection_params,
-                    dataset_aux[1],
+                    dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p],
                     surrogate_params,
                 )
             end
@@ -178,7 +178,7 @@ function SteadyStateNODEData(;
     surrogate_imag_voltage = [],
     tstops = [],
     stable = false,
-    solve_time = 0.0, 
+    solve_time = 0.0,
 )
     return SteadyStateNODEData(
         type,
