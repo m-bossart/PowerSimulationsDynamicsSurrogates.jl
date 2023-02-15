@@ -131,7 +131,7 @@ function generate_surrogate_data(
                     sys,
                     psid_perturbations,
                     data_collection_params,
-                    dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p],
+                    dataset_aux[1],
                     surrogate_params,
                 )
             end
