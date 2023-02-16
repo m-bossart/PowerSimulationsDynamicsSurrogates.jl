@@ -229,7 +229,15 @@ function add_surrogate_perturbation!(
             b = rand(ac_branches)
         end
     end
-    push!(psid_perturbations, PSID.BranchTrip(time, typeof(b), PSY.get_name(b)))
+    #Cannot trip a dynamic branch in PSID, replace with Line
+    if typeof(b) == PSY.DynamicBranch
+        line = PSY.get_branch(deepcopy(b))
+        PSY.remove_component!(sys, b)
+        PSY.add_component!(sys, line)
+        push!(psid_perturbations, PSID.BranchTrip(time, typeof(line), PSY.get_name(line)))
+    else 
+        push!(psid_perturbations, PSID.BranchTrip(time, typeof(b), PSY.get_name(b)))
+    end 
 end
 
 function _check_if_connected_to_source(branch, sys)
