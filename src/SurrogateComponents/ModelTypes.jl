@@ -1,6 +1,6 @@
 abstract type SurrogateModelParams end
 
-struct SteadyStateNODEParams <: SurrogateModelParams
+mutable struct  SteadyStateNODEParams <: SurrogateModelParams
     type::String
     name::String
     n_ports::Int64
@@ -48,7 +48,7 @@ function SteadyStateNODEParams(;
     )
 end
 
-struct SteadyStateNODEObsParams <: SurrogateModelParams
+mutable struct  SteadyStateNODEObsParams <: SurrogateModelParams
     type::String
     name::String
     n_ports::Int64
@@ -108,7 +108,7 @@ function SteadyStateNODEObsParams(;
     )
 end
 
-struct ClassicGenParams <: SurrogateModelParams
+mutable struct  ClassicGenParams <: SurrogateModelParams
     type::String
     name::String
 end
@@ -117,7 +117,7 @@ function ClassicGenParams(; type = "ClassicGenParams", name = "surrogate-Classic
     ClassicGenParams(type, name)
 end
 
-struct GFLParams <: SurrogateModelParams
+mutable struct  GFLParams <: SurrogateModelParams
     type::String
     name::String
 end
@@ -126,7 +126,7 @@ function GFLParams(; type = "GFLParams", name = "surrogate-GFLParams")
     GFLParams(type, name)
 end
 
-struct GFMParams <: SurrogateModelParams
+mutable struct  GFMParams <: SurrogateModelParams
     type::String
     name::String
 end
@@ -135,7 +135,7 @@ function GFMParams(; type = "GFMParams", name = "surrogate-GFMParams")
     GFMParams(type, name)
 end
 
-struct ZIPParams <: SurrogateModelParams
+mutable struct  ZIPParams <: SurrogateModelParams
     type::String
     name::String
 end
@@ -144,7 +144,7 @@ function ZIPParams(; type = "ZIPParams", name = "surrogate-ZIPParams")
     ZIPParams(type, name)
 end
 
-struct MultiDeviceParams <: SurrogateModelParams
+mutable struct  MultiDeviceParams <: SurrogateModelParams
     type::String
     name::String
     static_devices::Vector{SurrogateModelParams}
@@ -160,7 +160,7 @@ function MultiDeviceParams(;
     MultiDeviceParams(type, name, static_devices, dynamic_devices)
 end
 
-struct MultiDeviceLineParams <: SurrogateModelParams
+mutable struct  MultiDeviceLineParams <: SurrogateModelParams
     type::String
     name::String
     static_devices::Vector{SurrogateModelParams}
