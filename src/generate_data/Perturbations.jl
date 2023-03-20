@@ -235,9 +235,9 @@ function add_surrogate_perturbation!(
         PSY.remove_component!(sys, b)
         PSY.add_component!(sys, line)
         push!(psid_perturbations, PSID.BranchTrip(time, typeof(line), PSY.get_name(line)))
-    else 
+    else
         push!(psid_perturbations, PSID.BranchTrip(time, typeof(b), PSY.get_name(b)))
-    end 
+    end
 end
 
 function _check_if_connected_to_source(branch, sys)

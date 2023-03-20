@@ -1,12 +1,12 @@
 abstract type SurrogateModelParams end
 
-mutable struct  SteadyStateNODEParams <: SurrogateModelParams
+mutable struct SteadyStateNODEParams <: SurrogateModelParams
     type::String
     name::String
     n_ports::Int64
     initializer_layer_type::String
     initializer_n_layer::Int64
-    initializer_width_layers_relative_input::Int64 
+    initializer_width_layers_relative_input::Int64
     initializer_activation::String
     dynamic_layer_type::String
     dynamic_hidden_states::Int64
@@ -31,7 +31,7 @@ function SteadyStateNODEParams(;
     dynamic_width_layers_relative_input = 4,
     dynamic_activation = "tanh",
     dynamic_σ2_initialization = 0.0,
-    dynamic_last_layer_bias = false, 
+    dynamic_last_layer_bias = false,
 )
     SteadyStateNODEParams(
         type,
@@ -51,7 +51,7 @@ function SteadyStateNODEParams(;
     )
 end
 
-mutable struct  SteadyStateNODEObsParams <: SurrogateModelParams
+mutable struct SteadyStateNODEObsParams <: SurrogateModelParams
     type::String
     name::String
     n_ports::Int64
@@ -68,7 +68,7 @@ mutable struct  SteadyStateNODEObsParams <: SurrogateModelParams
     dynamic_last_layer_bias::Bool
     observation_layer_type::String
     observation_n_layer::Int64
-    observation_width_layers_relative_input::Int64 
+    observation_width_layers_relative_input::Int64
     observation_activation::String
 end
 
@@ -86,7 +86,7 @@ function SteadyStateNODEObsParams(;
     dynamic_width_layers_relative_input = 4,
     dynamic_activation = "tanh",
     dynamic_σ2_initialization = 0.0,
-    dynamic_last_layer_bias = false, 
+    dynamic_last_layer_bias = false,
     observation_layer_type = "dense",
     observation_n_layer = 0,
     observation_width_layers_relative_input = 0,
@@ -114,7 +114,7 @@ function SteadyStateNODEObsParams(;
     )
 end
 
-mutable struct  ClassicGenParams <: SurrogateModelParams
+mutable struct ClassicGenParams <: SurrogateModelParams
     type::String
     name::String
 end
@@ -123,7 +123,7 @@ function ClassicGenParams(; type = "ClassicGenParams", name = "surrogate-Classic
     ClassicGenParams(type, name)
 end
 
-mutable struct  GFLParams <: SurrogateModelParams
+mutable struct GFLParams <: SurrogateModelParams
     type::String
     name::String
 end
@@ -132,7 +132,7 @@ function GFLParams(; type = "GFLParams", name = "surrogate-GFLParams")
     GFLParams(type, name)
 end
 
-mutable struct  GFMParams <: SurrogateModelParams
+mutable struct GFMParams <: SurrogateModelParams
     type::String
     name::String
 end
@@ -141,7 +141,7 @@ function GFMParams(; type = "GFMParams", name = "surrogate-GFMParams")
     GFMParams(type, name)
 end
 
-mutable struct  ZIPParams <: SurrogateModelParams
+mutable struct ZIPParams <: SurrogateModelParams
     type::String
     name::String
 end
@@ -150,7 +150,7 @@ function ZIPParams(; type = "ZIPParams", name = "surrogate-ZIPParams")
     ZIPParams(type, name)
 end
 
-mutable struct  MultiDeviceParams <: SurrogateModelParams
+mutable struct MultiDeviceParams <: SurrogateModelParams
     type::String
     name::String
     static_devices::Vector{SurrogateModelParams}
@@ -166,7 +166,7 @@ function MultiDeviceParams(;
     MultiDeviceParams(type, name, static_devices, dynamic_devices)
 end
 
-mutable struct  MultiDeviceLineParams <: SurrogateModelParams
+mutable struct MultiDeviceLineParams <: SurrogateModelParams
     type::String
     name::String
     static_devices::Vector{SurrogateModelParams}
