@@ -74,11 +74,16 @@ function create_train_system_from_buses(
         _get_connecting_branch_power(sys, nonsurrogate_bus_numbers, powerflow_df)       #inner terminal is the bus that is within the numbers provided. For the train system that is not the bus where the source is added. 
     _remove_internal_branches!(sys, nonsurrogate_bus_numbers)
     _remove_buses!(sys, nonsurrogate_bus_numbers)
-    for b in connecting_branch_data
-        branch = PSY.get_component(PSY.Branch, sys, b.connecting_branch_name)
-        arc = PSY.get_arc(branch)
-        PSY.remove_component!(sys, arc)
-        PSY.remove_component!(sys, branch)
+    connecting_branches = [
+        PSY.get_component(PSY.Branch, sys, b.connecting_branch_name) for
+        b in connecting_branch_data
+    ]
+    connecting_arcs = unique([PSY.get_arc(branch) for branch in connecting_branches])
+    for a in connecting_arcs
+        PSY.remove_component!(sys, a)
+    end
+    for b in connecting_branches
+        PSY.remove_component!(sys, b)
     end
     _add_sources!(sys, connecting_branch_data, :outer)
     _ensure_a_reference_bus!(sys)
