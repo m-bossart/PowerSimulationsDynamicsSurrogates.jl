@@ -158,8 +158,6 @@ mutable struct SteadyStateNODEData <: SurrogateDataset
     tsteps::AbstractArray
     real_current::AbstractArray
     imag_current::AbstractArray
-    connecting_resistance::AbstractArray        #Not used? Leave for now 
-    connecting_reactance::AbstractArray
     surrogate_real_voltage::AbstractArray
     surrogate_imag_voltage::AbstractArray
     tstops::AbstractArray
@@ -172,8 +170,6 @@ function SteadyStateNODEData(;
     tsteps = [],
     real_current = [],
     imag_current = [],
-    connecting_resistance = [],
-    connecting_reactance = [],
     surrogate_real_voltage = [],
     surrogate_imag_voltage = [],
     tstops = [],
@@ -185,8 +181,6 @@ function SteadyStateNODEData(;
         tsteps,
         real_current,
         imag_current,
-        connecting_resistance,
-        connecting_reactance,
         surrogate_real_voltage,
         surrogate_imag_voltage,
         tstops,
@@ -426,8 +420,6 @@ function _fill_data_source!(data, results, connecting_sources, save_indices, sys
     n_save_points = length(save_indices)
     real_current = zeros(length(connecting_sources), n_save_points)
     imag_current = zeros(length(connecting_sources), n_save_points)
-    connecting_resistance = zeros(length(connecting_sources))
-    connecting_reactance = zeros(length(connecting_sources))
     surrogate_real_voltage = zeros(length(connecting_sources), n_save_points)
     surrogate_imag_voltage = zeros(length(connecting_sources), n_save_points)
     for (i, source_tuple) in enumerate(connecting_sources)
@@ -456,51 +448,60 @@ function _fill_data_source!(data, results, connecting_sources, save_indices, sys
             PSID.get_voltage_angle_series(results, bus_number_source)[2][save_indices]
         surrogate_real_voltage[i, :] = V_surrogate .* cos.(θ_surrogate)
         surrogate_imag_voltage[i, :] = V_surrogate .* sin.(θ_surrogate)
-        connecting_reactance[i] = 0.0   #TODO - should this include the source resistance??
-        connecting_resistance[i] = 0.0   #TODO - should this include the source resistance??--> not used anyways? 
     end
     data.tstops = unique(results.solution.t)
     data.tsteps = unique(results.solution.t)[save_indices]
     data.real_current = real_current
     data.imag_current = imag_current
-    data.connecting_resistance = connecting_resistance
-    data.connecting_reactance = connecting_reactance
     data.surrogate_real_voltage = surrogate_real_voltage
     data.surrogate_imag_voltage = surrogate_imag_voltage
     data.stable = true
     data.solve_time = results.time_log[:timed_solve_time]
 end
 
+#NOTE: this function will fail if you have double lines with reversed to/from orientation.
+#NOTE: need to fix current for tripped line.
 function _fill_data_branch!(
     data,
     results,
-    connecting_branches,
+    connecting_branch_data,
     save_indices,
     sys_train,
     data_collection,
 )
+    connecting_branches = [
+        PSY.get_component(PSY.Branch, sys_train, branch_tuple[1]) for
+        branch_tuple in connecting_branch_data
+    ]
+    connecting_arcs = unique([PSY.get_arc(branch) for branch in connecting_branches])
     n_save_points = length(save_indices)
-    real_current = zeros(length(connecting_branches), n_save_points)
-    imag_current = zeros(length(connecting_branches), n_save_points)
-    connecting_resistance = zeros(length(connecting_branches))
-    connecting_reactance = zeros(length(connecting_branches))
-    surrogate_real_voltage = zeros(length(connecting_branches), n_save_points)
-    surrogate_imag_voltage = zeros(length(connecting_branches), n_save_points)
-    for (i, branch_tuple) in enumerate(connecting_branches)
-        branch_name = branch_tuple[1]
-        surrogate_location = branch_tuple[2]
-        #TODO - get rid of the if/else logic below after this PSID issue is resolve: https://github.com/NREL-SIIP/PowerSimulationsDynamics.jl/issues/283
-        if data_collection.all_lines_dynamic
-            Ir_from_to =
-                PSID.get_state_series(results, (branch_name, :Il_R))[2][save_indices]
-            Ii_from_to =
-                PSID.get_state_series(results, (branch_name, :Il_I))[2][save_indices]
-        else
-            Ir_from_to =
-                PSID.get_real_current_branch_flow(results, branch_name)[2][save_indices]
-            Ii_from_to =
-                PSID.get_imaginary_current_branch_flow(results, branch_name)[2][save_indices]
+    real_current = zeros(length(connecting_arcs), n_save_points)
+    imag_current = zeros(length(connecting_arcs), n_save_points)
+    surrogate_real_voltage = zeros(length(connecting_arcs), n_save_points)
+    surrogate_imag_voltage = zeros(length(connecting_arcs), n_save_points)
+    for (i, arc) in enumerate(connecting_arcs)
+        corresponding_branches =
+            collect(PSY.get_components(PSY.Branch, sys_train, x -> PSY.get_arc(x) == arc))
+        Ir_from_to = zeros(n_save_points)
+        Ii_from_to = zeros(n_save_points)
+        for b in corresponding_branches
+            branch_name = PSY.get_name(b)
+            #TODO - get rid of the if/else logic below after this PSID issue is resolve: https://github.com/NREL-SIIP/PowerSimulationsDynamics.jl/issues/283
+            if data_collection.all_lines_dynamic
+                Ir_from_to +=
+                    PSID.get_state_series(results, (branch_name, :Il_R))[2][save_indices]
+                Ii_from_to +=
+                    PSID.get_state_series(results, (branch_name, :Il_I))[2][save_indices]
+            else
+                Ir_from_to +=
+                    PSID.get_real_current_branch_flow(results, branch_name)[2][save_indices]
+                Ii_from_to +=
+                    PSID.get_imaginary_current_branch_flow(results, branch_name)[2][save_indices]
+            end
         end
+
+        branch_name = PSY.get_name(corresponding_branches[1])   #assume data same for all corresponding_branches
+        surrogate_location = connecting_branch_data[1][2]
         branch = PSY.get_component(PSY.ACBranch, sys_train, branch_name)
         if surrogate_location == :from
             real_current[i, :] = Ir_from_to
@@ -528,44 +529,15 @@ function _fill_data_branch!(
         end
         surrogate_real_voltage[i, :] = Vr_surrogate
         surrogate_imag_voltage[i, :] = Vi_surrogate
-        connecting_resistance[i] =
-            _get_branch_plus_source_impedance(sys_train, branch_tuple[1])[2]
-        connecting_reactance[i] =
-            _get_branch_plus_source_impedance(sys_train, branch_tuple[1])[1]
     end
     data.tstops = unique(results.solution.t)
     data.tsteps = unique(results.solution.t)[save_indices]
     data.real_current = real_current
     data.imag_current = imag_current
-    data.connecting_resistance = connecting_resistance
-    data.connecting_reactance = connecting_reactance
     data.surrogate_real_voltage = surrogate_real_voltage
     data.surrogate_imag_voltage = surrogate_imag_voltage
     data.stable = true
     data.solve_time = results.time_log[:timed_solve_time]
-end
-
-function _get_branch_plus_source_impedance(sys_train, branch_name)
-    @assert length(PSY.get_components_by_name(PSY.ACBranch, sys_train, branch_name)) == 1
-    ac_branch = PSY.get_components_by_name(PSY.ACBranch, sys_train, branch_name)[1]
-    bus_from = PSY.get_from(PSY.get_arc(ac_branch))
-    bus_to = PSY.get_to(PSY.get_arc(ac_branch))
-    source_active = collect(
-        PSY.get_components(
-            PSY.Source,
-            sys_train,
-            x -> PSY.get_available(x) && PSY.get_bus(x) in [bus_from, bus_to],
-        ),
-    )
-    if length(source_active) == 1
-        source_active = source_active[1]
-        return [
-            PSY.get_x(ac_branch) + PSY.get_X_th(source_active),
-            PSY.get_r(ac_branch) + PSY.get_R_th(source_active),
-        ]
-    else
-        return [PSY.get_x(ac_branch), PSY.get_r(ac_branch)]
-    end
 end
 
 function instantiate_solver(inputs)
