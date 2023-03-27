@@ -288,8 +288,8 @@ function add_surrogate_perturbation!(
     multiplier =
         rand() * (load_multiplier_range[2] - load_multiplier_range[1]) +
         load_multiplier_range[1]
-    Pnew = PSY.get_active_power(l_new) * multiplier
-    Qnew = PSY.get_reactive_power(l_new) * multiplier
-    push!(psid_perturbations, PSID.LoadChange(time, l_new, :P_ref, Pnew))
-    push!(psid_perturbations, PSID.LoadChange(time, l_new, :Q_ref, Qnew))
+    Pnew = PSY.get_impedance_active_power(l_new) * multiplier
+    Qnew = PSY.get_impedance_reactive_power(l_new) * multiplier
+    push!(psid_perturbations, PSID.LoadChange(time, l_new, :P_ref_impedance, Pnew))
+    push!(psid_perturbations, PSID.LoadChange(time, l_new, :Q_ref_impedance, Qnew))
 end
