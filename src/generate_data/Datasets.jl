@@ -215,7 +215,7 @@ function fill_surrogate_data!(
     #display(PSY.solve_powerflow(sys_train)["bus_results"])
     #display(PSY.solve_powerflow(sys_train)["flow_results"])
     if data_aux !== nothing
-        match_operating_point(sys_train, data_aux, surrogate_params)
+        match_operating_point(sys_train, data_aux, surrogate_params)    #TODO - not tested
     end
     #display(PSY.solve_powerflow(sys_train)["bus_results"])
     #display(PSY.solve_powerflow(sys_train)["flow_results"])
@@ -315,9 +315,9 @@ function _match_operating_point(
     surrogate_params::Union{SteadyStateNODEObsParams, SteadyStateNODEParams},
 )
     for s in PSY.get_components(
+        x -> typeof(PSY.get_dynamic_injector(x)) == SteadyStateNODE,
         PSY.Source,
         sys,
-        x -> typeof(PSY.get_dynamic_injector(x)) == SteadyStateNODE,
     )
         PSY.set_active_power!(s, P0)
         PSY.set_reactive_power!(s, Q0)
@@ -335,9 +335,9 @@ function _match_operating_point(
     surrogate_params::Union{ClassicGenParams, GFLParams, GFMParams},
 )
     for s in PSY.get_components(
+        x -> PSY.get_name(x) == surrogate_params.name,
         PSY.StaticInjection,
         sys,
-        x -> PSY.get_name(x) == surrogate_params.name,
     )
         PSY.set_active_power!(s, P0)
         PSY.set_reactive_power!(s, Q0)
@@ -345,31 +345,42 @@ function _match_operating_point(
 end
 
 function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::ZIPParams)
-    loadZ = PSY.get_component(PSY.PowerLoad, sys, string(surrogate_params.name, "_Z"))
-    loadI = PSY.get_component(PSY.PowerLoad, sys, string(surrogate_params.name, "_I"))
-    loadP = PSY.get_component(PSY.PowerLoad, sys, string(surrogate_params.name, "_P"))
+    load = PSY.get_component(PSY.StandardLoad, sys, surrogate_params.name)
     total_P =
-        PSY.get_max_active_power(loadZ) +
-        PSY.get_max_active_power(loadI) +
-        PSY.get_max_active_power(loadP)
+        PSY.get_max_impedance_active_power(load) +
+        PSY.get_max_current_active_power(load) +
+        PSY.get_max_constant_active_power(load)
     total_Q =
-        PSY.get_max_reactive_power(loadZ) +
-        PSY.get_max_reactive_power(loadI) +
-        PSY.get_max_reactive_power(loadP)
+        PSY.get_max_impedance_reactive_power(load) +
+        PSY.get_max_current_reactive_power(load) +
+        PSY.get_max_constant_reactive_power(load)
 
-    P_loadZ = P0 * PSY.get_max_active_power(loadZ) / total_P
-    Q_loadZ = Q0 * PSY.get_max_reactive_power(loadZ) / total_Q
-    PSY.set_active_power!(loadZ, -P_loadZ)
-    PSY.set_reactive_power!(loadZ, -Q_loadZ)
-    P_loadI = P0 * PSY.get_max_active_power(loadI) / total_P
-    Q_loadI = Q0 * PSY.get_max_reactive_power(loadI) / total_Q
-    PSY.set_active_power!(loadI, -P_loadI)
-    PSY.set_reactive_power!(loadI, -Q_loadI)
-    P_loadP = P0 * PSY.get_max_active_power(loadP) / total_P
-    Q_loadP = Q0 * PSY.get_max_reactive_power(loadP) / total_Q
+    PSY.set_impedance_active_power!(
+        load,
+        -1 * P0 * PSY.get_max_impedance_active_power(load) / total_P,
+    )
+    PSY.set_impedance_reactive_power!(
+        load,
+        -1 * Q0 * PSY.get_max_impedance_reactive_power(load) / total_Q,
+    )
 
-    PSY.set_active_power!(loadP, -P_loadP)
-    PSY.set_reactive_power!(loadP, -Q_loadP)
+    PSY.set_current_active_power!(
+        load,
+        -1 * P0 * PSY.get_max_current_active_power(load) / total_P,
+    )
+    PSY.set_current_reactive_power!(
+        load,
+        -1 * Q0 * PSY.get_max_current_reactive_power(load) / total_Q,
+    )
+
+    PSY.set_constant_active_power!(
+        load,
+        -1 * P0 * PSY.get_max_constant_active_power(load) / total_P,
+    )
+    PSY.set_constant_reactive_power!(
+        load,
+        -1 * Q0 * PSY.get_max_constant_reactive_power(load) / total_Q,
+    )
 end
 
 function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::MultiDeviceParams)
@@ -377,17 +388,15 @@ function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::MultiDe
     Q_device_available = []
     for s in surrogate_params.static_devices
         if typeof(s) == ZIPParams
-            active_power_available = 0.0
-            reactive_power_available = 0.0
-            device1 = PSY.get_component(PSY.PowerLoad, sys, string(s.name, "_Z"))
-            active_power_available += PSY.get_max_active_power(device1)
-            reactive_power_available += PSY.get_max_reactive_power(device1)
-            device2 = PSY.get_component(PSY.PowerLoad, sys, string(s.name, "_I"))
-            active_power_available += PSY.get_max_active_power(device2)
-            reactive_power_available += PSY.get_max_reactive_power(device2)
-            device3 = PSY.get_component(PSY.PowerLoad, sys, string(s.name, "_P"))
-            active_power_available += PSY.get_max_active_power(device3)
-            reactive_power_available += PSY.get_max_reactive_power(device3)
+            device = PSY.get_component(PSY.StandardLoad, sys, s.name)
+            active_power_available =
+                PSY.get_max_impedance_active_power(device) +
+                PSY.get_max_current_active_power(device) +
+                PSY.get_max_constant_active_power(device)
+            reactive_power_available =
+                PSY.get_max_impedance_reactive_power(device) +
+                PSY.get_max_current_reactive_power(device) +
+                PSY.get_max_constant_reactive_power(device)
             push!(P_device_available, active_power_available)
             push!(Q_device_available, reactive_power_available)
         else
@@ -481,7 +490,7 @@ function _fill_data_branch!(
     surrogate_imag_voltage = zeros(length(connecting_arcs), n_save_points)
     for (i, arc) in enumerate(connecting_arcs)
         corresponding_branches =
-            collect(PSY.get_components(PSY.Branch, sys_train, x -> PSY.get_arc(x) == arc))
+            collect(PSY.get_components(x -> PSY.get_arc(x) == arc, PSY.Branch, sys_train))
         Ir_from_to = zeros(n_save_points)
         Ii_from_to = zeros(n_save_points)
         for b in corresponding_branches

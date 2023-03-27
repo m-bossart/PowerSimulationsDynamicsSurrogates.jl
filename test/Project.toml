@@ -9,3 +9,6 @@ PowerSimulationsDynamicsSurrogates = "de933368-4bb5-470a-b916-9fff09bf2720"
 PowerSystems = "bcd98974-b02a-5e2f-9ee0-a103f5c450dd"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 Sundials = "c3572dad-4567-51f8-b174-8c6c989267f4"
+
+[compat]
+Flux = "<0.13.12"
