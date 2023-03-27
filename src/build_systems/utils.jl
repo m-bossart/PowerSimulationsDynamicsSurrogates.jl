@@ -21,9 +21,9 @@ function create_validation_system_from_buses(
     nonsurrogate_bus_numbers =
         PSY.get_number.(
             PSY.get_components(
+                x -> PSY.get_number(x) ∉ surrogate_bus_numbers,
                 PSY.Bus,
                 sys_full,
-                x -> PSY.get_number(x) ∉ surrogate_bus_numbers,
             ),
         )
     powerflow_df = PowerFlows.run_powerflow(sys_full)["flow_results"]
@@ -61,9 +61,9 @@ function create_train_system_from_buses(
     nonsurrogate_bus_numbers =
         PSY.get_number.(
             PSY.get_components(
+                x -> PSY.get_number(x) ∉ surrogate_bus_numbers,
                 PSY.Bus,
                 sys_full,
-                x -> PSY.get_number(x) ∉ surrogate_bus_numbers,
             ),
         )
     powerflow_df = PowerFlows.run_powerflow(sys_full)["flow_results"]
@@ -128,28 +128,28 @@ function _add_sources!(sys, connecting_branch_data, location)
 end
 function _ensure_a_reference_bus!(sys)
     reference_buses =
-        PSY.get_components(PSY.Bus, sys, x -> (PSY.get_bustype(x) == PSY.BusTypes.REF))
+        PSY.get_components(x -> (PSY.get_bustype(x) == PSY.BusTypes.REF), PSY.Bus, sys)
     if length(reference_buses) == 0
         first_bus = collect(PSY.get_components(PSY.Bus, sys))[1]
         PSY.set_bustype!(first_bus, PSY.BusTypes.REF)
         @assert length(
-            PSY.get_components(PSY.Bus, sys, x -> (PSY.get_bustype(x) == PSY.BusTypes.REF)),
+            PSY.get_components(x -> (PSY.get_bustype(x) == PSY.BusTypes.REF), PSY.Bus, sys),
         ) == 1
     end
 end
 
 function _check_connectivity(sys, bus_numbers)
     for b in bus_numbers
-        bus = collect(PSY.get_components(PSY.Bus, sys, x -> PSY.get_number(x) == b))[1]
+        bus = collect(PSY.get_components(x -> PSY.get_number(x) == b, PSY.Bus, sys))[1]
         connected_branches = collect(
             PSY.get_components(
-                PSY.Component,
-                sys,
                 x ->
                     typeof(x) <: PSY.Branch && ((
                         PSY.get_from(PSY.get_arc(x)) == bus ||
                         PSY.get_to(PSY.get_arc(x)) == bus
                     )),
+                PSY.Component,
+                sys,
             ),
         )
         x = filter(
@@ -168,7 +168,7 @@ end
 
 function _remove_static_and_dynamic_injectors!(sys, bus_numbers)
     static_injectors = collect(
-        PSY.get_components(PSY.Component, sys, x -> typeof(x) <: PSY.StaticInjection),
+        PSY.get_components(x -> typeof(x) <: PSY.StaticInjection, PSY.Component, sys),
     )
     for static_injector in static_injectors
         if (PSY.get_number(PSY.get_bus(static_injector)) ∈ bus_numbers)
@@ -180,7 +180,7 @@ function _remove_static_and_dynamic_injectors!(sys, bus_numbers)
 end
 
 function _remove_buses!(sys, bus_numbers)
-    buses = collect(PSY.get_components(PSY.Bus, sys, x -> PSY.get_number(x) ∈ bus_numbers))
+    buses = collect(PSY.get_components(x -> PSY.get_number(x) ∈ bus_numbers, PSY.Bus, sys))
     for b in buses
         PSY.remove_component!(sys, b)
     end
@@ -190,11 +190,11 @@ end
 function _remove_internal_branches!(sys, bus_numbers)
     internal_branches = collect(
         PSY.get_components(
-            PSY.Branch,
-            sys,
             x ->
                 (PSY.get_number(PSY.get_from(PSY.get_arc(x)))) ∈ bus_numbers &&
                     (PSY.get_number(PSY.get_to(PSY.get_arc(x)))) ∈ bus_numbers,
+            PSY.Branch,
+            sys,
         ),
     )
     for branch in internal_branches
@@ -210,7 +210,7 @@ function _get_connecting_branch_power(sys, bus_numbers, powerflow_df)
             Tuple{String, String, String, Symbol, Float64, Float64, Float64, Float64},
         }[] =#
     connecting_branch_data = []
-    branches = collect(PSY.get_components(PSY.Component, sys, x -> typeof(x) <: PSY.Branch))
+    branches = collect(PSY.get_components(x -> typeof(x) <: PSY.Branch, PSY.Component, sys))
     for branch in branches
         bus_number_from = PSY.get_number(PSY.get_from(PSY.get_arc(branch)))
         bus_number_to = PSY.get_number(PSY.get_to(PSY.get_arc(branch)))
