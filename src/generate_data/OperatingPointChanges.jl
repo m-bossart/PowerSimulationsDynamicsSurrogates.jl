@@ -173,16 +173,16 @@ function update_operating_point!(
             @error "Device from auxiliary system not found in main system"
         end
         if typeof(l) <: PSY.StaticLoad
-            PSY.set_active_power!(
+            PSY.set_impedance_active_power!(
                 l_new,
-                PSY.get_active_power(l_new) * (
+                PSY.get_impedance_active_power(l_new) * (
                     rand() * (load_multiplier_range[2] - load_multiplier_range[1]) +
                     load_multiplier_range[1]
                 ),
             )
-            PSY.set_reactive_power!(
+            PSY.set_impedance_reactive_power!(
                 l_new,
-                PSY.get_reactive_power(l_new) * (
+                PSY.get_impedance_reactive_power(l_new) * (
                     rand() * (load_multiplier_range[2] - load_multiplier_range[1]) +
                     load_multiplier_range[1]
                 ),
