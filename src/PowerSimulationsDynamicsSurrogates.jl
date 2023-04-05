@@ -60,10 +60,12 @@ export RandomOperatingPointXiao
 #export SurrogateDatasets
 export SurrogateDataset
 export SteadyStateNODEData
+export AllStatesData
 
 #export SurrogateDatasetParams
 export SurrogateDatasetParams
 export SteadyStateNODEDataParams
+export AllStatesDataParams
 
 export GenerateDataParams
 

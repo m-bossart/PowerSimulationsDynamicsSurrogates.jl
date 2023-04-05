@@ -320,7 +320,15 @@ function add_surrogate_perturbation!(
 )
     time = perturbation.time
     P_multiplier_range = perturbation.P_multiplier_range
-    static_injectors = collect(PSY.get_components(x->(PSY.get_dynamic_injector(x) !== nothing) && PSY.get_available(x) == true, PSY.StaticInjection, sys_aux))
+    static_injectors = collect(
+        PSY.get_components(
+            x ->
+                (PSY.get_dynamic_injector(x) !== nothing) &&
+                    PSY.get_available(x) == true,
+            PSY.StaticInjection,
+            sys_aux,
+        ),
+    )
     println(PSY.get_name.(static_injectors))
     if length(static_injectors) === 0
         @error "Trying to change a dynamic injector but a dynamic injector not found in system"
@@ -329,11 +337,15 @@ function add_surrogate_perturbation!(
     s = rand(static_injectors)
     s_new = PSY.get_component(typeof(s), sys, PSY.get_name(s))
     multiplier =
-        rand() * (P_multiplier_range[2] - P_multiplier_range[1]) +
-        P_multiplier_range[1]
+        rand() * (P_multiplier_range[2] - P_multiplier_range[1]) + P_multiplier_range[1]
     Pnew = PSY.get_active_power(s_new) * multiplier
     #Qnew = PSY.get_impedance_reactive_power(l_new) * multiplier
-    println(PSID.ControlReferenceChange(time, PSY.get_dynamic_injector(s_new), :P_ref, Pnew))
-    push!(psid_perturbations, PSID.ControlReferenceChange(time, PSY.get_dynamic_injector(s_new), :P_ref, Pnew))
+    println(
+        PSID.ControlReferenceChange(time, PSY.get_dynamic_injector(s_new), :P_ref, Pnew),
+    )
+    push!(
+        psid_perturbations,
+        PSID.ControlReferenceChange(time, PSY.get_dynamic_injector(s_new), :P_ref, Pnew),
+    )
     #push!(psid_perturbations, PSID.LoadChange(time, d_new, :Q_ref_impedance, Qnew))
 end

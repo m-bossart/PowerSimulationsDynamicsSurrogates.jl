@@ -141,6 +141,17 @@ function generate_surrogate_data(
     return train_data
 end
 
+function fill_surrogate_data!(
+    data::T,
+    params::P,
+    sys::PSY.System,
+    psid_perturbations,
+    data_collection::GenerateDataParams,
+) where {T <: SurrogateDataset, P <: SurrogateDatasetParams}
+    @warn "collect_data not implemented for this type of SurrogateDataSet"
+end
+
+##################################################################
 mutable struct SteadyStateNODEDataParams <: SurrogateDatasetParams
     type::String
     location_of_data_collection::Array{Tuple{String, Symbol}}
@@ -187,16 +198,6 @@ function SteadyStateNODEData(;
         stable,
         solve_time,
     )
-end
-
-function fill_surrogate_data!(
-    data::T,
-    params::P,
-    sys::PSY.System,
-    psid_perturbations,
-    data_collection::GenerateDataParams,
-) where {T <: SurrogateDataset, P <: SurrogateDatasetParams}
-    @warn "collect_data not implemented for this type of SurrogateDataSet"
 end
 
 function fill_surrogate_data!(
@@ -468,6 +469,17 @@ function _fill_data_source!(data, results, connecting_sources, save_indices, sys
     data.solve_time = results.time_log[:timed_solve_time]
 end
 
+function _fill_data_states(data, results, dynamic_device_name, save_indices, sys_train)
+    state_trajectories_dict = Dict{Symbol, AbstractArray}()
+    dynamic_injector =
+        PSY.get_component(PSY.DynamicInjection, sys_train, dynamic_device_name)
+    for s in PSY.get_states(dynamic_injector)
+        state_trajectories_dict[s] =
+            PSID.get_state_series(results, (dynamic_device_name, s))[2][save_indices]
+    end
+    data.states = state_trajectories_dict
+end
+
 #NOTE: this function will fail if you have double lines with reversed to/from orientation.
 #NOTE: need to fix current for tripped line.
 function _fill_data_branch!(
@@ -566,4 +578,170 @@ end
 
 function EmptyTrainDataSet(key::SteadyStateNODEDataParams)
     return SteadyStateNODEData()
+end
+function EmptyTrainDataSet(key::AllStatesDataParams)
+    return AllStatesData()
+end
+
+#################################################################
+#make a different type of dataset which captures all of the states of a device, along with the input and output voltage as above. 
+#just add -> states::Dict{Symbol, AbstractArray}, then loop through all of the states and get the values for the device. 
+mutable struct AllStatesDataParams <: SurrogateDatasetParams
+    type::String
+    dynamic_device_name::String
+    location_of_data_collection::Array{Tuple{String, Symbol}}
+end
+
+function AllStatesDataParams(;
+    type = "AllStatesDataParams",
+    dynamic_device_name = "",
+    location_of_data_collection = [],           #TODO - This is [("branchname", :to)] [("branchname", :from)]  or  --> extend to allow for [("sourcename", :source)]   
+)
+    return AllStatesDataParams(type, dynamic_device_name, location_of_data_collection)
+end
+
+mutable struct AllStatesData <: SurrogateDataset
+    type::String
+    tsteps::AbstractArray
+    real_current::AbstractArray
+    imag_current::AbstractArray
+    surrogate_real_voltage::AbstractArray
+    surrogate_imag_voltage::AbstractArray
+    states::Dict{Symbol, AbstractArray}
+    tstops::AbstractArray
+    stable::Bool
+    solve_time::Float64
+end
+
+function AllStatesData(;
+    type = "AllStatesData",
+    tsteps = [],
+    real_current = [],
+    imag_current = [],
+    surrogate_real_voltage = [],
+    surrogate_imag_voltage = [],
+    states = Dict{Symbol, AbstractArray}(),
+    tstops = [],
+    stable = false,
+    solve_time = 0.0,
+)
+    return AllStatesData(
+        type,
+        tsteps,
+        real_current,
+        imag_current,
+        surrogate_real_voltage,
+        surrogate_imag_voltage,
+        states,
+        tstops,
+        stable,
+        solve_time,
+    )
+end
+
+function fill_surrogate_data!(
+    data::AllStatesData,
+    params::AllStatesDataParams,
+    sys_train::PSY.System,
+    psid_perturbations,
+    data_collection::GenerateDataParams,
+    data_aux::Union{AllStatesData, Nothing},
+    surrogate_params,
+)
+    tspan = data_collection.tspan
+    solver = instantiate_solver(data_collection)
+    abstol = data_collection.solver_tols.abstol
+    reltol = data_collection.solver_tols.reltol
+    #display(PSY.solve_powerflow(sys_train)["bus_results"])
+    #display(PSY.solve_powerflow(sys_train)["flow_results"])
+    if data_aux !== nothing
+        match_operating_point(sys_train, data_aux, surrogate_params)    #TODO - not tested
+    end
+    #display(PSY.solve_powerflow(sys_train)["bus_results"])
+    #display(PSY.solve_powerflow(sys_train)["flow_results"])
+    if data_collection.formulation == "MassMatrix"
+        sim_full = PSID.Simulation(
+            PSID.MassMatrixModel,
+            sys_train,
+            pwd(),
+            tspan,
+            psid_perturbations;
+            all_branches_dynamic = data_collection.all_branches_dynamic,
+            all_lines_dynamic = data_collection.all_lines_dynamic,
+        )
+    elseif data_collection.formulation == "Residual"
+        sim_full = PSID.Simulation(
+            PSID.ResidualModel,
+            sys_train,
+            pwd(),
+            tspan,
+            psid_perturbations;
+            all_branches_dynamic = data_collection.all_branches_dynamic,
+            all_lines_dynamic = data_collection.all_lines_dynamic,
+        )
+    end
+    #=     ss = PSID.small_signal_analysis(sim_full)       #state with index x not found in the global index 
+        if !(ss.stable)
+            display(ss.eigenvalues)
+            @error "system not small signal stable" 
+        end   =#
+    #Check if the simulation was built properly? What if it wasn't able to initialize? 
+    PSID.execute!(
+        sim_full,
+        solver,
+        abstol = abstol,
+        reltol = reltol,
+        tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
+        save_everystep = true,
+        saveat = data_collection.tsave,
+        reset_simulation = false,
+        enable_progress_bar = false,
+    )
+    @assert issubset(data_collection.tsave, union(data_collection.tstops, sim_full.tstops))
+
+    if sim_full.status == PSID.SIMULATION_FINALIZED
+        results = PSID.read_results(sim_full)
+        if length(data_collection.tsave) == 0
+            save_indices = 1:length(unique(results.solution.t))
+        else
+            save_indices = indexin(data_collection.tsave, unique(results.solution.t))
+        end
+        location_data_collection = params.location_of_data_collection
+
+        if location_data_collection[1][2] == :from || location_data_collection[1][2] == :to
+            _fill_data_branch!(
+                data,
+                results,
+                location_data_collection,
+                save_indices,
+                sys_train,
+                data_collection,
+            )
+            #fill the states dictionary with data. 
+            _fill_data_states(
+                data,
+                results,
+                params.dynamic_device_name,
+                save_indices,
+                sys_train,
+            )
+        elseif location_data_collection[1][2] == :source
+            _fill_data_source!(
+                data,
+                results,
+                location_data_collection,
+                save_indices,
+                sys_train,
+            )   #TODO - test this function which collects data from a source! 
+            _fill_data_states(
+                data,
+                results,
+                params.dynamic_device_name,
+                save_indices,
+                sys_train,
+            )
+        else
+            @error "Invaled entry for data collection location"
+        end
+    end
 end
