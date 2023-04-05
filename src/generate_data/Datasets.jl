@@ -579,9 +579,6 @@ end
 function EmptyTrainDataSet(key::SteadyStateNODEDataParams)
     return SteadyStateNODEData()
 end
-function EmptyTrainDataSet(key::AllStatesDataParams)
-    return AllStatesData()
-end
 
 #################################################################
 #make a different type of dataset which captures all of the states of a device, along with the input and output voltage as above. 
@@ -745,3 +742,8 @@ function fill_surrogate_data!(
         end
     end
 end
+
+function EmptyTrainDataSet(key::AllStatesDataParams)
+    return AllStatesData()
+end
+
