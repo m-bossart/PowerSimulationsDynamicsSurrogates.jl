@@ -1,11 +1,11 @@
 const SOURCE_X_TH = 1e-6
 const SOURCE_R_TH = 1e-6   #If using a source to implement a load step for training, important to have non-zero resistance if lines are dynamic and there is capacitance at the bus. 
 """
-    subsystem, location_of_data_collection = create_subsystem_from_buses(sys_full::PSY.System, subsystem_bus_numbers::Vector{Int64}) 
+    subsystem, location_of_data_collection = create_validation_system_from_buses(sys_full::PSY.System, subsystem_bus_numbers::Vector{Int64}) 
 
 Takes a deepcopy of PSY system and removes all components that are not attached to the indicated buses. 
 Leaves all branches that connect two buses within the surrogate AND branches that connect to the rest of the system. 
-Adds source components at connecting buses --- these are used to perturb the surrogate when generating training data. 
+Adds source components at buses within the surrogate that are connecting to the rest of the system --- these are where the surrogate is attached for validation and testing.
 # Inputs 
 - `sys_full::PowerSystems.System`: The full starting system. 
 - `surrogate_bus_numbers::Vector{Int64}`: Numbers of the buses to be included in the subsystem. These bus numbers should form a continuous (non-islanded) subsystem.
@@ -13,7 +13,6 @@ Adds source components at connecting buses --- these are used to perturb the sur
 - `subsystem::PowerSystems.System`:
 - `location_of_data_collection::Vector{Tuple{String, Symbol}}`: Tuple of branch name and either `:to` or `:from` for interpreting the polarity of data from those branches.
 """
-
 function create_validation_system_from_buses(
     sys_full::PSY.System,
     surrogate_bus_numbers::Vector{Int64},
@@ -54,6 +53,19 @@ function create_validation_system_from_buses(
     return sys, location_of_data_collection
 end
 
+"""
+    subsystem, location_of_data_collection = create_train_system_from_buses(sys_full::PSY.System, subsystem_bus_numbers::Vector{Int64}) 
+
+Takes a deepcopy of PSY system and removes all components that are not attached to buses other than the indicated buses. 
+Leaves only branches that are internal to the surrogate. 
+Adds source components at buses within the surrogate that are connecting to the rest of the system --- these are where a source is attached to perturb the surrogate for training data.
+# Inputs 
+- `sys_full::PowerSystems.System`: The full starting system. 
+- `surrogate_bus_numbers::Vector{Int64}`: Numbers of the buses to be included in the subsystem. These bus numbers should form a continuous (non-islanded) subsystem.
+# Outputs
+- `subsystem::PowerSystems.System`:
+- `location_of_data_collection::Vector{Tuple{String, Symbol}}`: Tuple of branch name and either `:to` or `:from` for interpreting the polarity of data from those branches.
+"""
 function create_train_system_from_buses(
     sys_full::PSY.System,
     surrogate_bus_numbers::Vector{Int64},
@@ -112,18 +124,21 @@ function _add_sources!(sys, connecting_branch_data, location)
         end
         @assert bus !== nothing
         PSY.get_bustype(bus) !== PSY.BusTypes.REF && PSY.set_bustype!(bus, PSY.BusTypes.PV)
-        source = PSY.Source(
-            name = string("source_", ix),
-            active_power = P_source / 100,
-            available = true,
-            reactive_power = 0.0,
-            bus = bus,
-            R_th = SOURCE_R_TH,
-            X_th = SOURCE_X_TH,
-            internal_voltage = 0.0,
-            internal_angle = 0.0,
-        )
-        PSY.add_component!(sys, source)
+        if length(collect(PSY.get_components(x -> PSY.get_bus(x) == bus, PSY.Source, sys))) == 0  #If there is already a source at bus, don't build another one (double line case) 
+            source = PSY.Source(
+                name = string("source_", ix),
+                active_power = P_source / 100,
+                available = true,
+                reactive_power = 0.0,
+                bus = bus,
+                R_th = SOURCE_R_TH,
+                X_th = SOURCE_X_TH,
+                internal_voltage = 0.0,
+                internal_angle = 0.0,
+            )
+            PSY.add_component!(sys, source)
+        end 
+    
     end
 end
 function _ensure_a_reference_bus!(sys)

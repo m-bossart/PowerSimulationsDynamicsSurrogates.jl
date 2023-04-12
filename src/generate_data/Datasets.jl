@@ -746,4 +746,3 @@ end
 function EmptyTrainDataSet(key::AllStatesDataParams)
     return AllStatesData()
 end
-
