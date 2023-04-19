@@ -307,13 +307,13 @@ function match_operating_point(sys, data_aux, surrogate_params)
     _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params)
 end
 
-function _match_operating_point(
+#= function _match_operating_point(
     sys,
     P0,
     Q0,
     Vm0,
     θ0,
-    surrogate_params::Union{SteadyStateNODEObsParams, SteadyStateNODEParams},
+    surrogate_params::Union{SteadyStateNODEObsParams, SteadyStateNODEParams},   #pass the actual PSID component instead? 
 )
     for s in PSY.get_components(
         x -> typeof(PSY.get_dynamic_injector(x)) == SteadyStateNODE,
@@ -425,7 +425,7 @@ function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::MultiDe
         ix += 1
     end
 end
-
+ =#
 function _fill_data_source!(data, results, connecting_sources, save_indices, sys_train)
     n_save_points = length(save_indices)
     real_current = zeros(length(connecting_sources), n_save_points)

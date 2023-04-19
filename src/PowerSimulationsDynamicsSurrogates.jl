@@ -33,14 +33,16 @@ export set_base_power!
 export set_ext!
 
 #export SurrogateParams
-export SteadyStateNODEParams
-export SteadyStateNODEObsParams
-export ClassicGenParams
-export GFLParams
-export GFMParams
-export ZIPParams
-export MultiDeviceParams
-export MultiDeviceLineParams
+#export SteadyStateNODEParams
+#export SteadyStateNODEObsParams
+#export ClassicGenParams
+#export GFLParams
+#export GFMParams
+#export ZIPParams
+#export MultiDeviceParams
+#export MultiDeviceLineParams
+export DataDrivenParams
+export build_data_driven_model
 
 #export SurrogatePerturbations generation exports 
 export SurrogatePerturbation
