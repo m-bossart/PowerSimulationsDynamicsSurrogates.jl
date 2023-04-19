@@ -124,7 +124,9 @@ function _add_sources!(sys, connecting_branch_data, location)
         end
         @assert bus !== nothing
         PSY.get_bustype(bus) !== PSY.BusTypes.REF && PSY.set_bustype!(bus, PSY.BusTypes.PV)
-        if length(collect(PSY.get_components(x -> PSY.get_bus(x) == bus, PSY.Source, sys))) == 0  #If there is already a source at bus, don't build another one (double line case) 
+        if length(
+            collect(PSY.get_components(x -> PSY.get_bus(x) == bus, PSY.Source, sys)),
+        ) == 0  #If there is already a source at bus, don't build another one (double line case) 
             source = PSY.Source(
                 name = string("source_", ix),
                 active_power = P_source / 100,
@@ -137,8 +139,7 @@ function _add_sources!(sys, connecting_branch_data, location)
                 internal_angle = 0.0,
             )
             PSY.add_component!(sys, source)
-        end 
-    
+        end
     end
 end
 function _ensure_a_reference_bus!(sys)

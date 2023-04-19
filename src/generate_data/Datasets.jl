@@ -180,7 +180,7 @@ end
 function SteadyStateNODEData(;
     type = "SteadyStateNODEData",
     tsteps = [],
-    ic = Dict{Symbol, Float64}(), 
+    ic = Dict{Symbol, Float64}(),
     real_current = [],
     imag_current = [],
     surrogate_real_voltage = [],
@@ -192,7 +192,7 @@ function SteadyStateNODEData(;
     return SteadyStateNODEData(
         type,
         tsteps,
-        ic, 
+        ic,
         real_current,
         imag_current,
         surrogate_real_voltage,
@@ -247,20 +247,9 @@ function fill_surrogate_data!(
     ic = PSID.read_initial_conditions(sim_full)
     location_data_collection = params.location_of_data_collection
     if location_data_collection[1][2] == :from || location_data_collection[1][2] == :to
-        _fill_ic_branch!(
-            data,
-            ic,
-            location_data_collection,
-            sys_train,
-            data_collection,
-        )
+        _fill_ic_branch!(data, ic, location_data_collection, sys_train, data_collection)
     elseif location_data_collection[1][2] == :source
-        _fill_ic_source!(
-            data,
-            ic,
-            location_data_collection,
-            sys_train,
-        )   #TODO - test this function which collects data from a source! 
+        _fill_ic_source!(data, ic, location_data_collection, sys_train)   #TODO - test this function which collects data from a source! 
     else
         @error "Invaled entry for initial condition collection location"
     end
@@ -313,11 +302,11 @@ function fill_surrogate_data!(
             @error "Invaled entry for data collection location"
         end
         if location_data_collection[1][2] !== :source
-            @assert data.ic[:Ir0] == data.real_current[1]
-            @assert data.ic[:Ii0] == data.imag_current[1]
-            @assert data.ic[:Vr0] == data.surrogate_real_voltage[1]
-            @assert data.ic[:Vi0] == data.surrogate_imag_voltage[1]
-        end 
+            @assert isapprox(data.ic[:Ir0], data.real_current[1]; atol = 1e-14)
+            @assert isapprox(data.ic[:Ii0], data.imag_current[1]; atol = 1e-14)
+            @assert isapprox(data.ic[:Vr0], data.surrogate_real_voltage[1]; atol = 1e-14)
+            @assert isapprox(data.ic[:Vi0], data.surrogate_imag_voltage[1]; atol = 1e-14)
+        end
     end
 end
 
@@ -457,11 +446,11 @@ end
 
 function _fill_ic_source!(data, ic, connecting_sources, sys_train)
     @error "Methods not yet implemented to collect initial conditions from source"
-    return 
-    Ir0 = zero(Float64) 
-    Vr0 = zero(Float64) 
-    Ii0 = zero(Float64) 
-    Vi0 = zero(Float64) 
+    return
+    Ir0 = zero(Float64)
+    Vr0 = zero(Float64)
+    Ii0 = zero(Float64)
+    Vi0 = zero(Float64)
     for (i, source_tuple) in enumerate(connecting_sources)
         source_name = source_tuple[1]
         source = PSY.get_component(PSY.Source, sys_train, source_name)
@@ -476,10 +465,11 @@ function _fill_ic_source!(data, ic, connecting_sources, sys_train)
             #Ii0 = -1 .* ic[source_name][:Ii]
         end
         bus_number_source = PSY.get_number(PSY.get_bus(source))
-        Vr0 =  ic["V_R"][bus_number_source]
-        Vi0 =  ic["V_I"][bus_number_source]
+        Vr0 = ic["V_R"][bus_number_source]
+        Vi0 = ic["V_I"][bus_number_source]
     end
-    data.ic = Dict{Symbol, AbstractArray}(:Vr0 => Vr0, :Vi0 => Vi0, :Ir0 => Ir0, :Ii0 => Ii0)
+    data.ic =
+        Dict{Symbol, AbstractArray}(:Vr0 => Vr0, :Vi0 => Vi0, :Ir0 => Ir0, :Ii0 => Ii0)
 end
 
 #NOTE: this function will fail if you have double lines with reversed to/from orientation.
@@ -490,12 +480,12 @@ function _fill_ic_branch!(data, ic, connecting_branch_data, sys_train, data_coll
         branch_tuple in connecting_branch_data
     ]
     connecting_arcs = unique([PSY.get_arc(branch) for branch in connecting_branches])
-    Ir0 = zero(Float64) 
-    Vr0 = zero(Float64) 
-    Ii0 = zero(Float64) 
-    Vi0 = zero(Float64) 
-    Ir0_from_to = zero(Float64) 
-    Ii0_from_to = zero(Float64) 
+    Ir0 = zero(Float64)
+    Vr0 = zero(Float64)
+    Ii0 = zero(Float64)
+    Vi0 = zero(Float64)
+    Ir0_from_to = zero(Float64)
+    Ii0_from_to = zero(Float64)
     for (i, arc) in enumerate(connecting_arcs)
         corresponding_branches =
             collect(PSY.get_components(x -> PSY.get_arc(x) == arc, PSY.Branch, sys_train))
@@ -504,10 +494,20 @@ function _fill_ic_branch!(data, ic, connecting_branch_data, sys_train, data_coll
             #TODO - get rid of the if/else logic below after this PSID issue is resolve: https://github.com/NREL-SIIP/PowerSimulationsDynamics.jl/issues/283
             if data_collection.all_lines_dynamic
                 Ir0_from_to += ic[string("Line ", branch_name)][:Il_R]
-                Ii0_from_to +=ic[string("Line ", branch_name)][:Il_I]
-            else
-                Ir0_from_to += ic[string("Line ", branch_name)][:Il_R]    #probably won't work 
                 Ii0_from_to += ic[string("Line ", branch_name)][:Il_I]
+            else
+                bus_number_from = PSY.get_number(PSY.get_from(PSY.get_arc(b)))
+                bus_number_to = PSY.get_number(PSY.get_to(PSY.get_arc(b)))
+                Vr0_from = ic["V_R"][bus_number_from]
+                Vi0_from = ic["V_I"][bus_number_from]
+                Vr0_to = ic["V_R"][bus_number_to]
+                Vi0_to = ic["V_I"][bus_number_to]
+                r = PSY.get_r(b)
+                x = PSY.get_x(b)
+                I_flow =
+                    ((Vr0_from + Vi0_from * 1im) - (Vr0_to + Vi0_to * 1im)) ./ (r + x * 1im)
+                Ir0_from_to += real(I_flow)
+                Ii0_from_to += imag(I_flow)
             end
         end
         branch_name = PSY.get_name(corresponding_branches[1])   #assume data same for all corresponding_branches
@@ -521,8 +521,8 @@ function _fill_ic_branch!(data, ic, connecting_branch_data, sys_train, data_coll
             Vr0 = ic["V_R"][bus_number_surrogate]
             Vi0 = ic["V_I"][bus_number_surrogate]
         elseif surrogate_location == :to
-            Ir0 = Ir0_from_to * -1 
-            Ii0 = Ii0_from_to * -1 
+            Ir0 = Ir0_from_to * -1
+            Ii0 = Ii0_from_to * -1
             bus_number_surrogate = PSY.get_number(PSY.get_to(PSY.get_arc(branch)))
             bus_number_opposite = PSY.get_number(PSY.get_from(PSY.get_arc(branch)))
             Vr0 = ic["V_R"][bus_number_surrogate]
@@ -531,8 +531,6 @@ function _fill_ic_branch!(data, ic, connecting_branch_data, sys_train, data_coll
     end
     data.ic = Dict{Symbol, Float64}(:Vr0 => Vr0, :Vi0 => Vi0, :Ir0 => Ir0, :Ii0 => Ii0)
 end
-
-
 
 function _fill_data_source!(data, results, connecting_sources, save_indices, sys_train)
     n_save_points = length(save_indices)
