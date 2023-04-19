@@ -315,7 +315,7 @@ Matches the operating point from the ground truth dataset when generating the da
 """
 function match_operating_point(sys, data_aux, surrogate_params)
     Vr0 = data_aux.ic[:Vr0]
-    Vi0 = data_aux.ic[:Vr0]
+    Vi0 = data_aux.ic[:Vi0]
     Ir0 = data_aux.ic[:Ir0]
     Ii0 = data_aux.ic[:Ii0]
     P0 = Vr0 * Ir0 + Vi0 * Ii0
