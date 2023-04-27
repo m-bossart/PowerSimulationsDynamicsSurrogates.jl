@@ -358,8 +358,10 @@ function _match_operating_point(
         PSY.StaticInjection,
         sys,
     )
-        PSY.set_active_power!(s, P0)
-        PSY.set_reactive_power!(s, Q0)
+        base_power = PSY.get_base_power(s)
+        base_power_ratio = 100.0/base_power
+        PSY.set_active_power!(s, P0 * base_power_ratio)
+        PSY.set_reactive_power!(s, Q0 * base_power_ratio)
     end
 end
 
