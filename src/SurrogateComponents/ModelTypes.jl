@@ -1,5 +1,56 @@
 abstract type SurrogateModelParams end
 
+mutable struct NODEParams <: SurrogateModelParams
+    type::String
+    name::String
+    n_ports::Int64
+    initializer_layer_type::String
+    initializer_n_layer::Int64
+    initializer_width_layers_relative_input::Int64
+    initializer_activation::String
+    dynamic_layer_type::String
+    dynamic_hidden_states::Int64
+    dynamic_n_layer::Int64
+    dynamic_width_layers_relative_input::Int64
+    dynamic_activation::String
+    dynamic_σ2_initialization::Float64
+    dynamic_last_layer_bias::Bool
+end
+
+function NODEParams(;
+    type = "NODEParams",
+    name = "surrogate-NODE",
+    n_ports = 1,
+    initializer_layer_type = "dense",
+    initializer_n_layer = 0,
+    initializer_width_layers_relative_input = 0,
+    initializer_activation = "tanh",
+    dynamic_layer_type = "dense",
+    dynamic_hidden_states = 5,
+    dynamic_n_layer = 1,
+    dynamic_width_layers_relative_input = 4,
+    dynamic_activation = "tanh",
+    dynamic_σ2_initialization = 0.0,
+    dynamic_last_layer_bias = false,
+)
+    NODEParams(
+        type,
+        name,
+        n_ports,
+        initializer_layer_type,
+        initializer_n_layer,
+        initializer_width_layers_relative_input,
+        initializer_activation,
+        dynamic_layer_type,
+        dynamic_hidden_states,
+        dynamic_n_layer,
+        dynamic_width_layers_relative_input,
+        dynamic_activation,
+        dynamic_σ2_initialization,
+        dynamic_last_layer_bias,
+    )
+end
+
 mutable struct SteadyStateNODEParams <: SurrogateModelParams
     type::String
     name::String
