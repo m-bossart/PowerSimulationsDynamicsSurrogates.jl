@@ -33,6 +33,7 @@ export set_base_power!
 export set_ext!
 
 #export SurrogateParams
+export NODEParams
 export SteadyStateNODEParams
 export SteadyStateNODEObsParams
 export ClassicGenParams
