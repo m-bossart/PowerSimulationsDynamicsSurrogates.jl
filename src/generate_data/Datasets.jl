@@ -203,6 +203,41 @@ function SteadyStateNODEData(;
     )
 end
 
+function print_debug_info(sys)
+    total_P_mW = 0.0
+    total_Q_mVAR = 0.0 
+
+    for d in PSY.get_components(x -> occursin("surrogate", PSY.get_name(x)), PSY.Generator, sys)
+        println("device name:   ", PSY.get_name(d))
+        println("base power:   ", PSY.get_base_power(d))
+        println("active_power setpoint:   ", PSY.get_active_power(d))
+        println("reactive_power setpoint:   ", PSY.get_reactive_power(d))
+        println("max active power:   ", PSY.get_max_active_power(d))
+        println("max reactive power:   ", PSY.get_max_reactive_power(d))
+        total_P_mW += PSY.get_active_power(d) * PSY.get_base_power(d)
+        total_Q_mVAR += PSY.get_reactive_power(d) * PSY.get_base_power(d)
+    end 
+    for d in PSY.get_components(x -> occursin("surrogate", PSY.get_name(x)), PSY.ElectricLoad, sys)
+        println("device name:   ", PSY.get_name(d))
+        println("base power:   ", PSY.get_base_power(d))
+        println("impedance active_power setpoint:   ", PSY.get_impedance_active_power(d))
+        println("impedance reactive_power setpoint:   ", PSY.get_impedance_reactive_power(d))
+        println("max impedance active_power:   ", PSY.get_max_impedance_active_power(d))
+        println("max impedance reactive_power:   ", PSY.get_max_impedance_reactive_power(d))
+        println("current active_power setpoint:   ", PSY.get_current_active_power(d))
+        println("current reactive_power setpoint:   ", PSY.get_current_reactive_power(d))
+        println("max current active_power:   ", PSY.get_max_current_active_power(d))
+        println("max current reactive_power:   ", PSY.get_max_current_reactive_power(d))
+        println("constant active_power setpoint:   ", PSY.get_constant_active_power(d))
+        println("constant reactive_power setpoint:   ", PSY.get_constant_reactive_power(d))
+        println("max constant active_power:   ", PSY.get_max_constant_active_power(d))
+        println("max constant reactive_power:   ", PSY.get_max_constant_reactive_power(d))
+        total_P_mW -= (PSY.get_impedance_active_power(d) + PSY.get_current_active_power(d) +  PSY.get_constant_active_power(d) ) * PSY.get_base_power(d)
+        total_Q_mVAR -= (PSY.get_impedance_reactive_power(d) + PSY.get_current_reactive_power(d) +  PSY.get_constant_reactive_power(d) ) * PSY.get_base_power(d)
+    end 
+    @show total_P_mW
+    @show total_Q_mVAR
+end
 function fill_surrogate_data!(
     data::SteadyStateNODEData,
     params::SteadyStateNODEDataParams,
@@ -218,9 +253,17 @@ function fill_surrogate_data!(
     reltol = data_collection.solver_tols.reltol
     #display(PSY.solve_powerflow(sys_train)["bus_results"])
     #display(PSY.solve_powerflow(sys_train)["flow_results"])
+
     if data_aux !== nothing
+        @error "Debug info before matching operating point"
+        print_debug_info(sys_train)     
         match_operating_point(sys_train, data_aux, surrogate_params)    #TODO - not tested
+        @error "Debug info after matching operating point"
+        print_debug_info(sys_train)   
+        @error "Powerflow solution"
+        @show PowerFlows.run_powerflow(sys_train)
     end
+
     #display(PSY.solve_powerflow(sys_train)["bus_results"])
     #display(PSY.solve_powerflow(sys_train)["flow_results"])
     if data_collection.formulation == "MassMatrix"
@@ -244,6 +287,8 @@ function fill_surrogate_data!(
             all_lines_dynamic = data_collection.all_lines_dynamic,
         )
     end
+    @error "Debug info after running Simulation"
+    print_debug_info(sys_train)   
     ic = PSID.read_initial_conditions(sim_full)
     location_data_collection = params.location_of_data_collection
     if location_data_collection[1][2] == :from || location_data_collection[1][2] == :to
@@ -314,6 +359,7 @@ end
 Matches the operating point from the ground truth dataset when generating the dataset for a surrogate model. 
 """
 function match_operating_point(sys, data_aux, surrogate_params)
+    @error "The operating point to match is:"
     Vr0 = data_aux.ic[:Vr0]
     Vi0 = data_aux.ic[:Vi0]
     Ir0 = data_aux.ic[:Ir0]
@@ -322,6 +368,10 @@ function match_operating_point(sys, data_aux, surrogate_params)
     Q0 = Vi0 * Ir0 - Vr0 * Ii0
     Vm0 = sqrt(Vr0^2 + Vi0^2)
     θ0 = atan(Vi0, Vr0)
+    @show Vr0
+    @show Vi0
+    @show P0
+    @show Q0
     _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params)
 end
 
@@ -333,7 +383,7 @@ function _match_operating_point(
     θ0,
     surrogate_params::Union{SteadyStateNODEObsParams, SteadyStateNODEParams},
 )
-    for s in PSY.get_components(
+    for s in PSY.get_components( 
         x -> typeof(PSY.get_dynamic_injector(x)) == SteadyStateNODE,
         PSY.Source,
         sys,
@@ -433,6 +483,8 @@ function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::MultiDe
     end
     P_total_available = sum(P_device_available)
     Q_total_available = sum(Q_device_available)
+    @show P_total_available
+    @show Q_total_available
     P_device = P_device_available ./ P_total_available .* P0
     Q_device = Q_device_available ./ Q_total_available .* Q0
     ix = 1
