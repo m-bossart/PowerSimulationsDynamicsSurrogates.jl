@@ -366,6 +366,7 @@ function _match_operating_point(
 end
 
 function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::ZIPParams)
+    orientation_scale = -1.0 
     load = PSY.get_component(PSY.StandardLoad, sys, surrogate_params.name)
     total_P =
         PSY.get_max_impedance_active_power(load) +
@@ -378,29 +379,29 @@ function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::ZIPPara
 
     PSY.set_impedance_active_power!(
         load,
-        -1 * P0 * PSY.get_max_impedance_active_power(load) / total_P,
+        orientation_scale  * P0 * PSY.get_max_impedance_active_power(load) / total_P,
     )
     PSY.set_impedance_reactive_power!(
         load,
-        -1 * Q0 * PSY.get_max_impedance_reactive_power(load) / total_Q,
+        orientation_scale  * Q0 * PSY.get_max_impedance_reactive_power(load) / total_Q,
     )
 
     PSY.set_current_active_power!(
         load,
-        -1 * P0 * PSY.get_max_current_active_power(load) / total_P,
+        orientation_scale  * P0 * PSY.get_max_current_active_power(load) / total_P,
     )
     PSY.set_current_reactive_power!(
         load,
-        -1 * Q0 * PSY.get_max_current_reactive_power(load) / total_Q,
+        orientation_scale  * Q0 * PSY.get_max_current_reactive_power(load) / total_Q,
     )
 
     PSY.set_constant_active_power!(
         load,
-        -1 * P0 * PSY.get_max_constant_active_power(load) / total_P,
+        orientation_scale  * P0 * PSY.get_max_constant_active_power(load) / total_P,
     )
     PSY.set_constant_reactive_power!(
         load,
-        -1 * Q0 * PSY.get_max_constant_reactive_power(load) / total_Q,
+        orientation_scale  * Q0 * PSY.get_max_constant_reactive_power(load) / total_Q,
     )
 end
 
@@ -409,15 +410,16 @@ function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::MultiDe
     Q_device_available = []
     for s in surrogate_params.static_devices
         if typeof(s) == ZIPParams
+            orientation_scale = -1.0 
             device = PSY.get_component(PSY.StandardLoad, sys, s.name)
-            active_power_available =
-                PSY.get_max_impedance_active_power(device) +
+            active_power_available = orientation_scale * 
+                (PSY.get_max_impedance_active_power(device) +
                 PSY.get_max_current_active_power(device) +
-                PSY.get_max_constant_active_power(device)
-            reactive_power_available =
-                PSY.get_max_impedance_reactive_power(device) +
+                PSY.get_max_constant_active_power(device))
+            reactive_power_available = orientation_scale * 
+                (PSY.get_max_impedance_reactive_power(device) +
                 PSY.get_max_current_reactive_power(device) +
-                PSY.get_max_constant_reactive_power(device)
+                PSY.get_max_constant_reactive_power(device))
             push!(P_device_available, active_power_available)
             push!(Q_device_available, reactive_power_available)
         else
@@ -431,10 +433,10 @@ function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::MultiDe
         push!(P_device_available, PSY.get_max_active_power(device))
         push!(Q_device_available, PSY.get_max_reactive_power(device))
     end
-    P_total_available = sum(P_device_available)
-    Q_total_available = sum(Q_device_available)
-    P_device = P_device_available ./ P_total_available .* P0
-    Q_device = Q_device_available ./ Q_total_available .* Q0
+    P_net = sum(P_device_available)
+    Q_net = sum(Q_device_available)
+    P_device = P_device_available ./ P_net .* P0
+    Q_device = Q_device_available ./ Q_net .* Q0
     ix = 1
     for s in surrogate_params.static_devices
         _match_operating_point(sys, P_device[ix], Q_device[ix], Vm0, θ0, s)
