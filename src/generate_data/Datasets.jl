@@ -324,6 +324,7 @@ function match_operating_point(sys, data_aux, surrogate_params)
     Q0 = Vi0 * Ir0 - Vr0 * Ii0
     Vm0 = sqrt(Vr0^2 + Vi0^2)
     θ0 = atan(Vi0, Vr0)
+    @info "operating point to match with surrogate model:  ", "Vm0: ", Vm0,  "θ0: ", θ0, "P0: ", P0, "Q0: ", Q0
     _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params)
     PSY.set_units_base_system!(sys, settings_unit_cache)
 end
@@ -380,7 +381,6 @@ function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::ZIPPara
         PSY.get_max_impedance_reactive_power(load) +
         PSY.get_max_current_reactive_power(load) +
         PSY.get_max_constant_reactive_power(load)
-
     PSY.set_impedance_active_power!(
         load,
         orientation_scale  * P0 * PSY.get_max_impedance_active_power(load) / total_P,
@@ -409,9 +409,10 @@ function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::ZIPPara
     )
 end
 
+#TODO - Assumes static devices are loads and dynamic devices are generators 
 function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::MultiDeviceParams)
     P_device_available = []
-    Q_device_available = []
+    Q_load = [] 
     for s in surrogate_params.static_devices
         if typeof(s) == ZIPParams
             orientation_scale = -1.0 
@@ -420,27 +421,27 @@ function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::MultiDe
                 (PSY.get_max_impedance_active_power(device) +
                 PSY.get_max_current_active_power(device) +
                 PSY.get_max_constant_active_power(device))
-            reactive_power_available = orientation_scale * 
-                (PSY.get_max_impedance_reactive_power(device) +
-                PSY.get_max_current_reactive_power(device) +
-                PSY.get_max_constant_reactive_power(device))
+            reactive_power = orientation_scale * 
+                (PSY.get_impedance_reactive_power(device) +
+                PSY.get_current_reactive_power(device) +
+                PSY.get_constant_reactive_power(device))
             push!(P_device_available, active_power_available)
-            push!(Q_device_available, reactive_power_available)
+            push!(Q_load, reactive_power)
         else
             device = PSY.get_component(PSY.Component, sys, s.name)
             push!(P_device_available, PSY.get_max_active_power(device))
-            push!(Q_device_available, PSY.get_max_reactive_power(device))
         end
     end
     for s in surrogate_params.dynamic_devices
         device = PSY.get_component(PSY.StaticInjection, sys, s.name)
         push!(P_device_available, PSY.get_max_active_power(device))
-        push!(Q_device_available, PSY.get_max_reactive_power(device))
     end
     P_net = sum(P_device_available)
-    Q_net = sum(Q_device_available)
+    n_gens = length(surrogate_params.dynamic_devices)
     P_device = P_device_available ./ P_net .* P0
-    Q_device = Q_device_available ./ Q_net .* Q0
+    Q_remaining = Q0 - sum(Q_load)
+    Q_split = Q_remaining / n_gens
+    Q_device = vcat(Q_load, ones(n_gens) .* Q_split)
     ix = 1
     for s in surrogate_params.static_devices
         _match_operating_point(sys, P_device[ix], Q_device[ix], Vm0, θ0, s)
