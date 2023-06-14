@@ -29,6 +29,7 @@ function add_surrogate_perturbation!(
 )
     if PSY.get_component(PSY.DynamicBranch, sys, perturbation.branch_name) !== nothing
         dyn_branch = PSY.get_component(PSY.DynamicBranch, sys, perturbation.branch_name)
+        branch = dyn_branch.branch
         @error "removing this dynamic line in order to trip it", perturbation.branch_name
         PSY.remove_component!(sys, dyn_branch)
         PSY.add_component!(sys, branch)
