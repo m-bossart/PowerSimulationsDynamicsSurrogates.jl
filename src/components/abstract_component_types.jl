@@ -1,5 +1,5 @@
-abstract type LearnedDynamicsSurrogate <: PSY.DynamicInjection end 
-abstract type LearnedSolutionSurrogate <: PSY.StaticInjection end 
+abstract type LearnedDynamicsSurrogate <: PSY.DynamicInjection end
+abstract type LearnedSolutionSurrogate <: PSY.StaticInjection end
 
 abstract type SurrogateModelParams end
 

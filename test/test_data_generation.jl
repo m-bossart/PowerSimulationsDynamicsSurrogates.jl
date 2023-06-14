@@ -48,12 +48,14 @@
 
     Random.seed!(2)
     dataset = generate_surrogate_data(
-        TerminalData, 
+        TerminalData,
         sys,
         sys,
         perturbations,
         operating_points,
-        Dict{String, Dict{Symbol, Symbol}}("BUS 1 -> BUS 2" => Dict{Symbol, Symbol}(:direction => :in, :side => :from)),
+        Dict{String, Dict{Symbol, Symbol}}(
+            "BUS 1 -> BUS 2" => Dict{Symbol, Symbol}(:direction => :in, :side => :from),
+        ),
         GenerateDataParams(
             all_lines_dynamic = true,
             tstops = 0:0.001:1.0,
@@ -65,7 +67,7 @@
     p = generate_empty_plot(TerminalData)
     for d in dataset
         add_data_trace!(p, d)
-    end 
+    end
     display(p)
 end
 
@@ -108,8 +110,7 @@ end
                 V_amp = 0.01,
                 ω_amp = 0.01,
             ),
-        ],
-    ]
+        ],]
 
     #Define the ways to change the operating point of the system        
     operating_points = [
@@ -136,7 +137,9 @@ end
         sys,
         perturbations,
         operating_points,
-        Dict{String, Dict{Symbol, Symbol}}("InfBus" => Dict{Symbol, Symbol}(:direction => :in)),
+        Dict{String, Dict{Symbol, Symbol}}(
+            "InfBus" => Dict{Symbol, Symbol}(:direction => :in),
+        ),
         GenerateDataParams(
             all_lines_dynamic = true,
             tstops = 0:0.001:1.0,
@@ -148,7 +151,7 @@ end
     p = generate_empty_plot(TerminalData)
     for d in dataset
         add_data_trace!(p, d)
-    end 
+    end
     display(p)
 end
 
@@ -190,8 +193,7 @@ end
                 V_amp = 0.01,
                 ω_amp = 0.01,
             ),
-        ],
-    ]
+        ],]
 
     #Define the ways to change the operating point of the system        
     operating_points = [
@@ -230,7 +232,7 @@ end
     p = generate_empty_plot(FullSolutionData)
     for d in dataset
         add_data_trace!(p, d)
-    end 
+    end
     display(p)
 end
 
@@ -246,25 +248,24 @@ end
     end
     perturbations =
         Vector{Union{PowerSimulationsDynamics.Perturbation, SurrogatePerturbation}}[
-            #TODO - the post processing functions for the static source cannot capture the current when a change in source voltage is implemented
-            #Once this issue is solve in PSID we can confirm that the currents are the same for the VStep perturbation     
-            #https://github.com/NREL-SIIP/PowerSimulationsDynamics.jl/issues/269
-            #=         [
-                        VStep(source_name = "InfBus", t_step = 0.5, V_step = 1.0),
-                        VStep(source_name = "InfBus", t_step = 0.7, V_step = 0.95),
-                    ], =#
-            [
-                Chirp(
-                    source_name = "InfBus",
-                    ω1 = 2 * pi * 3,
-                    ω2 = 2 * pi * 3,
-                    tstart = 0.1,
-                    N = 0.5,
-                    V_amp = 0.01,
-                    ω_amp = 0.01,
-                ),
-            ],
-        ]
+        #TODO - the post processing functions for the static source cannot capture the current when a change in source voltage is implemented
+        #Once this issue is solve in PSID we can confirm that the currents are the same for the VStep perturbation     
+        #https://github.com/NREL-SIIP/PowerSimulationsDynamics.jl/issues/269
+        #=         [
+                    VStep(source_name = "InfBus", t_step = 0.5, V_step = 1.0),
+                    VStep(source_name = "InfBus", t_step = 0.7, V_step = 0.95),
+                ], =#
+        [
+            Chirp(
+                source_name = "InfBus",
+                ω1 = 2 * pi * 3,
+                ω2 = 2 * pi * 3,
+                tstart = 0.1,
+                N = 0.5,
+                V_amp = 0.01,
+                ω_amp = 0.01,
+            ),
+        ],]
 
     #Define the ways to change the operating point of the system        
     operating_points = [
@@ -275,7 +276,7 @@ end
 
     Random.seed!(2)
     dataset = generate_surrogate_data(
-        AllStatesData, 
+        AllStatesData,
         sys,
         sys,
         perturbations,
@@ -292,7 +293,7 @@ end
     p = generate_empty_plot(AllStatesData)
     for d in dataset
         add_data_trace!(p, d)
-    end 
+    end
     display(p)
 end
 
@@ -316,7 +317,7 @@ end
 
     sim = Simulation!(MassMatrixModel, sys, pwd(), (0.0, 1.0))
     ics = [PSID.get_initial_conditions(sim)]
-    
+
     Random.seed!(2)
     dataset = generate_surrogate_data(
         FullSolutionData,
@@ -334,6 +335,6 @@ end
     p = generate_empty_plot(FullSolutionData)
     for d in dataset
         add_data_trace!(p, d)
-    end 
+    end
     display(p)
 end

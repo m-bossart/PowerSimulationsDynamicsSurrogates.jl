@@ -124,8 +124,13 @@ function add_aggregate_model!(
         set_component_parameter_dictionary!(static_injector, dict_static)
         set_component_parameter_dictionary!(dynamic_injector, dict_dynamic)
 
-        bus_to_add =
-            collect(PowerSystems.get_components(x -> PSY.get_number(x) == bus_number, PSY.Bus, sys_add))[1]
+        bus_to_add = collect(
+            PowerSystems.get_components(
+                x -> PSY.get_number(x) == bus_number,
+                PSY.Bus,
+                sys_add,
+            ),
+        )[1]
 
         PowerSystems.set_bus!(static_injector, bus_to_add)
         PowerSystems.add_component!(sys_add, static_injector)
@@ -233,15 +238,17 @@ function set_component_parameter_dictionary!(
         _set_parameter!(inner_control, p, para_dict[p])
     end
 
-    outer_control_active =
-        PowerSystems.get_active_power_control(PowerSystems.get_outer_control(dynamic_inverter))
+    outer_control_active = PowerSystems.get_active_power_control(
+        PowerSystems.get_outer_control(dynamic_inverter),
+    )
     outer_control_active_params = get_component_parameters(outer_control_active)
     for p in outer_control_active_params
         _set_parameter!(outer_control_active, p, para_dict[p])
     end
 
-    outer_control_reactive =
-        PowerSystems.get_reactive_power_control(PowerSystems.get_outer_control(dynamic_inverter))
+    outer_control_reactive = PowerSystems.get_reactive_power_control(
+        PowerSystems.get_outer_control(dynamic_inverter),
+    )
     outer_control_reactive_params = get_component_parameters(outer_control_reactive)
     for p in outer_control_reactive_params
         _set_parameter!(outer_control_reactive, p, para_dict[p])
@@ -294,16 +301,18 @@ function get_component_parameter_dictionary(
         push!(d, p => val)
     end
 
-    outer_control_active =
-        PowerSystems.get_active_power_control(PowerSystems.get_outer_control(dynamic_inverter))
+    outer_control_active = PowerSystems.get_active_power_control(
+        PowerSystems.get_outer_control(dynamic_inverter),
+    )
     outer_control_active_params = get_component_parameters(outer_control_active)
     for p in outer_control_active_params
         val = get_parameter(outer_control_active, p)
         push!(d, p => val)
     end
 
-    outer_control_reactive =
-        PowerSystems.get_reactive_power_control(PowerSystems.get_outer_control(dynamic_inverter))
+    outer_control_reactive = PowerSystems.get_reactive_power_control(
+        PowerSystems.get_outer_control(dynamic_inverter),
+    )
     outer_control_reactive_params = get_component_parameters(outer_control_reactive)
     for p in outer_control_reactive_params
         val = get_parameter(outer_control_reactive, p)

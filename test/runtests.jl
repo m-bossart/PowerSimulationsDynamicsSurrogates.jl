@@ -14,13 +14,13 @@ const PSY = PowerSystems
 const PSID = PowerSimulationsDynamics
 const PSIDS = PowerSimulationsDynamicsSurrogates
 
-    #include data for tests
-    include("data_tests/data_utils.jl")
-    include("data_tests/dynamic_test_data.jl")
+#include data for tests
+include("data_tests/data_utils.jl")
+include("data_tests/dynamic_test_data.jl")
 
 logger = PSY.configure_logging(;
     console_level = Logging.Error,  # Logging.Error, Logging.Debug
-    file_level =  Logging.Error,
+    file_level = Logging.Error,
 )
 with_logger(logger) do
     #run tests
@@ -36,4 +36,3 @@ with_logger(logger) do
 end
 flush(logger)
 close(logger)
-

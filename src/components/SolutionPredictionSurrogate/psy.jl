@@ -64,13 +64,106 @@ mutable struct SolutionPredictionSurrogate <: LearnedSolutionSurrogate
     internal::IS.InfrastructureSystemsInternal
 end
 
-
-function SolutionPredictionSurrogate(name, available, bus, active_power, reactive_power, active_power_limits, reactive_power_limits, internal_voltage, internal_angle, nn_structure, nn_parameters, nn_type, length_cache, nn_features,  input_min, input_max, input_lims,  target_min, target_max,  target_lims,    services=PSY.Device[],  ext=Dict{String, Any}())
-    SolutionPredictionSurrogate(name, available, bus, active_power, reactive_power,  active_power_limits, reactive_power_limits, internal_voltage, internal_angle, nn_structure, nn_parameters, nn_type, length_cache, nn_features, input_min, input_max, input_lims,  target_min, target_max,  target_lims, services, ext,  IS.InfrastructureSystemsInternal(), )
+function SolutionPredictionSurrogate(
+    name,
+    available,
+    bus,
+    active_power,
+    reactive_power,
+    active_power_limits,
+    reactive_power_limits,
+    internal_voltage,
+    internal_angle,
+    nn_structure,
+    nn_parameters,
+    nn_type,
+    length_cache,
+    nn_features,
+    input_min,
+    input_max,
+    input_lims,
+    target_min,
+    target_max,
+    target_lims,
+    services = PSY.Device[],
+    ext = Dict{String, Any}(),
+)
+    SolutionPredictionSurrogate(
+        name,
+        available,
+        bus,
+        active_power,
+        reactive_power,
+        active_power_limits,
+        reactive_power_limits,
+        internal_voltage,
+        internal_angle,
+        nn_structure,
+        nn_parameters,
+        nn_type,
+        length_cache,
+        nn_features,
+        input_min,
+        input_max,
+        input_lims,
+        target_min,
+        target_max,
+        target_lims,
+        services,
+        ext,
+        IS.InfrastructureSystemsInternal(),
+    )
 end
 
-function SolutionPredictionSurrogate(;name, available, bus, active_power, reactive_power,   active_power_limits, reactive_power_limits, internal_voltage, internal_angle, nn_structure, nn_parameters,  nn_type, length_cache, nn_features, input_min, input_max, input_lims,  target_min, target_max,  target_lims,    services=PSY.Device[],  ext=Dict{String, Any}())
-    SolutionPredictionSurrogate(name, available, bus, active_power, reactive_power,   active_power_limits, reactive_power_limits,  internal_voltage, internal_angle, nn_structure, nn_parameters, nn_type, length_cache, nn_features, input_min, input_max, input_lims,  target_min, target_max,  target_lims, services, ext,  IS.InfrastructureSystemsInternal(), )
+function SolutionPredictionSurrogate(;
+    name,
+    available,
+    bus,
+    active_power,
+    reactive_power,
+    active_power_limits,
+    reactive_power_limits,
+    internal_voltage,
+    internal_angle,
+    nn_structure,
+    nn_parameters,
+    nn_type,
+    length_cache,
+    nn_features,
+    input_min,
+    input_max,
+    input_lims,
+    target_min,
+    target_max,
+    target_lims,
+    services = PSY.Device[],
+    ext = Dict{String, Any}(),
+)
+    SolutionPredictionSurrogate(
+        name,
+        available,
+        bus,
+        active_power,
+        reactive_power,
+        active_power_limits,
+        reactive_power_limits,
+        internal_voltage,
+        internal_angle,
+        nn_structure,
+        nn_parameters,
+        nn_type,
+        length_cache,
+        nn_features,
+        input_min,
+        input_max,
+        input_lims,
+        target_min,
+        target_max,
+        target_lims,
+        services,
+        ext,
+        IS.InfrastructureSystemsInternal(),
+    )
 end
 
 # Constructor for demo purposes; non-functional.
@@ -78,13 +171,13 @@ function SolutionPredictionSurrogate(::Nothing)
     SolutionPredictionSurrogate(;
         name = "init",
         available = false,
-        bus = PSY.Bus(nothing), 
-        active_power =0.0,
-        reactive_power = 0.0, 
-        active_power_limits = (min =0.0, max=1.0),
-        reactive_power_limits = (min =0.0, max=1.0),
+        bus = PSY.Bus(nothing),
+        active_power = 0.0,
+        reactive_power = 0.0,
+        active_power_limits = (min = 0.0, max = 1.0),
+        reactive_power_limits = (min = 0.0, max = 1.0),
         internal_voltage = 0.0,
-        internal_angle = 0.0, 
+        internal_angle = 0.0,
         nn_structure = [(0, 0, true, "init")],
         nn_parameters = [0],
         nn_type = :dense,
@@ -114,7 +207,8 @@ PSY.get_reactive_power(value::SolutionPredictionSurrogate) = value.reactive_powe
 """Get [`SolutionPredictionSurrogate`](@ref) `active_power_limits`."""
 PSY.get_active_power_limits(value::SolutionPredictionSurrogate) = value.active_power_limits
 """Get [`SolutionPredictionSurrogate`](@ref) `reactive_power_limits`."""
-PSY.get_reactive_power_limits(value::SolutionPredictionSurrogate) = value.reactive_power_limits
+PSY.get_reactive_power_limits(value::SolutionPredictionSurrogate) =
+    value.reactive_power_limits
 """Get [`SolutionPredictionSurrogate`](@ref) `internal_voltage`."""
 PSY.get_internal_voltage(value::SolutionPredictionSurrogate) = value.internal_voltage
 """Get [`SolutionPredictionSurrogate`](@ref) `internal_angle`."""
@@ -146,7 +240,6 @@ PSY.get_ext(value::SolutionPredictionSurrogate) = value.ext
 """Get [`SolutionPredictionSurrogate`](@ref) `internal`."""
 PSY.get_internal(value::SolutionPredictionSurrogate) = value.internal
 
-
 """Set [`SolutionPredictionSurrogate`](@ref) `available`."""
 PSY.set_available!(value::SolutionPredictionSurrogate, val) = value.available = val
 """Set [`SolutionPredictionSurrogate`](@ref) `bus`."""
@@ -154,18 +247,22 @@ PSY.set_bus!(value::SolutionPredictionSurrogate, val) = value.bus = val
 """Set [`SolutionPredictionSurrogate`](@ref) `active_power`."""
 PSY.set_active_power!(value::SolutionPredictionSurrogate, val) = value.active_power = val
 """Set [`SolutionPredictionSurrogate`](@ref) `reactive_power`."""
-PSY.set_reactive_power!(value::SolutionPredictionSurrogate, val) = value.reactive_power = val
+PSY.set_reactive_power!(value::SolutionPredictionSurrogate, val) =
+    value.reactive_power = val
 """Set [`SolutionPredictionSurrogate`](@ref) `active_power_limits`."""
-PSY.set_active_power_limits!(value::SolutionPredictionSurrogate, val) = value.active_power_limits = val
+PSY.set_active_power_limits!(value::SolutionPredictionSurrogate, val) =
+    value.active_power_limits = val
 """Set [`SolutionPredictionSurrogate`](@ref) `reactive_power_limits`."""
-PSY.set_reactive_power_limits!(value::SolutionPredictionSurrogate, val) = value.reactive_power_limits = val
+PSY.set_reactive_power_limits!(value::SolutionPredictionSurrogate, val) =
+    value.reactive_power_limits = val
 """Set [`SolutionPredictionSurrogate`](@ref) `internal_voltage`."""
-PSY.set_internal_voltage!(value::SolutionPredictionSurrogate, val) = value.internal_voltage = val
+PSY.set_internal_voltage!(value::SolutionPredictionSurrogate, val) =
+    value.internal_voltage = val
 """Set [`SolutionPredictionSurrogate`](@ref) `internal_angle`."""
-PSY.set_internal_angle!(value::SolutionPredictionSurrogate, val) = value.internal_angle = val
+PSY.set_internal_angle!(value::SolutionPredictionSurrogate, val) =
+    value.internal_angle = val
 """Set [`SolutionPredictionSurrogate`](@ref) `ext`."""
 PSY.set_ext!(value::SolutionPredictionSurrogate, val) = value.ext = val
 """Set [`SolutionPredictionSurrogate`](@ref) `initializer_parameters`."""
 set_nn_parameters!(value::SolutionPredictionSurrogate, val) =
     value.initializer_parameters = val
-

@@ -36,7 +36,7 @@ export set_ext!
 
 export get_component_parameters
 export set_parameter_relative!
-export set_parameter_absolute! 
+export set_parameter_absolute!
 export add_aggregate_model!
 export generate_empty_plot
 export add_data_trace!
@@ -68,7 +68,7 @@ export GenerationLoadScale
 export RandomOperatingPointXiao
 
 # SurrogateDatasets
-export SurrogateDataset 
+export SurrogateDataset
 export TerminalData
 export FullSolutionData
 export AllStatesData

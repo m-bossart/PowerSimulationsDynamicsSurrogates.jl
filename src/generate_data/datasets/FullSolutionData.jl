@@ -21,16 +21,9 @@ function FullSolutionData(;
     tstops = [],
     stable = false,
     solve_time = 0.0,
-    u = Vector{AbstractArray}(), 
+    u = Vector{AbstractArray}(),
 )
-    return FullSolutionData(
-        type,
-        tsteps,
-        tstops,
-        stable,
-        solve_time,
-        u,
-    )
+    return FullSolutionData(type, tsteps, tstops, stable, solve_time, u)
 end
 
 function fill_surrogate_data!(
@@ -46,7 +39,7 @@ function fill_surrogate_data!(
     data.u = results.solution.u[save_indices]
     data.stable = true
     data.solve_time = results.time_log[:timed_solve_time]
-end 
+end
 
 function EmptyTrainDataSet(T::Type{FullSolutionData})
     return FullSolutionData()
@@ -58,15 +51,11 @@ end
 
 function add_data_trace!(p, data::FullSolutionData; name = "")
     n_values = length(data.u[1])
-    for n in 1:n_values 
-        y =  [u[n] for u in data.u]
-    PlotlyJS.add_trace!(
-        p,
-        PlotlyJS.scatter(;
-            x = data.tsteps,
-            y = y,
-            title = "All values together",
-        ),
-    )
-    end 
+    for n in 1:n_values
+        y = [u[n] for u in data.u]
+        PlotlyJS.add_trace!(
+            p,
+            PlotlyJS.scatter(; x = data.tsteps, y = y, title = "All values together"),
+        )
+    end
 end

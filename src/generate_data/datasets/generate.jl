@@ -39,6 +39,7 @@ end
 """
     function generate_surrogate_data(
         sys_main::PSY.System,
+        sys_aux::PSY.System, 
         ics::Vector{Vector{Float64}},
         data_params::D,
         data_collection_params::GenerateDataParams,
@@ -53,15 +54,17 @@ This function creates a new deepcopy of `sys_main` for each initial condition an
 - `dataset_aux` - An auxiliary dataset. If provided, is passed to `fill_surrogate_data!`. One possible use of this fucntionality it to avoid re-running unstable cases.  
 - `surrogate_params` - Parameters of a surrogate model. Passed in order to match up the operating point appropriately. 
 """
- function generate_surrogate_data(
+function generate_surrogate_data(
     dataset_type::Type{T},
     sys_main::PSY.System,
+    sys_aux::PSY.System,
     ics::Vector{Vector{Float64}},
+    operating_points::Vector{O},
     device_details::Dict{String, Dict{Symbol, Symbol}},
     data_collection_params::GenerateDataParams;
     dataset_aux = nothing,
     surrogate_params = nothing,
-)  where { T <: SurrogateDataset}
+) where {O <: SurrogateOperatingPoint, T <: SurrogateDataset}
     Random.seed!(data_collection_params.seed)
     train_data = dataset_type[]
     ########################################################################################
@@ -69,9 +72,13 @@ This function creates a new deepcopy of `sys_main` for each initial condition an
     #all code and avoid including in timing.
     ########################################################################################
     sys = deepcopy(sys_main)
+    update_operating_point!(sys, operating_points[1], sys_aux)
     dummy_data = EmptyTrainDataSet(dataset_type)
     sim_full = _build_run_simulation_initial_conditions(sys, data_collection_params, ics[1])
-    @assert issubset(data_collection_params.tsave, union(data_collection_params.tstops, sim_full.tstops))
+    @assert issubset(
+        data_collection_params.tsave,
+        union(data_collection_params.tstops, sim_full.tstops),
+    )
     if sim_full.status == PSID.SIMULATION_FINALIZED
         results = PSID.read_results(sim_full)
         if length(data_collection_params.tsave) == 0
@@ -82,41 +89,48 @@ This function creates a new deepcopy of `sys_main` for each initial condition an
         fill_surrogate_data!(
             dummy_data,
             device_details,
-            data_collection_params, 
+            data_collection_params,
             sim_full,
             results,
             save_indices,
         )
-    end 
+    end
     ########################################################################################
     ########################################################################################
-    for ic in ics
+    @assert length(operating_points) == length(ics)
+    for (ix, ic) in enumerate(ics)
         sys = deepcopy(sys_main)
+        update_operating_point!(sys, operating_points[ix], sys_aux)
         #PowerFlows.run_powerflow!(sys)
         data = EmptyTrainDataSet(dataset_type)
         sim_full = _build_run_simulation_initial_conditions(sys, data_collection_params, ic)
-        @assert issubset(data_collection_params.tsave, union(data_collection_params.tstops, sim_full.tstops))
+        @assert issubset(
+            data_collection_params.tsave,
+            union(data_collection_params.tstops, sim_full.tstops),
+        )
         if sim_full.status == PSID.SIMULATION_FINALIZED
             results = PSID.read_results(sim_full)
             if length(data_collection_params.tsave) == 0
                 save_indices = 1:length(unique(results.solution.t))
             else
-                save_indices = indexin(data_collection_params.tsave, unique(results.solution.t))
+                save_indices =
+                    indexin(data_collection_params.tsave, unique(results.solution.t))
             end
             fill_surrogate_data!(
                 data,
                 device_details,
-                data_collection_params, 
+                data_collection_params,
                 sim_full,
                 results,
                 save_indices,
             )
-        end 
+            @show PSY.get_internal_voltage(collect(PSY.get_components(PSY.Source, sys))[1])
+            @show PSY.get_internal_angle(collect(PSY.get_components(PSY.Source, sys))[1])
+        end
         push!(train_data, data)
     end
     return train_data
- end 
-
+end
 
 """
     function generate_surrogate_data(
@@ -166,8 +180,12 @@ function generate_surrogate_data(
     if dataset_aux !== nothing
         match_operating_point(sys, dataset_aux[1], surrogate_params)    #TODO - not tested
     end
-    sim_full = _build_run_simulation_perturbations(sys, data_collection_params, psid_perturbations)
-    @assert issubset(data_collection_params.tsave, union(data_collection_params.tstops, sim_full.tstops))
+    sim_full =
+        _build_run_simulation_perturbations(sys, data_collection_params, psid_perturbations)
+    @assert issubset(
+        data_collection_params.tsave,
+        union(data_collection_params.tstops, sim_full.tstops),
+    )
     if sim_full.status == PSID.SIMULATION_FINALIZED
         results = PSID.read_results(sim_full)
         if length(data_collection_params.tsave) == 0
@@ -178,12 +196,12 @@ function generate_surrogate_data(
         fill_surrogate_data!(
             dummy_data,
             device_details,
-            data_collection_params, 
+            data_collection_params,
             sim_full,
             results,
             save_indices,
         )
-    end 
+    end
     ########################################################################################
     ########################################################################################
 
@@ -197,38 +215,45 @@ function generate_surrogate_data(
             end
             data = EmptyTrainDataSet(dataset_type)
             if dataset_aux !== nothing
-                match_operating_point(sys, dataset_aux[(ix_o -1) * size(perturbations)[1] + ix_p], surrogate_params)    #TODO - not tested
+                match_operating_point(
+                    sys,
+                    dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p],
+                    surrogate_params,
+                )    #TODO - not tested
             end
-            sim_full = _build_run_simulation_perturbations(sys, data_collection_params, psid_perturbations)
-            @assert issubset(data_collection_params.tsave, union(data_collection_params.tstops, sim_full.tstops))
+            sim_full = _build_run_simulation_perturbations(
+                sys,
+                data_collection_params,
+                psid_perturbations,
+            )
+            @assert issubset(
+                data_collection_params.tsave,
+                union(data_collection_params.tstops, sim_full.tstops),
+            )
             if sim_full.status == PSID.SIMULATION_FINALIZED
                 results = PSID.read_results(sim_full)
                 if length(data_collection_params.tsave) == 0
                     save_indices = 1:length(unique(results.solution.t))
                 else
-                    save_indices = indexin(data_collection_params.tsave, unique(results.solution.t))
+                    save_indices =
+                        indexin(data_collection_params.tsave, unique(results.solution.t))
                 end
                 fill_surrogate_data!(
                     data,
                     device_details,
-                    data_collection_params, 
+                    data_collection_params,
                     sim_full,
                     results,
                     save_indices,
                 )
-            end 
+            end
             push!(train_data, data)
         end
     end
     return train_data
 end
 
-
-function _build_run_simulation_perturbations(
-    sys,
-    data_collection,
-    psid_perturbations,
-)
+function _build_run_simulation_perturbations(sys, data_collection, psid_perturbations)
     tspan = data_collection.tspan
     solver = instantiate_solver(data_collection)
     abstol = data_collection.solver_tols.abstol
@@ -266,14 +291,10 @@ function _build_run_simulation_perturbations(
         reset_simulation = false,
         enable_progress_bar = false,
     )
-    return sim_full 
-end 
+    return sim_full
+end
 
-function _build_run_simulation_initial_conditions(
-    sys,
-    data_collection,
-    initial_conditions,
-)
+function _build_run_simulation_initial_conditions(sys, data_collection, initial_conditions)
     tspan = data_collection.tspan
     solver = instantiate_solver(data_collection)
     abstol = data_collection.solver_tols.abstol
@@ -315,9 +336,8 @@ function _build_run_simulation_initial_conditions(
         reset_simulation = false,
         enable_progress_bar = false,
     )
-    return sim_full 
-
-end 
+    return sim_full
+end
 
 function fill_surrogate_data!(
     data,

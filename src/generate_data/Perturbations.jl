@@ -19,6 +19,29 @@ function add_surrogate_perturbation!(
     push!(psid_perturbations, perturbation)
 end
 
+# Cannot trip a dynamic line in PSID - can remove this special case once this feature is added. 
+# This workaround will not work for simulation with multiple perturbations
+function add_surrogate_perturbation!(
+    sys::PSY.System,
+    psid_perturbations,
+    perturbation::PSID.BranchTrip,
+    sys_aux::PSY.System,
+)
+    if PSY.get_component(PSY.DynamicBranch, sys, perturbation.branch_name) !== nothing
+        dyn_branch = PSY.get_component(PSY.DynamicBranch, sys, perturbation.branch_name)
+        @error "removing this dynamic line", perturbation.branch_name
+        @show dyn_branch
+        @show fieldnames(typeof(dyn_branch))
+        branch = PSY.get_branch(dyn_branch)
+        @show branch
+
+        PSY.remove_component!(sys, dyn_branch)
+        PSY.add_component!(sys, branch)
+        display(sys)
+    end
+    push!(psid_perturbations, perturbation)
+end
+
 ###############################################################################
 ################################## PVS ########################################
 ###############################################################################

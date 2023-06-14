@@ -238,4 +238,3 @@ function get_SteadyStateNODEObs_states(dim_r::Int64)
     end
     return states, dim_r
 end
-

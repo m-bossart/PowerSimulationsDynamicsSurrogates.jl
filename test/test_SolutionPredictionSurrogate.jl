@@ -24,39 +24,34 @@ end
     b = collect(get_components(x -> get_number(x) == 102, Bus, sys))[1]
     s = SolutionPredictionSurrogate(
         name = "test",
-        available = true, 
-        bus = b, 
+        available = true,
+        bus = b,
         active_power = 0.0,
         reactive_power = 0.0,
         active_power_limits = (min = 0.0, max = 1.0),
         reactive_power_limits = (min = 0.0, max = 1.0),
         internal_voltage = 1.0,
         internal_angle = 0.0,
-        nn_structure = [(8,2,false,"tanh")], 
+        nn_structure = [(8, 2, false, "tanh")],
         nn_parameters = zeros(16),
-        nn_type = :dense, 
-        length_cache = 1, 
-        nn_features = :direct, 
+        nn_type = :dense,
+        length_cache = 1,
+        nn_features = :direct,
         input_min = -1 .* ones(8),
         input_max = ones(8),
-        input_lims = (-1.0, 1.0), 
+        input_lims = (-1.0, 1.0),
         target_min = -1 .* ones(2),
         target_max = ones(2),
-        target_lims = (-1.0, 1.0), 
+        target_lims = (-1.0, 1.0),
     )
     PowerFlows.run_powerflow(sys)["bus_results"]
     add_component!(sys, s)
     tspan = (0.0, 1.0)
-    sim = Simulation!(
-        ResidualModel,
-        sys,
-        pwd(),
-        tspan,
-    )
+    sim = Simulation!(ResidualModel, sys, pwd(), tspan)
     @test sim.status == PSID.BUILT
     @test execute!(sim, IDA()) == PSID.SIMULATION_FINALIZED
     results = read_results(sim)
-end 
+end
 
 @testset "Add callbacks for caching values" begin
     tspan = (0.0, 1.0)
@@ -73,44 +68,38 @@ end
     b = collect(get_components(x -> get_number(x) == 102, Bus, sys))[1]
     s = SolutionPredictionSurrogate(
         name = "test",
-        available = true, 
-        bus = b, 
+        available = true,
+        bus = b,
         active_power = 0.0,
         reactive_power = 0.0,
         active_power_limits = (min = 0.0, max = 1.0),
         reactive_power_limits = (min = 0.0, max = 1.0),
         internal_voltage = 1.0,
         internal_angle = 0.0,
-        nn_structure = [(13,2,false,"tanh")], 
+        nn_structure = [(13, 2, false, "tanh")],
         nn_parameters = zeros(26),
-        nn_type = :dense, 
-        length_cache = 2, 
-        nn_features = :direct, 
+        nn_type = :dense,
+        length_cache = 2,
+        nn_features = :direct,
         input_min = -1 .* ones(13),
         input_max = ones(13),
-        input_lims = (-1.0, 1.0), 
+        input_lims = (-1.0, 1.0),
         target_min = -1 .* ones(2),
         target_max = ones(2),
-        target_lims = (-1.0, 1.0), 
+        target_lims = (-1.0, 1.0),
     )
     PowerFlows.run_powerflow(sys)["bus_results"]
     add_component!(sys, s)
     cbs = PSID.Perturbation[]
-    for s in PSY.get_components( SolutionPredictionSurrogate, sys)
-        push!(cbs, SolutionSurrogateCacheValues(s))  
-    end 
+    for s in PSY.get_components(SolutionPredictionSurrogate, sys)
+        push!(cbs, SolutionSurrogateCacheValues(s))
+    end
     tspan = (0.0, 1.0)
-    sim = Simulation!(
-        ResidualModel,
-        sys,
-        pwd(),
-        tspan,
-        cbs,
-    )
+    sim = Simulation!(ResidualModel, sys, pwd(), tspan, cbs)
     @test sim.status == PSID.BUILT
     @test execute!(sim, IDA()) == PSID.SIMULATION_FINALIZED
     results = read_results(sim)
-end 
+end
 
 @testset "Time performance hit" begin
     tspan = (0.0, 1.0)
@@ -118,15 +107,9 @@ end
     tsteps = tspan[1]:tstep:tspan[2]
     Random.seed!(1234)
     sys = System("test/data_tests/144Bus.json")
-    gentrip =  GeneratorTrip(0.1,  get_component(DynamicInjection,sys , "GFM_Battery_2"))
+    gentrip = GeneratorTrip(0.1, get_component(DynamicInjection, sys, "GFM_Battery_2"))
     tspan = (0.0, 1.0)
-    sim = Simulation!(
-        ResidualModel,
-        sys,
-        pwd(),
-        tspan,
-        gentrip,
-    )
+    sim = Simulation!(ResidualModel, sys, pwd(), tspan, gentrip)
     @test sim.status == PSID.BUILT
     @test execute!(sim, IDA()) == PSID.SIMULATION_FINALIZED
     results_no_surrogates = read_results(sim)
@@ -134,42 +117,36 @@ end
 
     for b in get_components(x -> PSY.get_bustype(x) == BusTypes.PV, PSY.Bus, sys)
         s = SolutionPredictionSurrogate(
-            name = string("test", PSY.get_name(b)), 
-            available = true, 
-            bus = b, 
+            name = string("test", PSY.get_name(b)),
+            available = true,
+            bus = b,
             active_power = 0.0,
             reactive_power = 0.0,
             active_power_limits = (min = 0.0, max = 1.0),
             reactive_power_limits = (min = 0.0, max = 1.0),
             internal_voltage = 1.0,
             internal_angle = 0.0,
-            nn_structure = [(13,2,false,"tanh")],   #Make this a more realistic size NN 
+            nn_structure = [(13, 2, false, "tanh")],   #Make this a more realistic size NN 
             nn_parameters = zeros(26),
-            nn_type = :dense, 
+            nn_type = :dense,
             length_cache = 2,                       #Make the length of cache 
-            nn_features = :direct, 
+            nn_features = :direct,
             input_min = -1 .* ones(13),
             input_max = ones(13),
-            input_lims = (-1.0, 1.0), 
+            input_lims = (-1.0, 1.0),
             target_min = -1 .* ones(2),
             target_max = ones(2),
-            target_lims = (-1.0, 1.0), 
+            target_lims = (-1.0, 1.0),
         )
         add_component!(sys, s)
-    end 
+    end
     display(sys)
     cbs = PSID.Perturbation[]
-    for s in PSY.get_components( SolutionPredictionSurrogate, sys)
-        push!(cbs, SolutionSurrogateCacheValues(s))  
-    end 
+    for s in PSY.get_components(SolutionPredictionSurrogate, sys)
+        push!(cbs, SolutionSurrogateCacheValues(s))
+    end
     push!(cbs, gentrip)
-    sim = Simulation!(
-        ResidualModel,
-        sys,
-        pwd(),
-        tspan,
-        cbs,
-    )
+    sim = Simulation!(ResidualModel, sys, pwd(), tspan, cbs)
     @test sim.status == PSID.BUILT
     @test execute!(sim, IDA()) == PSID.SIMULATION_FINALIZED
     results_surrogates = read_results(sim)
@@ -180,17 +157,16 @@ end
     #p = plot(get_voltage_magnitude_series(results_no_surrogates, 2), label ="no surrogates")
     #plot!(p, get_voltage_magnitude_series(results_surrogates, 2), label ="surrogates")
     #display(p)
-end 
-
+end
 
 #Goals:Friday
 #2) Write a performance test. Time a medium size system without any surrogates. Add a bunch of surrogates all over the place which output zero.
-    #Compare tstops for the two simulations (should be the same)
-    #Compare the run time (hopefully not to big of a performance hit)
+#Compare tstops for the two simulations (should be the same)
+#Compare the run time (hopefully not to big of a performance hit)
 
 # With random parameterization, see if we can build and execute a simulation.
 # Somehow we want to check that the caching of prior values is correct... 
-    
+
 #= @testset "Build Simulation with SolutionPredictionSurrogate" begin
     Random.seed!(1234)
     sys = System("test/data_tests/ThreeBus.raw")
