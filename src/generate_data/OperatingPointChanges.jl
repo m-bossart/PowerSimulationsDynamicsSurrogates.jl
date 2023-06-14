@@ -10,6 +10,77 @@ function update_operating_point!(
 end
 
 ###############################################################################
+############################## DoNothing ######################################
+###############################################################################
+
+struct DoNothing <: SurrogateOperatingPoint
+    type::String
+end
+
+function DoNothing(; type = "DoNothing")
+    DoNothing(type)
+end
+
+function update_operating_point!(sys::PSY.System, condition::DoNothing, sys_aux::PSY.System)
+    return
+end
+
+###############################################################################
+############################## SetStandardLoad ################################
+###############################################################################
+
+struct SetStandardLoad <: SurrogateOperatingPoint
+    type::String
+    load_name::String
+    constant_active_power::Float64
+    constant_reactive_power::Float64
+    impedance_active_power::Float64
+    impedance_reactive_power::Float64
+    current_active_power::Float64
+    current_reactive_power::Float64
+end
+
+function SetStandardLoad(;
+    type = "SetStandardLoad",
+    load_name = "test-load",
+    constant_active_power = 0.0,
+    constant_reactive_power = 0.0,
+    impedance_active_power = 0.0,
+    impedance_reactive_power = 0.0,
+    current_active_power = 0.0,
+    current_reactive_power = 0.0,
+)
+    SetStandardLoad(
+        type,
+        load_name,
+        constant_active_power,
+        constant_reactive_power,
+        impedance_active_power,
+        impedance_reactive_power,
+        current_active_power,
+        current_reactive_power,
+    )
+end
+
+function update_operating_point!(
+    sys::PSY.System,
+    condition::SetStandardLoad,
+    sys_aux::PSY.System,
+)
+    load = PSY.get_component(PSY.StandardLoad, sys, condition.load_name)
+    if load === nothing
+        @error "Load not found for SetStandardLoad operating point change"
+    end
+    PSY.set_constant_active_power!(load, condition.constant_active_power)
+    PSY.set_constant_reactive_power!(load, condition.constant_reactive_power)
+    PSY.set_impedance_active_power!(load, condition.impedance_active_power)
+    PSY.set_impedance_reactive_power!(load, condition.impedance_reactive_power)
+    PSY.set_current_active_power!(load, condition.current_active_power)
+    PSY.set_current_reactive_power!(load, condition.current_reactive_power)
+    return
+end
+
+###############################################################################
 ############################## ScaleSource ####################################
 ###############################################################################
 
