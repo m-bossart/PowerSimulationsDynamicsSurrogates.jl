@@ -26,6 +26,45 @@ function update_operating_point!(sys::PSY.System, condition::DoNothing, sys_aux:
 end
 
 ###############################################################################
+############################## SetVoltageSource ###############################
+###############################################################################
+
+struct SetVoltageSource <: SurrogateOperatingPoint
+    type::String
+    source_name::String
+    internal_voltage::Float64
+    internal_angle::Float64
+end
+
+function SetVoltageSource(;
+    type = "SetVoltageSource",
+    source_name = "test-load",
+    internal_voltage = 0.0,
+    internal_angle = 0.0,
+)
+    SetVoltageSource(
+        type,
+        source_name,
+        internal_voltage,
+        internal_angle,
+    )
+end
+
+function update_operating_point!(
+    sys::PSY.System,
+    condition::SetVoltageSource,
+    sys_aux::PSY.System,
+)
+    source = PSY.get_component(PSY.Source, sys, condition.source_name)
+    if source === nothing
+        @error "Source not found for SetVoltageSource operating point change"
+    end
+    PSY.set_internal_voltage!(source, condition.internal_voltage)
+    PSY.set_internal_angle!(source, condition.internal_angle)
+    return
+end
+
+###############################################################################
 ############################## SetStandardLoad ################################
 ###############################################################################
 
