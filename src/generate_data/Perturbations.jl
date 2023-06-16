@@ -39,6 +39,41 @@ function add_surrogate_perturbation!(
 end
 
 ###############################################################################
+################################## BranchTrip #################################
+###############################################################################
+
+struct BranchTrip <: SurrogatePerturbation
+    type::String
+    time::Float64
+    branch_type::Type{<:PSY.ACBranch}
+    branch_name::String
+end
+
+function BranchTrip(;
+    type = "BranchTrip",
+    time = 0.0,
+    branch_type = PSY.Line,
+    branch_name = "",
+)
+    BranchTrip(
+        type,
+        time,
+        branch_type,
+        branch_name,
+    )
+end
+
+function add_surrogate_perturbation!(
+    sys::PSY.System,
+    psid_perturbations,
+    perturbation::BranchTrip,
+    sys_aux::PSY.System,
+)
+    perturbation = PSID.BranchTrip(perturbation.time, perturbation.branch_type, perturbation.branch_name)
+    push!(psid_perturbations, perturbation) 
+end
+
+###############################################################################
 ################################## PVS ########################################
 ###############################################################################
 
