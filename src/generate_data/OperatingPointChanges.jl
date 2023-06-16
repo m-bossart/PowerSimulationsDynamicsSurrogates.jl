@@ -10,6 +10,25 @@ function update_operating_point!(
 end
 
 ###############################################################################
+############################## FunctionCall ######################################
+###############################################################################
+
+struct FunctionCall <: SurrogateOperatingPoint
+    type::String
+    f
+end
+
+function FunctionCall(; type = "FunctionCall", f = (sys, sys_aux) -> ())
+    FunctionCall(type, f)
+end
+
+function update_operating_point!(sys::PSY.System, condition::FunctionCall, sys_aux::PSY.System)
+    condition.f(sys, sys_aux)
+    return
+end
+
+
+###############################################################################
 ############################## DoNothing ######################################
 ###############################################################################
 
