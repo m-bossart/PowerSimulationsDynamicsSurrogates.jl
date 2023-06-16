@@ -260,7 +260,7 @@ function _build_run_simulation_perturbations(sys, data_collection, psid_perturba
     reltol = data_collection.solver_tols.reltol
 
     if data_collection.formulation == "MassMatrix"
-        sim_full = PSID.Simulation(
+        sim_full = PSID.Simulation!(
             PSID.MassMatrixModel,
             sys,
             pwd(),
@@ -270,7 +270,7 @@ function _build_run_simulation_perturbations(sys, data_collection, psid_perturba
             all_lines_dynamic = data_collection.all_lines_dynamic,
         )
     elseif data_collection.formulation == "Residual"
-        sim_full = PSID.Simulation(
+        sim_full = PSID.Simulation!(
             PSID.ResidualModel,
             sys,
             pwd(),
