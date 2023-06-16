@@ -42,34 +42,31 @@ end
 ################################## BranchTrip #################################
 ###############################################################################
 
-struct BranchTrip <: SurrogatePerturbation
+struct LineTrip <: SurrogatePerturbation
     type::String
     time::Float64
-    branch_type::Type{<:PSY.ACBranch}
-    branch_name::String
+    line_name::String
 end
 
-function BranchTrip(;
-    type = "BranchTrip",
+function LineTrip(;
+    type = "LineTrip",
     time = 0.0,
-    branch_type = PSY.Line,
-    branch_name = "",
+    line_name = "",
 )
-    BranchTrip(
+    LineTrip(
         type,
         time,
-        branch_type,
-        branch_name,
+        line_name,
     )
 end
 
 function add_surrogate_perturbation!(
     sys::PSY.System,
     psid_perturbations,
-    perturbation::BranchTrip,
+    perturbation::LineTrip,
     sys_aux::PSY.System,
 )
-    perturbation = PSID.BranchTrip(perturbation.time, perturbation.branch_type, perturbation.branch_name)
+    perturbation = PSID.BranchTrip(perturbation.time, PSY.Line, perturbation.line_name)
     push!(psid_perturbations, perturbation) 
 end
 

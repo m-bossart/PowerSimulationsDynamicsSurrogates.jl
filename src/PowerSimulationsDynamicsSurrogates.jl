@@ -45,7 +45,7 @@ export MultiDeviceLineParams
 
 #export SurrogatePerturbations generation exports 
 export SurrogatePerturbation
-export BranchTrip
+export LineTrip
 export PVS
 export Chirp
 export VStep
