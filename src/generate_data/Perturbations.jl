@@ -66,7 +66,7 @@ function add_surrogate_perturbation!(
     perturbation::LineTrip,
     sys_aux::PSY.System,
 )
-    perturbation = PSID.BranchTrip(perturbation.time, PSY.Line, perturbation.line_name)
+    psid_perturbation = PSID.BranchTrip(perturbation.time, PSY.Line, perturbation.line_name)
     if PSY.get_component(PSY.DynamicBranch, sys, perturbation.line_name) !== nothing
         dyn_branch = PSY.get_component(PSY.DynamicBranch, sys, perturbation.line_name)
         branch = dyn_branch.branch
@@ -74,7 +74,7 @@ function add_surrogate_perturbation!(
         PSY.remove_component!(sys, dyn_branch)
         PSY.add_component!(sys, branch)
     end
-    push!(psid_perturbations, perturbation) 
+    push!(psid_perturbations, psid_perturbation) 
 end
 
 ###############################################################################
