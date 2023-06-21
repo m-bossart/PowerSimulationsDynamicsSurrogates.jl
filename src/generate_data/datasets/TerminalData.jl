@@ -171,6 +171,9 @@ function _fill_terminal_data!(
         PSID.get_voltage_angle_series(results, bus_number_voltage_measurement)[2][save_indices]
     data_dict[:vr] = V .* cos.(θ)
     data_dict[:vi] = V .* sin.(θ)
+    data_dict[:p] = data_dict[:vr] .*  data_dict[:ir] .- data_dict[:vi] .*  data_dict[:ii] 
+    data_dict[:q] = data_dict[:vr] .*  data_dict[:ii] .+ data_dict[:vi] .*  data_dict[:ir] 
+
     terminal_data_dict[device_name] = data_dict
 end
 
