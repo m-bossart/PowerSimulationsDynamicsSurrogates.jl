@@ -335,13 +335,14 @@ end
 
 function generate_empty_plot(T::Type{TerminalData})
     p = PlotlyJS.make_subplots(
-        rows = 2,
-        cols = 3,
+        rows = 3,
+        cols = 4,
         specs = [
-            PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec()
-            PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec()
+            PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec()
+            PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec()
+            PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec()
         ],
-        subplot_titles = ["Real Voltage (p.u.)" "Imag Voltage (p.u.)" "Real Power" "Real Current (p.u.)" "Imag Current (p.u.)" "Reactive Power"],
+        subplot_titles = ["vr" "vi" "ir" "ii" "vd" "vq"  "P" "Q"  "id" "iq" "im" "iθ"],
         vertical_spacing = 0.1,
     )
     return p
@@ -355,6 +356,14 @@ function add_data_trace!(p, data::TerminalData; name = "")
         Ii = device_data_dict[:ii]
         P = device_data_dict[:p]
         Q = device_data_dict[:q]
+        θ = atan.(Vi, Vr)
+        Vd = sin.(θ) .* Vr - cos.(θ) .* Vi
+        Vq = cos.(θ) .* Vr + sin.(θ) .* Vi
+        Id = sin.(θ) .* Ir - cos.(θ) .* Ii
+        Iq = cos.(θ) .* Ir + sin.(θ) .* Ii
+        Iθ = tan.(Id ./ Iq)
+        Im = sqrt.(Id .^ 2 .+ Iq .^2) 
+
         PlotlyJS.add_trace!(
             p,
             PlotlyJS.scatter(; x = data.tsteps, y = Vr, name = string(device_name, name)),
@@ -369,28 +378,67 @@ function add_data_trace!(p, data::TerminalData; name = "")
         )
         PlotlyJS.add_trace!(
             p,
-            PlotlyJS.scatter(; x = data.tsteps, y = P, name = string(device_name, name)),
+            PlotlyJS.scatter(; x = data.tsteps, y = Ir, name = string(device_name, name)),
             row = 1,
             col = 3,
         )
         PlotlyJS.add_trace!(
             p,
-            PlotlyJS.scatter(; x = data.tsteps, y = Ir, name = string(device_name, name)),
+            PlotlyJS.scatter(; x = data.tsteps, y = Ii, name = string(device_name, name)),
+            row = 1,
+            col = 4,
+        )
+
+        PlotlyJS.add_trace!(
+            p,
+            PlotlyJS.scatter(; x = data.tsteps, y = Vd, name = string(device_name, name)),
             row = 2,
             col = 1,
         )
         PlotlyJS.add_trace!(
             p,
-            PlotlyJS.scatter(; x = data.tsteps, y = Ii, name = string(device_name, name)),
+            PlotlyJS.scatter(; x = data.tsteps, y = Vq, name = string(device_name, name)),
             row = 2,
             col = 2,
         )
         PlotlyJS.add_trace!(
             p,
-            PlotlyJS.scatter(; x = data.tsteps, y = Q, name = string(device_name, name)),
+            PlotlyJS.scatter(; x = data.tsteps, y = P, name = string(device_name, name)),
             row = 2,
             col = 3,
         )
+        PlotlyJS.add_trace!(
+            p,
+            PlotlyJS.scatter(; x = data.tsteps, y = Q, name = string(device_name, name)),
+            row = 2,
+            col = 4,
+        )
+
+        PlotlyJS.add_trace!(
+            p,
+            PlotlyJS.scatter(; x = data.tsteps, y = Id, name = string(device_name, name)),
+            row = 3,
+            col = 1,
+        )
+        PlotlyJS.add_trace!(
+            p,
+            PlotlyJS.scatter(; x = data.tsteps, y = Iq, name = string(device_name, name)),
+            row = 3,
+            col = 2,
+        )
+        PlotlyJS.add_trace!(
+            p,
+            PlotlyJS.scatter(; x = data.tsteps, y = Im, name = string(device_name, name)),
+            row = 3,
+            col = 3,
+        )
+        PlotlyJS.add_trace!(
+            p,
+            PlotlyJS.scatter(; x = data.tsteps, y = Iθ, name = string(device_name, name)),
+            row = 3,
+            col = 4,
+        )
+
     end
     return p
 end
