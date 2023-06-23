@@ -263,7 +263,7 @@ function _build_run_simulation_perturbations(sys, data_collection, psid_perturba
     reltol = data_collection.solver_tols.reltol
 
     if data_collection.formulation == "MassMatrix"
-        if data_colleciton.frequency_reference == "ReferenceBus"
+        if data_collection.frequency_reference == "ReferenceBus"
             sim_full = PSID.Simulation!(
                 PSID.MassMatrixModel,
                 sys,
@@ -274,7 +274,7 @@ function _build_run_simulation_perturbations(sys, data_collection, psid_perturba
                 all_lines_dynamic = data_collection.all_lines_dynamic,
                 frequency_reference = PSID.ReferenceBus(),
             )
-        elseif data_colleciton.frequency_reference == "ConstantFrequency"
+        elseif data_collection.frequency_reference == "ConstantFrequency"
             sim_full = PSID.Simulation!(
                 PSID.MassMatrixModel,
                 sys,
@@ -287,7 +287,7 @@ function _build_run_simulation_perturbations(sys, data_collection, psid_perturba
             )
         end 
     elseif data_collection.formulation == "Residual"
-        if data_colleciton.frequency_reference == "ReferenceBus"
+        if data_collection.frequency_reference == "ReferenceBus"
             sim_full = PSID.Simulation!(
                 PSID.ResidualModel,
                 sys,
@@ -298,7 +298,7 @@ function _build_run_simulation_perturbations(sys, data_collection, psid_perturba
                 all_lines_dynamic = data_collection.all_lines_dynamic,
                 frequency_reference = PSID.ReferenceBus(),
             )
-        elseif data_colleciton.frequency_reference == "ConstantFrequency"
+        elseif data_collection.frequency_reference == "ConstantFrequency"
             sim_full = PSID.Simulation!(
                 PSID.ResidualModel,
                 sys,
@@ -332,7 +332,7 @@ function _build_run_simulation_initial_conditions(sys, data_collection, initial_
     reltol = data_collection.solver_tols.reltol
 
     if data_collection.formulation == "MassMatrix"
-        if data_colleciton.frequency_reference == "ReferenceBus"
+        if data_collection.frequency_reference == "ReferenceBus"
             sim_full = PSID.Simulation!(
                 PSID.MassMatrixModel,
                 sys,
@@ -344,7 +344,7 @@ function _build_run_simulation_initial_conditions(sys, data_collection, initial_
                 all_lines_dynamic = data_collection.all_lines_dynamic,
                 frequency_reference = PSID.ReferenceBus(),
             )
-        elseif data_colleciton.frequency_reference == "ConstantFrequency"
+        elseif data_collection.frequency_reference == "ConstantFrequency"
             sim_full = PSID.Simulation!(
                 PSID.MassMatrixModel,
                 sys,
@@ -358,7 +358,7 @@ function _build_run_simulation_initial_conditions(sys, data_collection, initial_
             )
         end 
     elseif data_collection.formulation == "Residual"
-        if data_colleciton.frequency_reference == "ReferenceBus"
+        if data_collection.frequency_reference == "ReferenceBus"
             sim_full = PSID.Simulation!(
                 PSID.ResidualModel,
                 sys,
@@ -370,7 +370,7 @@ function _build_run_simulation_initial_conditions(sys, data_collection, initial_
                 all_lines_dynamic = data_collection.all_lines_dynamic,
                 frequency_reference = PSID.ReferenceBus(),
             )
-        elseif data_colleciton.frequency_reference == "ConstantFrequency"
+        elseif data_collection.frequency_reference == "ConstantFrequency"
             sim_full = PSID.Simulation!(
                 PSID.ResidualModel,
                 sys,
