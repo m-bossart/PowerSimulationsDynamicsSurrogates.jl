@@ -25,7 +25,8 @@ function create_validation_system_from_buses(
                 sys_full,
             ),
         )
-    powerflow_df = PowerFlows.run_powerflow(sys_full)["flow_results"]
+    powerflow_df =
+        PowerFlows.solve_powerflow(PowerFlows.ACPowerFlow(), sys_full)["flow_results"]
     sys = deepcopy(sys_full)
     (_check_connectivity(sys, nonsurrogate_bus_numbers) == false) && return false
     _remove_static_and_dynamic_injectors!(sys, surrogate_bus_numbers)
@@ -78,7 +79,8 @@ function create_train_system_from_buses(
                 sys_full,
             ),
         )
-    powerflow_df = PowerFlows.run_powerflow(sys_full)["flow_results"]
+    powerflow_df =
+        PowerFlows.solve_powerflow(PowerFlows.ACPowerFlow(), sys_full)["flow_results"]
     sys = deepcopy(sys_full)
     (_check_connectivity(sys, surrogate_bus_numbers) == false) && return false
     _remove_static_and_dynamic_injectors!(sys, nonsurrogate_bus_numbers)

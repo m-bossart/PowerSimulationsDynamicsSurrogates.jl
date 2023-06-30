@@ -10,6 +10,133 @@ function update_operating_point!(
 end
 
 ###############################################################################
+############################## FunctionCall ######################################
+###############################################################################
+
+struct FunctionCall <: SurrogateOperatingPoint
+    type::String
+    f::Any
+end
+
+function FunctionCall(; type = "FunctionCall", f = (sys, sys_aux) -> ())
+    FunctionCall(type, f)
+end
+
+function update_operating_point!(
+    sys::PSY.System,
+    condition::FunctionCall,
+    sys_aux::PSY.System,
+)
+    condition.f(sys, sys_aux)
+    return
+end
+
+###############################################################################
+############################## DoNothing ######################################
+###############################################################################
+
+struct DoNothing <: SurrogateOperatingPoint
+    type::String
+end
+
+function DoNothing(; type = "DoNothing")
+    DoNothing(type)
+end
+
+function update_operating_point!(sys::PSY.System, condition::DoNothing, sys_aux::PSY.System)
+    return
+end
+
+###############################################################################
+############################## SetVoltageSource ###############################
+###############################################################################
+
+struct SetVoltageSource <: SurrogateOperatingPoint
+    type::String
+    source_name::String
+    internal_voltage::Float64
+    internal_angle::Float64
+end
+
+function SetVoltageSource(;
+    type = "SetVoltageSource",
+    source_name = "test-load",
+    internal_voltage = 0.0,
+    internal_angle = 0.0,
+)
+    SetVoltageSource(type, source_name, internal_voltage, internal_angle)
+end
+
+function update_operating_point!(
+    sys::PSY.System,
+    condition::SetVoltageSource,
+    sys_aux::PSY.System,
+)
+    source = PSY.get_component(PSY.Source, sys, condition.source_name)
+    if source === nothing
+        @error "Source not found for SetVoltageSource operating point change"
+    end
+    PSY.set_internal_voltage!(source, condition.internal_voltage)
+    PSY.set_internal_angle!(source, condition.internal_angle)
+    return
+end
+
+###############################################################################
+############################## SetStandardLoad ################################
+###############################################################################
+
+struct SetStandardLoad <: SurrogateOperatingPoint
+    type::String
+    load_name::String
+    constant_active_power::Float64
+    constant_reactive_power::Float64
+    impedance_active_power::Float64
+    impedance_reactive_power::Float64
+    current_active_power::Float64
+    current_reactive_power::Float64
+end
+
+function SetStandardLoad(;
+    type = "SetStandardLoad",
+    load_name = "test-load",
+    constant_active_power = 0.0,
+    constant_reactive_power = 0.0,
+    impedance_active_power = 0.0,
+    impedance_reactive_power = 0.0,
+    current_active_power = 0.0,
+    current_reactive_power = 0.0,
+)
+    SetStandardLoad(
+        type,
+        load_name,
+        constant_active_power,
+        constant_reactive_power,
+        impedance_active_power,
+        impedance_reactive_power,
+        current_active_power,
+        current_reactive_power,
+    )
+end
+
+function update_operating_point!(
+    sys::PSY.System,
+    condition::SetStandardLoad,
+    sys_aux::PSY.System,
+)
+    load = PSY.get_component(PSY.StandardLoad, sys, condition.load_name)
+    if load === nothing
+        @error "Load not found for SetStandardLoad operating point change"
+    end
+    PSY.set_constant_active_power!(load, condition.constant_active_power)
+    PSY.set_constant_reactive_power!(load, condition.constant_reactive_power)
+    PSY.set_impedance_active_power!(load, condition.impedance_active_power)
+    PSY.set_impedance_reactive_power!(load, condition.impedance_reactive_power)
+    PSY.set_current_active_power!(load, condition.current_active_power)
+    PSY.set_current_reactive_power!(load, condition.current_reactive_power)
+    return
+end
+
+###############################################################################
 ############################## ScaleSource ####################################
 ###############################################################################
 

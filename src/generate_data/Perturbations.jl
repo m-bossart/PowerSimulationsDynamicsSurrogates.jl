@@ -1,4 +1,3 @@
-
 abstract type SurrogatePerturbation end
 
 function add_surrogate_perturbation!(
@@ -183,6 +182,110 @@ function add_surrogate_perturbation!(
         ω_amp = perturbation.ω_amp,
     )
     PSY.add_component!(sys, chirp, source)
+end
+
+###############################################################################
+################################# RandomSourceVoltageChange ###################
+###############################################################################
+
+struct RandomSourceVoltageChange <: SurrogatePerturbation
+    type::String
+    source_name::String
+    t_step::Float64
+    vm_bounds::Vector{Float64}
+    vθ_bounds::Vector{Float64}
+    vm_index::Int   #Remove once https://github.com/NREL-Sienna/PowerSimulationsDynamics.jl/issues/336 is implemented. 
+    vθ_index::Int   #Remove once https://github.com/NREL-Sienna/PowerSimulationsDynamics.jl/issues/336 is implemented. 
+end
+
+function RandomSourceVoltageChange(;
+    type = "VStep",
+    source_name = "init",
+    t_step = 0.0,
+    vm_bounds = [0.0, 1.0],
+    vθ_bounds = [0.0, 1.0],
+    vm_index = 1,
+    vθ_index = 2,
+)
+    RandomSourceVoltageChange(
+        type,
+        source_name,
+        t_step,
+        vm_bounds,
+        vθ_bounds,
+        vm_index,
+        vθ_index,
+    )
+end
+
+function add_surrogate_perturbation!(
+    sys::PSY.System,
+    psid_perturbations,
+    perturbation::RandomSourceVoltageChange,
+    sys_aux::PSY.System,
+)
+    source_name = perturbation.source_name
+    source = PSY.get_component(PSY.Source, sys, source_name)
+    if source === nothing
+        @error "Source not found - check name!"
+    end
+    vm = rand(Distributions.Uniform(perturbation.vm_bounds[1], perturbation.vm_bounds[2]))
+    vθ = rand(Distributions.Uniform(perturbation.vθ_bounds[1], perturbation.vθ_bounds[2]))
+    dyn_source = PSY.get_component(FrequencySource, sys, source_name)
+    if dyn_source === nothing
+        push!(
+            psid_perturbations,
+            PSID.SourceBusVoltageChange(perturbation.t_step, source, :V_ref, vm),
+        )
+        push!(
+            psid_perturbations,
+            PSID.SourceBusVoltageChange(perturbation.t_step, source, :θ_ref, vθ),
+        )
+    else
+        @error "Source has a dynamic model"
+    end
+end
+
+###############################################################################
+################################# RandomSourceFrequencyChange #################
+###############################################################################
+
+struct RandomSourceFrequencyChange <: SurrogatePerturbation
+    type::String
+    source_name::String
+    t_step::Float64
+    ω_bounds::Vector{Float64}
+    ω_index::Int   #Remove once https://github.com/NREL-Sienna/PowerSimulationsDynamics.jl/issues/336 is implemented. 
+end
+
+function RandomSourceFrequencyChange(;
+    type = "VStep",
+    source_name = "init",
+    t_step = 0.0,
+    ω_bounds = [0.0, 1.0],
+    ω_index = 1,
+)
+    RandomSourceFrequencyChange(type, source_name, t_step, ω_bounds, ω_index)
+end
+
+function add_surrogate_perturbation!(
+    sys::PSY.System,
+    psid_perturbations,
+    perturbation::RandomSourceFrequencyChange,
+    sys_aux::PSY.System,
+)
+    source_name = perturbation.source_name
+    source = PSY.get_component(PSY.Source, sys, source_name)
+    if source === nothing
+        @error "Source not found - check name!"
+    end
+    ω = rand(Distributions.Uniform(perturbation.ω_bounds[1], perturbation.ω_bounds[2]))
+    dyn_source = PSY.get_component(FrequencySource, sys, source_name)
+    if dyn_source === nothing
+        #TODO - implement a change in the Source frequency reference (need to add frequency ref to source and change PSID handling of system frequency. )
+    else
+        @error "FrequencySource component not found."
+    end
 end
 
 ###############################################################################

@@ -7,6 +7,10 @@ export SteadyStateNODEObs
 export get_SteadyStateNODEObs_states
 export SteadyStateNODE
 export get_SteadyStateNODE_states
+export SolutionPredictionSurrogate
+export TerminalDataSurrogate
+export FullyConnected
+export SolutionSurrogateCacheValues
 export initializer_psids
 export get_name
 export get_initializer_structure
@@ -26,13 +30,24 @@ export get_states
 export get_n_states
 export get_ext
 export get_internal
+export get_model_architecture
+export get_underlying_dynamic_model
+export get_θ_ref_frame
 export set_initializer_parameters!
 export set_node_parameters!
 export set_observer_parameters!
 export set_base_power!
+export set_θ_ref_frame!
 export set_ext!
 
-#export SurrogateParams
+export get_component_parameters
+export set_parameter_relative!
+export set_parameter_absolute!
+export add_aggregate_model!
+export generate_empty_plot
+export add_data_trace!
+
+# SurrogateParams
 export NODEParams
 export SteadyStateNODEParams
 export SteadyStateNODEObsParams
@@ -43,31 +58,30 @@ export ZIPParams
 export MultiDeviceParams
 export MultiDeviceLineParams
 
-#export SurrogatePerturbations generation exports 
+# SurrogatePerturbations   
 export SurrogatePerturbation
 export LineTrip
 export PVS
 export Chirp
 export VStep
+export RandomSourceVoltageChange
+export RandomSourceFrequencyChange
 export RandomLoadTrip
 export RandomBranchTrip
 export RandomLoadChange
 
-#export SurrogateOperatingPoints
+# SurrogateOperatingPoints
 export SurrogateOperatingPoint
 export ScaleSource
 export GenerationLoadScale
 export RandomOperatingPointXiao
 
-#export SurrogateDatasets
+# SurrogateDatasets
 export SurrogateDataset
-export SteadyStateNODEData
+export TerminalData
+export FullSolutionData
 export AllStatesData
-
-#export SurrogateDatasetParams
-export SurrogateDatasetParams
-export SteadyStateNODEDataParams
-export AllStatesDataParams
+export BusData
 
 export GenerateDataParams
 
@@ -75,11 +89,16 @@ export generate_surrogate_data
 export create_validation_system_from_buses
 export create_train_system_from_buses
 
+import DataFrames
+import DiffEqCallbacks
+import Distributions
 import InfrastructureSystems
 import OrdinaryDiffEq
+import PlotlyJS
 import PowerFlows
 import PowerSystems
 import PowerSimulationsDynamics
+import SciMLBase
 import NLsolve
 import Random
 import Sundials
@@ -88,17 +107,26 @@ const IS = InfrastructureSystems
 const PSY = PowerSystems
 const PSID = PowerSimulationsDynamics
 
-include("SurrogateComponents/SteadyStateNODE.jl")
-include("SurrogateComponents/SteadyStateNODEObs.jl")
-include("SurrogateComponents/utils.jl")
-include("SurrogateComponents/ModelTypes.jl")
-include("ChirpVariableSource/ChirpVariableSource.jl")
-include("ChirpVariableSource/utils.jl")
-include("FrequencyChirpVariableSource/FrequencyChirpVariableSource.jl")
-include("FrequencyChirpVariableSource/utils.jl")
+include("utils.jl")
+include("components/abstract_component_types.jl")
+include("components/TerminalDataSurrogate/model_architectures.jl")
+include("components/TerminalDataSurrogate/psy.jl")
+include("components/TerminalDataSurrogate/psid.jl")
+include("components/SteadyStateNODE/psy.jl")
+include("components/SteadyStateNODE/psid.jl")
+include("components/SteadyStateNODEObs/psy.jl")
+include("components/SteadyStateNODEObs/psid.jl")
+include("components/ChirpVariableSource/psy.jl")
+include("components/ChirpVariableSource/psid.jl")
+include("components/FrequencyChirpVariableSource/psy.jl")
+include("components/FrequencyChirpVariableSource/psid.jl")
 include("generate_data/Perturbations.jl")
 include("generate_data/OperatingPointChanges.jl")
-include("generate_data/Datasets.jl")
-include("build_systems/utils.jl")
-
+include("generate_data/datasets/generate.jl")
+include("generate_data/datasets/TerminalData.jl")
+include("generate_data/datasets/AllStatesData.jl")
+include("generate_data/datasets/BusData.jl")
+include("generate_data/datasets/FullSolutionData.jl")
+include("manipulations/system_manipulations.jl")
+include("manipulations/parameter_manipulations.jl")
 end
