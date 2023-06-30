@@ -32,7 +32,6 @@ function add_surrogate_perturbation!(
         @error "removing this dynamic line in order to trip it", perturbation.branch_name
         PSY.remove_component!(sys, dyn_branch)
         PSY.add_component!(sys, branch)
-
     end
     push!(psid_perturbations, perturbation)
 end
@@ -47,16 +46,8 @@ struct LineTrip <: SurrogatePerturbation
     line_name::String
 end
 
-function LineTrip(;
-    type = "LineTrip",
-    time = 0.0,
-    line_name = "",
-)
-    LineTrip(
-        type,
-        time,
-        line_name,
-    )
+function LineTrip(; type = "LineTrip", time = 0.0, line_name = "")
+    LineTrip(type, time, line_name)
 end
 
 function add_surrogate_perturbation!(
@@ -73,7 +64,7 @@ function add_surrogate_perturbation!(
         PSY.remove_component!(sys, dyn_branch)
         PSY.add_component!(sys, branch)
     end
-    push!(psid_perturbations, psid_perturbation) 
+    push!(psid_perturbations, psid_perturbation)
 end
 
 ###############################################################################
