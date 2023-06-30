@@ -34,6 +34,6 @@
     res = read_results(sim)
     show_states_initial_value(res)
     v1 = PSID.get_voltage_magnitude_series(res, 101)
-    run_powerflow(sys)["bus_results"]
+    solve_powerflow(PowerFlows.ACPowerFlow(), sys)["bus_results"]
     @test v1[2][1] == 1.05
 end

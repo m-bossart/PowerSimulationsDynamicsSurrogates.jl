@@ -8,6 +8,8 @@ export get_SteadyStateNODEObs_states
 export SteadyStateNODE
 export get_SteadyStateNODE_states
 export SolutionPredictionSurrogate
+export TerminalDataSurrogate
+export FullyConnected
 export SolutionSurrogateCacheValues
 export initializer_psids
 export get_name
@@ -28,10 +30,14 @@ export get_states
 export get_n_states
 export get_ext
 export get_internal
+export get_model_architecture
+export get_underlying_dynamic_model
+export get_θ_ref_frame
 export set_initializer_parameters!
 export set_node_parameters!
 export set_observer_parameters!
 export set_base_power!
+export set_θ_ref_frame!
 export set_ext!
 
 export get_component_parameters
@@ -57,6 +63,8 @@ export SurrogatePerturbation
 export PVS
 export Chirp
 export VStep
+export RandomSourceVoltageChange
+export RandomSourceFrequencyChange
 export RandomLoadTrip
 export RandomBranchTrip
 export RandomLoadChange
@@ -72,6 +80,7 @@ export SurrogateDataset
 export TerminalData
 export FullSolutionData
 export AllStatesData
+export BusData
 
 export GenerateDataParams
 
@@ -99,8 +108,9 @@ const PSID = PowerSimulationsDynamics
 
 include("utils.jl")
 include("components/abstract_component_types.jl")
-include("components/SolutionPredictionSurrogate/psy.jl")
-include("components/SolutionPredictionSurrogate/psid.jl")
+include("components/TerminalDataSurrogate/model_architectures.jl")
+include("components/TerminalDataSurrogate/psy.jl")
+include("components/TerminalDataSurrogate/psid.jl")
 include("components/SteadyStateNODE/psy.jl")
 include("components/SteadyStateNODE/psid.jl")
 include("components/SteadyStateNODEObs/psy.jl")
@@ -114,6 +124,7 @@ include("generate_data/OperatingPointChanges.jl")
 include("generate_data/datasets/generate.jl")
 include("generate_data/datasets/TerminalData.jl")
 include("generate_data/datasets/AllStatesData.jl")
+include("generate_data/datasets/BusData.jl")
 include("generate_data/datasets/FullSolutionData.jl")
 include("manipulations/system_manipulations.jl")
 include("manipulations/parameter_manipulations.jl")

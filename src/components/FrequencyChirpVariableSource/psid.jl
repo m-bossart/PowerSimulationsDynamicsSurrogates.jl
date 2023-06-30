@@ -1,10 +1,8 @@
+PSID.is_valid(::FrequencyChirpVariableSource) = nothing
+
 function PSID._get_frequency_state(d::PSID.DynamicWrapper{FrequencyChirpVariableSource})
     return PSID.get_global_index(d)[:ω]
 end
-
-#= function PSID._get_frequency_state(d::PSID.DynamicWrapper{FrequencyChirpVariableSource})
-    return 0
-end  =#
 
 function PSID.device_mass_matrix_entries!(
     mass_matrix::PSID.AbstractArray,

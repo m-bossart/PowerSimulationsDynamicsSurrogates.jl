@@ -104,7 +104,7 @@ function generate_surrogate_data(
     for (ix, ic) in enumerate(ics)
         sys = deepcopy(sys_main)
         update_operating_point!(sys, operating_points[ix], sys_aux)
-        #PowerFlows.run_powerflow!(sys)
+        #PowerFlows.solve_powerflow!(PowerFlows.ACPowerFlow(),sys) 
         data = EmptyTrainDataSet(dataset_type)
         sim_full = _build_run_simulation_initial_conditions(sys, data_collection_params, ic)
         @assert issubset(
@@ -285,7 +285,7 @@ function _build_run_simulation_perturbations(sys, data_collection, psid_perturba
                 all_lines_dynamic = data_collection.all_lines_dynamic,
                 frequency_reference = PSID.ConstantFrequency(),
             )
-        end 
+        end
     elseif data_collection.formulation == "Residual"
         if data_collection.frequency_reference == "ReferenceBus"
             sim_full = PSID.Simulation!(
@@ -309,7 +309,7 @@ function _build_run_simulation_perturbations(sys, data_collection, psid_perturba
                 all_lines_dynamic = data_collection.all_lines_dynamic,
                 frequency_reference = PSID.ConstantFrequency(),
             )
-        end 
+        end
     end
     PSID.execute!(
         sim_full,
@@ -339,7 +339,7 @@ function _build_run_simulation_initial_conditions(sys, data_collection, initial_
                 pwd(),
                 tspan,
                 initialize_simulation = false,
-                initial_conditions = initial_conditions; 
+                initial_conditions = initial_conditions;
                 all_branches_dynamic = data_collection.all_branches_dynamic,
                 all_lines_dynamic = data_collection.all_lines_dynamic,
                 frequency_reference = PSID.ReferenceBus(),
@@ -351,12 +351,12 @@ function _build_run_simulation_initial_conditions(sys, data_collection, initial_
                 pwd(),
                 tspan,
                 initialize_simulation = false,
-                initial_conditions = initial_conditions; 
+                initial_conditions = initial_conditions;
                 all_branches_dynamic = data_collection.all_branches_dynamic,
                 all_lines_dynamic = data_collection.all_lines_dynamic,
                 frequency_reference = PSID.ConstantFrequency(),
             )
-        end 
+        end
     elseif data_collection.formulation == "Residual"
         if data_collection.frequency_reference == "ReferenceBus"
             sim_full = PSID.Simulation!(
@@ -365,7 +365,7 @@ function _build_run_simulation_initial_conditions(sys, data_collection, initial_
                 pwd(),
                 tspan,
                 initialize_simulation = false,
-                initial_conditions = initial_conditions; 
+                initial_conditions = initial_conditions;
                 all_branches_dynamic = data_collection.all_branches_dynamic,
                 all_lines_dynamic = data_collection.all_lines_dynamic,
                 frequency_reference = PSID.ReferenceBus(),
@@ -377,12 +377,12 @@ function _build_run_simulation_initial_conditions(sys, data_collection, initial_
                 pwd(),
                 tspan,
                 initialize_simulation = false,
-                initial_conditions = initial_conditions; 
+                initial_conditions = initial_conditions;
                 all_branches_dynamic = data_collection.all_branches_dynamic,
                 all_lines_dynamic = data_collection.all_lines_dynamic,
                 frequency_reference = PSID.ConstantFrequency(),
             )
-        end 
+        end
     end
     PSID.execute!(
         sim_full,

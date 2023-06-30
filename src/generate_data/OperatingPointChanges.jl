@@ -15,18 +15,21 @@ end
 
 struct FunctionCall <: SurrogateOperatingPoint
     type::String
-    f
+    f::Any
 end
 
 function FunctionCall(; type = "FunctionCall", f = (sys, sys_aux) -> ())
     FunctionCall(type, f)
 end
 
-function update_operating_point!(sys::PSY.System, condition::FunctionCall, sys_aux::PSY.System)
+function update_operating_point!(
+    sys::PSY.System,
+    condition::FunctionCall,
+    sys_aux::PSY.System,
+)
     condition.f(sys, sys_aux)
     return
 end
-
 
 ###############################################################################
 ############################## DoNothing ######################################
@@ -61,12 +64,7 @@ function SetVoltageSource(;
     internal_voltage = 0.0,
     internal_angle = 0.0,
 )
-    SetVoltageSource(
-        type,
-        source_name,
-        internal_voltage,
-        internal_angle,
-    )
+    SetVoltageSource(type, source_name, internal_voltage, internal_angle)
 end
 
 function update_operating_point!(

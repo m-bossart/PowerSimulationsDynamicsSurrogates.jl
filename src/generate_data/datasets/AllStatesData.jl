@@ -4,8 +4,8 @@ mutable struct AllStatesData <: SurrogateDataset
     tstops::AbstractArray
     stable::Bool
     solve_time::Float64
-    device_states_data::Dict{String, Dict{Symbol, AbstractArray}} 
-    device_ref_data::Dict{String, Dict{Symbol, Float64}} 
+    device_states_data::Dict{String, Dict{Symbol, AbstractArray}}
+    device_ref_data::Dict{String, Dict{Symbol, Float64}}
 end
 
 function AllStatesData(;
@@ -17,7 +17,15 @@ function AllStatesData(;
     device_states_data = Dict{String, Dict{Symbol, AbstractArray}}(),
     device_ref_data = Dict{String, Dict{Symbol, Float64}}(),
 )
-    return AllStatesData(type, tsteps, tstops, stable, solve_time, device_states_data, device_ref_data)
+    return AllStatesData(
+        type,
+        tsteps,
+        tstops,
+        stable,
+        solve_time,
+        device_states_data,
+        device_ref_data,
+    )
 end
 
 function fill_surrogate_data!(
@@ -104,7 +112,7 @@ function _fill_references_data!(
     references[:Q_ref] = PSY.get_reactive_power(device)
     if typeof(dynamic_device) <: PSY.DynamicGenerator
         references[:eq_p] = PSY.get_eq_p(PSY.get_machine(dynamic_device))
-    end 
+    end
     refs_data_dict[dynamic_device_name] = references
 end
 
@@ -116,12 +124,17 @@ function generate_empty_plot(T::Type{AllStatesData})
     return PlotlyJS.plot()
 end
 
-function add_data_trace!(p, data::AllStatesData; name = "")
+function add_data_trace!(p, data::AllStatesData; name = "", color = "")
     for (device_name, device_data_dict) in data.device_states_data
         for (s, value) in device_data_dict
             PlotlyJS.add_trace!(
                 p,
-                PlotlyJS.scatter(; x = data.tsteps, y = value, name = string(s, name)),
+                PlotlyJS.scatter(;
+                    x = data.tsteps,
+                    y = value,
+                    marker = PlotlyJS.attr(color = color),
+                    name = string(s, name),
+                ),
                 row = 1,
                 col = 1,
             )

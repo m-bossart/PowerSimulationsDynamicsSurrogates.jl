@@ -318,11 +318,15 @@ end
     sim = Simulation!(MassMatrixModel, sys, pwd(), (0.0, 1.0))
     ics = [PSID.get_initial_conditions(sim)]
 
+    operating_points = [GenerationLoadScale(generation_scale = 1.0, load_scale = 1.0)]
+
     Random.seed!(2)
     dataset = generate_surrogate_data(
         FullSolutionData,
         sys,
+        sys,
         ics,
+        operating_points,
         Dict{String, Dict{Symbol, Symbol}}(),
         GenerateDataParams(
             all_lines_dynamic = true,

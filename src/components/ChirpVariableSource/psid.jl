@@ -1,3 +1,5 @@
+PSID.is_valid(::ChirpVariableSource) = nothing
+
 function PSID._get_frequency_state(d::PSID.DynamicWrapper{ChirpVariableSource})
     return 0
 end

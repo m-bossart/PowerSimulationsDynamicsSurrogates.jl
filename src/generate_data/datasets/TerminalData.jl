@@ -171,8 +171,8 @@ function _fill_terminal_data!(
         PSID.get_voltage_angle_series(results, bus_number_voltage_measurement)[2][save_indices]
     data_dict[:vr] = V .* cos.(θ)
     data_dict[:vi] = V .* sin.(θ)
-    data_dict[:p] = data_dict[:vr] .*  data_dict[:ir] .- data_dict[:vi] .*  data_dict[:ii] 
-    data_dict[:q] = data_dict[:vr] .*  data_dict[:ii] .+ data_dict[:vi] .*  data_dict[:ir] 
+    data_dict[:p] = data_dict[:vr] .* data_dict[:ir] .- data_dict[:vi] .* data_dict[:ii]
+    data_dict[:q] = data_dict[:vr] .* data_dict[:ii] .+ data_dict[:vi] .* data_dict[:ir]
 
     terminal_data_dict[device_name] = data_dict
 end
@@ -342,13 +342,13 @@ function generate_empty_plot(T::Type{TerminalData})
             PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec()
             PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec()
         ],
-        subplot_titles = ["vr" "vi" "ir" "ii" "vd" "vq"  "P" "Q"  "id" "iq" "im" "iθ"],
+        subplot_titles = ["vr" "vi" "ir" "ii" "vd" "vq" "P" "Q" "id" "iq" "im" "iθ"],
         vertical_spacing = 0.1,
     )
     return p
 end
 
-function add_data_trace!(p, data::TerminalData; name = "")
+function add_data_trace!(p, data::TerminalData; color = "", name = "")
     for (device_name, device_data_dict) in data.device_terminal_data
         Vr = device_data_dict[:vr]
         Vi = device_data_dict[:vi]
@@ -356,89 +356,148 @@ function add_data_trace!(p, data::TerminalData; name = "")
         Ii = device_data_dict[:ii]
         P = device_data_dict[:p]
         Q = device_data_dict[:q]
-        θ = atan.(Vi, Vr)
-        Vd = sin.(θ) .* Vr - cos.(θ) .* Vi
-        Vq = cos.(θ) .* Vr + sin.(θ) .* Vi
-        Id = sin.(θ) .* Ir - cos.(θ) .* Ii
-        Iq = cos.(θ) .* Ir + sin.(θ) .* Ii
+        θ = atan(Vi[1], Vr[1])
+        Vd = sin(θ) .* Vr .- cos(θ) .* Vi
+        Vq = cos(θ) .* Vr .+ sin(θ) .* Vi
+        Id = sin(θ) .* Ir .- cos(θ) .* Ii
+        Iq = cos(θ) .* Ir .+ sin(θ) .* Ii
         Iθ = tan.(Id ./ Iq)
-        Im = sqrt.(Id .^ 2 .+ Iq .^2) 
+        Im = sqrt.(Id .^ 2 .+ Iq .^ 2)
 
         PlotlyJS.add_trace!(
             p,
-            PlotlyJS.scatter(; x = data.tsteps, y = Vr, name = string(device_name, name)),
+            PlotlyJS.scatter(;
+                x = data.tsteps,
+                y = Vr,
+                marker = PlotlyJS.attr(color = color),
+                name = string(device_name, name),
+            ),
             row = 1,
             col = 1,
         )
         PlotlyJS.add_trace!(
             p,
-            PlotlyJS.scatter(; x = data.tsteps, y = Vi, name = string(device_name, name)),
+            PlotlyJS.scatter(;
+                x = data.tsteps,
+                y = Vi,
+                marker = PlotlyJS.attr(color = color),
+                name = string(device_name, name),
+            ),
             row = 1,
             col = 2,
         )
         PlotlyJS.add_trace!(
             p,
-            PlotlyJS.scatter(; x = data.tsteps, y = Ir, name = string(device_name, name)),
+            PlotlyJS.scatter(;
+                x = data.tsteps,
+                y = Ir,
+                marker = PlotlyJS.attr(color = color),
+                name = string(device_name, name),
+            ),
             row = 1,
             col = 3,
         )
         PlotlyJS.add_trace!(
             p,
-            PlotlyJS.scatter(; x = data.tsteps, y = Ii, name = string(device_name, name)),
+            PlotlyJS.scatter(;
+                x = data.tsteps,
+                y = Ii,
+                marker = PlotlyJS.attr(color = color),
+                name = string(device_name, name),
+            ),
             row = 1,
             col = 4,
         )
 
         PlotlyJS.add_trace!(
             p,
-            PlotlyJS.scatter(; x = data.tsteps, y = Vd, name = string(device_name, name)),
+            PlotlyJS.scatter(;
+                x = data.tsteps,
+                y = Vd,
+                marker = PlotlyJS.attr(color = color),
+                name = string(device_name, name),
+            ),
             row = 2,
             col = 1,
         )
         PlotlyJS.add_trace!(
             p,
-            PlotlyJS.scatter(; x = data.tsteps, y = Vq, name = string(device_name, name)),
+            PlotlyJS.scatter(;
+                x = data.tsteps,
+                y = Vq,
+                marker = PlotlyJS.attr(color = color),
+                name = string(device_name, name),
+            ),
             row = 2,
             col = 2,
         )
         PlotlyJS.add_trace!(
             p,
-            PlotlyJS.scatter(; x = data.tsteps, y = P, name = string(device_name, name)),
+            PlotlyJS.scatter(;
+                x = data.tsteps,
+                y = P,
+                marker = PlotlyJS.attr(color = color),
+                name = string(device_name, name),
+            ),
             row = 2,
             col = 3,
         )
         PlotlyJS.add_trace!(
             p,
-            PlotlyJS.scatter(; x = data.tsteps, y = Q, name = string(device_name, name)),
+            PlotlyJS.scatter(;
+                x = data.tsteps,
+                y = Q,
+                marker = PlotlyJS.attr(color = color),
+                name = string(device_name, name),
+            ),
             row = 2,
             col = 4,
         )
 
         PlotlyJS.add_trace!(
             p,
-            PlotlyJS.scatter(; x = data.tsteps, y = Id, name = string(device_name, name)),
+            PlotlyJS.scatter(;
+                x = data.tsteps,
+                y = Id,
+                marker = PlotlyJS.attr(color = color),
+                name = string(device_name, name),
+            ),
             row = 3,
             col = 1,
         )
         PlotlyJS.add_trace!(
             p,
-            PlotlyJS.scatter(; x = data.tsteps, y = Iq, name = string(device_name, name)),
+            PlotlyJS.scatter(;
+                x = data.tsteps,
+                y = Iq,
+                marker = PlotlyJS.attr(color = color),
+                name = string(device_name, name),
+            ),
             row = 3,
             col = 2,
         )
         PlotlyJS.add_trace!(
             p,
-            PlotlyJS.scatter(; x = data.tsteps, y = Im, name = string(device_name, name)),
+            PlotlyJS.scatter(;
+                x = data.tsteps,
+                y = Im,
+                marker = PlotlyJS.attr(color = color),
+                name = string(device_name, name),
+            ),
             row = 3,
             col = 3,
         )
         PlotlyJS.add_trace!(
             p,
-            PlotlyJS.scatter(; x = data.tsteps, y = Iθ, name = string(device_name, name)),
+            PlotlyJS.scatter(;
+                x = data.tsteps,
+                y = Iθ,
+                marker = PlotlyJS.attr(color = color),
+                name = string(device_name, name),
+            ),
             row = 3,
             col = 4,
         )
-
     end
     return p
 end

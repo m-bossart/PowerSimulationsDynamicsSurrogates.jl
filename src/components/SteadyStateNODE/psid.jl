@@ -1,3 +1,5 @@
+PSID.is_valid(::SteadyStateNODE) = nothing
+
 PSID.get_inner_vars_count(::SteadyStateNODE) = 0
 function PSID._get_frequency_state(d::PSID.DynamicWrapper{SteadyStateNODE})
     return 0

@@ -24,7 +24,8 @@ logger = PSY.configure_logging(;
 )
 with_logger(logger) do
     #run tests
-    include("test_SolutionPredictionSurrogate.jl")
+    include("test_model_architectures.jl")  #TODO - write this test (test the parsing via test input/output)
+    include("test_TerminalDataSurrogate.jl")
     include("test_build_systems.jl")
     include("test_onebus.jl")
     include("test_SteadyStateNODE.jl")
