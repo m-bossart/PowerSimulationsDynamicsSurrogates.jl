@@ -180,17 +180,19 @@ end
 """
 Matches the operating point from the ground truth dataset when generating the dataset for a surrogate model. 
 """
-#TODO - move this to generate --> is more general than this particular dataset type. 
-function match_operating_point(sys, data_aux, surrogate_params)
-    Vr0 = data_aux.ic[:Vr0]
-    Vi0 = data_aux.ic[:Vi0]
-    Ir0 = data_aux.ic[:Ir0]
-    Ii0 = data_aux.ic[:Ii0]
-    P0 = Vr0 * Ir0 + Vi0 * Ii0
-    Q0 = Vi0 * Ir0 - Vr0 * Ii0
-    Vm0 = sqrt(Vr0^2 + Vi0^2)
-    θ0 = atan(Vi0, Vr0)
-    _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params)
+function match_operating_point(sys, data_aux::TerminalData, surrogate_params)
+    @assert length(data_aux.device_terminal_data) == 1  #assumes only one entry in TerminalData.device_terminal_data
+    for (_, v) in d.device_terminal_data
+        Vr0 = v[:vr][1]
+        Vi0 = v[:vi][1]
+        Ir0 = v[:ir][1]
+        Ii0 = v[:ii][1]
+        P0 = Vr0 * Ir0 + Vi0 * Ii0
+        Q0 = Vi0 * Ir0 - Vr0 * Ii0
+        Vm0 = sqrt(Vr0^2 + Vi0^2)
+        θ0 = atan(Vi0, Vr0)
+        _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params)
+    end
 end
 
 function _match_operating_point(
