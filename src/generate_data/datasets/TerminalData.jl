@@ -68,6 +68,28 @@ end
 function _fill_terminal_data!(
     terminal_data_dict,
     results,
+    device::PSY.Line,
+    save_indices,
+    orientation_details,
+    data_collection_params,
+    sys,
+)
+    @error "Line name was passed, running _fill_terminal_data for corresponding ARC"
+    arc = PSY.get_arc(device)
+    return _fill_terminal_data!(
+        terminal_data_dict,
+        results,
+        arc::PSY.Arc,
+        save_indices,
+        orientation_details,
+        data_collection_params,
+        sys,
+    )
+end
+
+function _fill_terminal_data!(
+    terminal_data_dict,
+    results,
     device::S,
     save_indices,
     orientation_details,
