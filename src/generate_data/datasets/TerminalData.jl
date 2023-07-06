@@ -226,7 +226,7 @@ function _match_operating_point(
     surrogate_params::Union{SteadyStateNODEObsParams, SteadyStateNODEParams},
 )
     for s in PSY.get_components(
-        x -> typeof(PSY.get_dynamic_injector(x)) == Terminal,
+        x -> typeof(PSY.get_dynamic_injector(x)) == SteadyStateNODE,
         PSY.Source,
         sys,
     )
