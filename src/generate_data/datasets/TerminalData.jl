@@ -68,7 +68,7 @@ end
 function _fill_terminal_data!(
     terminal_data_dict,
     results,
-    device::PSY.Line,
+    device::Union{PSY.Line, PSY.DynamicBranch},
     save_indices,
     orientation_details,
     data_collection_params,
