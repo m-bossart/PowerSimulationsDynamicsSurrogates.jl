@@ -23,28 +23,36 @@ function fill_surrogate_data!(
     device_details,
     data_collection_params,
     sim_full,
-    results,
-    save_indices,
 )
-    sys = sim_full.sys
-    bus_data_dict = Dict{Int64, Dict{Symbol, AbstractArray}}()
-    @show device_details
-    for (bus_name, _) in device_details
-        bus_number = PSY.get_number(PSY.get_component(PSY.Bus, sys, bus_name))
-        _fill_bus_data!(
-            bus_data_dict,
-            bus_number,
-            results,
-            save_indices,
-            data_collection_params,
-            sys,
-        )
+    if sim_full.status == PSID.SIMULATION_FINALIZED
+        results = PSID.read_results(sim_full)
+        if length(data_collection_params.tsave) == 0
+            save_indices = 1:length(unique(results.solution.t))
+        else
+            save_indices = indexin(data_collection_params.tsave, unique(results.solution.t))
+        end
+        sys = sim_full.sys
+        bus_data_dict = Dict{Int64, Dict{Symbol, AbstractArray}}()
+        @show device_details
+        for (bus_name, _) in device_details
+            bus_number = PSY.get_number(PSY.get_component(PSY.Bus, sys, bus_name))
+            _fill_bus_data!(
+                bus_data_dict,
+                bus_number,
+                results,
+                save_indices,
+                data_collection_params,
+                sys,
+            )
+        end
+        data.tstops = unique(results.solution.t)
+        data.tsteps = unique(results.solution.t)[save_indices]
+        data.stable = true
+        data.solve_time = results.time_log[:timed_solve_time]
+        data.bus_data = bus_data_dict
+    else
+        @error "Simulation was not stable, not recording any data for BusData"
     end
-    data.tstops = unique(results.solution.t)
-    data.tsteps = unique(results.solution.t)[save_indices]
-    data.stable = true
-    data.solve_time = results.time_log[:timed_solve_time]
-    data.bus_data = bus_data_dict
 end
 
 function _fill_bus_data!(

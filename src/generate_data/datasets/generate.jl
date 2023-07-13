@@ -82,22 +82,7 @@ function generate_surrogate_data(
         data_collection_params.tsave,
         union(data_collection_params.tstops, sim_full.tstops),
     )
-    if sim_full.status == PSID.SIMULATION_FINALIZED
-        results = PSID.read_results(sim_full)
-        if length(data_collection_params.tsave) == 0
-            save_indices = 1:length(unique(results.solution.t))
-        else
-            save_indices = indexin(data_collection_params.tsave, unique(results.solution.t))
-        end
-        fill_surrogate_data!(
-            dummy_data,
-            device_details,
-            data_collection_params,
-            sim_full,
-            results,
-            save_indices,
-        )
-    end
+    fill_surrogate_data!(dummy_data, device_details, data_collection_params, sim_full)
     ########################################################################################
     ########################################################################################
     @assert length(operating_points) == length(ics)
@@ -111,25 +96,9 @@ function generate_surrogate_data(
             data_collection_params.tsave,
             union(data_collection_params.tstops, sim_full.tstops),
         )
-        if sim_full.status == PSID.SIMULATION_FINALIZED
-            results = PSID.read_results(sim_full)
-            if length(data_collection_params.tsave) == 0
-                save_indices = 1:length(unique(results.solution.t))
-            else
-                save_indices =
-                    indexin(data_collection_params.tsave, unique(results.solution.t))
-            end
-            fill_surrogate_data!(
-                data,
-                device_details,
-                data_collection_params,
-                sim_full,
-                results,
-                save_indices,
-            )
-            @show PSY.get_internal_voltage(collect(PSY.get_components(PSY.Source, sys))[1])
-            @show PSY.get_internal_angle(collect(PSY.get_components(PSY.Source, sys))[1])
-        end
+        fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
+        @show PSY.get_internal_voltage(collect(PSY.get_components(PSY.Source, sys))[1])
+        @show PSY.get_internal_angle(collect(PSY.get_components(PSY.Source, sys))[1])
         push!(train_data, data)
     end
     return train_data
@@ -189,22 +158,7 @@ function generate_surrogate_data(
         data_collection_params.tsave,
         union(data_collection_params.tstops, sim_full.tstops),
     )
-    if sim_full.status == PSID.SIMULATION_FINALIZED
-        results = PSID.read_results(sim_full)
-        if length(data_collection_params.tsave) == 0
-            save_indices = 1:length(unique(results.solution.t))
-        else
-            save_indices = indexin(data_collection_params.tsave, unique(results.solution.t))
-        end
-        fill_surrogate_data!(
-            dummy_data,
-            device_details,
-            data_collection_params,
-            sim_full,
-            results,
-            save_indices,
-        )
-    end
+    fill_surrogate_data!(dummy_data, device_details, data_collection_params, sim_full)
     ########################################################################################
     ########################################################################################
 
@@ -233,23 +187,7 @@ function generate_surrogate_data(
                 data_collection_params.tsave,
                 union(data_collection_params.tstops, sim_full.tstops),
             )
-            if sim_full.status == PSID.SIMULATION_FINALIZED
-                results = PSID.read_results(sim_full)
-                if length(data_collection_params.tsave) == 0
-                    save_indices = 1:length(unique(results.solution.t))
-                else
-                    save_indices =
-                        indexin(data_collection_params.tsave, unique(results.solution.t))
-                end
-                fill_surrogate_data!(
-                    data,
-                    device_details,
-                    data_collection_params,
-                    sim_full,
-                    results,
-                    save_indices,
-                )
-            end
+            fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
             push!(train_data, data)
         end
     end
