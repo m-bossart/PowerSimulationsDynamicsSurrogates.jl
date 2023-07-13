@@ -23,11 +23,9 @@ function fill_surrogate_data!(
     device_details,
     data_collection_params,
     sim_full,
-    results,
-    save_indices,
 )
-    sys = sim_full.sys
     terminal_data_dict = Dict{String, Dict{Symbol, AbstractArray}}()
+    sys = sim_full.sys
     for (device_name, orientation_details) in device_details
         all_components_with_name =
             PSY.get_components_by_name(PSY.Component, sys, device_name)
@@ -37,26 +35,38 @@ function fill_surrogate_data!(
         device = exclude_dynamic_injectors[1]
         _fill_terminal_data!(
             terminal_data_dict,
-            results,
+            sim_full,
             device,
-            save_indices,
             orientation_details,
             data_collection_params,
             sys,
         )
     end
-    data.tstops = unique(results.solution.t)
-    data.tsteps = unique(results.solution.t)[save_indices]
-    data.stable = true
-    data.solve_time = results.time_log[:timed_solve_time]
-    data.device_terminal_data = terminal_data_dict
+    if sim_full.status == PSID.SIMULATION_FINALIZED
+        results = PSID.read_results(sim_full)
+        if length(data_collection_params.tsave) == 0
+            save_indices = 1:length(unique(results.solution.t))
+        else
+            save_indices = indexin(data_collection_params.tsave, unique(results.solution.t))
+        end
+        data.tstops = unique(results.solution.t)
+        data.tsteps = unique(results.solution.t)[save_indices]
+        data.stable = true
+        data.solve_time = results.time_log[:timed_solve_time]
+        data.device_terminal_data = terminal_data_dict
+    else
+        #data.tstops = unique(results.solution.t)
+        #data.tsteps = unique(results.solution.t)[save_indices]
+        data.stable = false
+        #data.solve_time = results.time_log[:timed_solve_time]
+        #data.device_terminal_data = terminal_data_dict
+    end
 end
 
 function _fill_terminal_data!(
     terminal_data_dict,
     results,
     device,
-    save_indices,
     orientation_details,
     data_collection_params,
     sys,
@@ -69,7 +79,6 @@ function _fill_terminal_data!(
     terminal_data_dict,
     results,
     device::Union{PSY.Line, PSY.DynamicBranch},
-    save_indices,
     orientation_details,
     data_collection_params,
     sys,
@@ -80,7 +89,6 @@ function _fill_terminal_data!(
         terminal_data_dict,
         results,
         arc::PSY.Arc,
-        save_indices,
         orientation_details,
         data_collection_params,
         sys,
@@ -89,113 +97,186 @@ end
 
 function _fill_terminal_data!(
     terminal_data_dict,
-    results,
+    sim_full,
     device::S,
-    save_indices,
     orientation_details,
     data_collection_params,
     sys,
 ) where {S <: PSY.StaticInjection}
     data_dict = Dict{Symbol, AbstractArray}()
-    device_name = PSY.get_name(device)
-    dyn_injector = PSY.get_dynamic_injector(device)
-    if orientation_details[:direction] == :in
-        scale = -1.0
-    elseif orientation_details[:direction] == :out
-        scale = 1.0
+    if sim_full.status == PSID.SIMULATION_FINALIZED
+        results = PSID.read_results(sim_full)
+        if length(data_collection_params.tsave) == 0
+            save_indices = 1:length(unique(results.solution.t))
+        else
+            save_indices = indexin(data_collection_params.tsave, unique(results.solution.t))
+        end
+        device_name = PSY.get_name(device)
+        dyn_injector = PSY.get_dynamic_injector(device)
+        if orientation_details[:direction] == :in
+            scale = -1.0
+        elseif orientation_details[:direction] == :out
+            scale = 1.0
+        else
+            @error "invalid value of direction: must be :in or :out"
+            return
+        end
+        if dyn_injector === nothing
+            @assert typeof(device) == PSY.Source
+            data_dict[:ir] =
+                scale .*
+                PSID.get_source_real_current_series(results, device_name)[2][save_indices]
+            data_dict[:ii] =
+                scale .*
+                PSID.get_source_imaginary_current_series(results, device_name)[2][save_indices]
+        else
+            data_dict[:ir] =
+                scale .* PSID.get_real_current_series(results, device_name)[2][save_indices]
+            data_dict[:ii] =
+                scale .*
+                PSID.get_imaginary_current_series(results, device_name)[2][save_indices]
+        end
+        data_dict[:p] =
+            scale .* PSID.get_activepower_series(results, device_name)[2][save_indices]
+        data_dict[:q] =
+            scale .* PSID.get_reactivepower_series(results, device_name)[2][save_indices]
+        bus_number_source = PSY.get_number(PSY.get_bus(device))
+        V_surrogate =
+            PSID.get_voltage_magnitude_series(results, bus_number_source)[2][save_indices]
+        θ_surrogate =
+            PSID.get_voltage_angle_series(results, bus_number_source)[2][save_indices]
+        data_dict[:vr] = V_surrogate .* cos.(θ_surrogate)
+        data_dict[:vi] = V_surrogate .* sin.(θ_surrogate)
     else
-        @error "invalid value of direction: must be :in or :out"
-        return
+        @warn "System unstable, not recording any TerminalData for StaticInjection"
     end
-    if dyn_injector === nothing
-        @assert typeof(device) == PSY.Source
-        data_dict[:ir] =
-            scale .*
-            PSID.get_source_real_current_series(results, device_name)[2][save_indices]
-        data_dict[:ii] =
-            scale .*
-            PSID.get_source_imaginary_current_series(results, device_name)[2][save_indices]
-    else
-        data_dict[:ir] =
-            scale .* PSID.get_real_current_series(results, device_name)[2][save_indices]
-        data_dict[:ii] =
-            scale .*
-            PSID.get_imaginary_current_series(results, device_name)[2][save_indices]
-    end
-    data_dict[:p] =
-        scale .* PSID.get_activepower_series(results, device_name)[2][save_indices]
-    data_dict[:q] =
-        scale .* PSID.get_reactivepower_series(results, device_name)[2][save_indices]
-    bus_number_source = PSY.get_number(PSY.get_bus(device))
-    V_surrogate =
-        PSID.get_voltage_magnitude_series(results, bus_number_source)[2][save_indices]
-    θ_surrogate = PSID.get_voltage_angle_series(results, bus_number_source)[2][save_indices]
-    data_dict[:vr] = V_surrogate .* cos.(θ_surrogate)
-    data_dict[:vi] = V_surrogate .* sin.(θ_surrogate)
 
     terminal_data_dict[device_name] = data_dict
 end
 
 function _fill_terminal_data!(
     terminal_data_dict,
-    results,
+    sim_full,
     device::PSY.Arc,
-    save_indices,
     orientation_details,
     data_collection_params,
     sys,
 )
     data_dict = Dict{Symbol, AbstractArray}()
-    corresponding_branches =
-        collect(PSY.get_components(x -> PSY.get_arc(x) == device, PSY.Branch, sys))
-    device_name = PSY.get_name(device)
-    Ir_from_to = zeros(length(save_indices))
-    Ii_from_to = zeros(length(save_indices))
-    for b in corresponding_branches
-        branch_name = PSY.get_name(b)
-        #TODO - get rid of the if/else logic below after this PSID issue is resolve: https://github.com/NREL-SIIP/PowerSimulationsDynamics.jl/issues/283
-        if data_collection_params.all_lines_dynamic
-            Ir_from_to +=
-                PSID.get_state_series(results, (branch_name, :Il_R))[2][save_indices]
-            Ii_from_to +=
-                PSID.get_state_series(results, (branch_name, :Il_I))[2][save_indices]
+    if sim_full.status == PSID.SIMULATION_FINALIZED
+        results = PSID.read_results(sim_full)
+        if length(data_collection_params.tsave) == 0
+            save_indices = 1:length(unique(results.solution.t))
         else
-            Ir_from_to +=
-                PSID.get_real_current_branch_flow(results, branch_name)[2][save_indices]
-            Ii_from_to +=
-                PSID.get_imaginary_current_branch_flow(results, branch_name)[2][save_indices]
+            save_indices = indexin(data_collection_params.tsave, unique(results.solution.t))
         end
-    end
-    branch = corresponding_branches[1] #can get voltage info based on a single branch.
-    if orientation_details[:direction] == :in
-        scale = 1.0
-    elseif orientation_details[:direction] == :out
-        scale = -1.0
+        corresponding_branches =
+            collect(PSY.get_components(x -> PSY.get_arc(x) == device, PSY.Branch, sys))
+        device_name = PSY.get_name(device)
+        Ir_from_to = zeros(length(save_indices))
+        Ii_from_to = zeros(length(save_indices))
+        for b in corresponding_branches
+            branch_name = PSY.get_name(b)
+            #TODO - get rid of the if/else logic below after this PSID issue is resolve: https://github.com/NREL-SIIP/PowerSimulationsDynamics.jl/issues/283
+            if data_collection_params.all_lines_dynamic
+                Ir_from_to +=
+                    PSID.get_state_series(results, (branch_name, :Il_R))[2][save_indices]
+                Ii_from_to +=
+                    PSID.get_state_series(results, (branch_name, :Il_I))[2][save_indices]
+            else
+                Ir_from_to +=
+                    PSID.get_real_current_branch_flow(results, branch_name)[2][save_indices]
+                Ii_from_to +=
+                    PSID.get_imaginary_current_branch_flow(results, branch_name)[2][save_indices]
+            end
+        end
+        branch = corresponding_branches[1] #can get voltage info based on a single branch.
+        if orientation_details[:direction] == :in
+            scale = 1.0
+        elseif orientation_details[:direction] == :out
+            scale = -1.0
+        else
+            @error "invalid value of direction: must be :in or :out"
+            @assert false
+        end
+        if orientation_details[:side] == :from
+            data_dict[:ir] = Ir_from_to * scale
+            data_dict[:ii] = Ii_from_to * scale
+            bus_number_voltage_measurement =
+                PSY.get_number(PSY.get_from(PSY.get_arc(branch)))
+        elseif orientation_details[:side] == :to
+            data_dict[:ir] = Ir_from_to * scale * -1.0
+            data_dict[:ii] = Ii_from_to * scale * -1.0
+            bus_number_voltage_measurement = PSY.get_number(PSY.get_to(PSY.get_arc(branch)))
+        else
+            @error "invalid value of side: must be :to or :from"
+            @assert false
+        end
+        V =
+            PSID.get_voltage_magnitude_series(results, bus_number_voltage_measurement)[2][save_indices]
+        θ =
+            PSID.get_voltage_angle_series(results, bus_number_voltage_measurement)[2][save_indices]
+        data_dict[:vr] = V .* cos.(θ)
+        data_dict[:vi] = V .* sin.(θ)
+        data_dict[:p] = data_dict[:vr] .* data_dict[:ir] .- data_dict[:vi] .* data_dict[:ii]
+        data_dict[:q] = data_dict[:vr] .* data_dict[:ii] .+ data_dict[:vi] .* data_dict[:ir]
     else
-        @error "invalid value of direction: must be :in or :out"
-        @assert false
+        ic = PSID.read_initial_conditions(sim_full)
+        corresponding_branches =
+            collect(PSY.get_components(x -> PSY.get_arc(x) == device, PSY.Branch, sys))
+        device_name = PSY.get_name(device)
+        Ir0_from_to = 0.0
+        Ii0_from_to = 0.0
+        for b in corresponding_branches
+            branch_name = PSY.get_name(b)
+            #TODO - get rid of the if/else logic below after this PSID issue is resolve: https://github.com/NREL-SIIP/PowerSimulationsDynamics.jl/issues/283
+            if data_collection_params.all_lines_dynamic
+                Ir0_from_to += ic[string("Line ", branch_name)][:Il_R]  # PSID.get_state_series(results, (branch_name, :Il_R))[2][save_indices]
+                Ii0_from_to += ic[string("Line ", branch_name)][:Il_I] # PSID.get_state_series(results, (branch_name, :Il_I))[2][save_indices]
+            else
+                bus_number_from = PSY.get_number(PSY.get_from(PSY.get_arc(b)))
+                bus_number_to = PSY.get_number(PSY.get_to(PSY.get_arc(b)))
+                Vr0_from = ic["V_R"][bus_number_from]
+                Vi0_from = ic["V_I"][bus_number_from]
+                Vr0_to = ic["V_R"][bus_number_to]
+                Vi0_to = ic["V_I"][bus_number_to]
+                r = PSY.get_r(b)
+                x = PSY.get_x(b)
+                I_flow =
+                    ((Vr0_from + Vi0_from * 1im) - (Vr0_to + Vi0_to * 1im)) ./ (r + x * 1im)
+                Ir0_from_to += real(I_flow)
+                Ii0_from_to += imag(I_flow)
+            end
+        end
+        branch = corresponding_branches[1] #can get voltage info based on a single branch.
+        if orientation_details[:direction] == :in
+            scale = 1.0
+        elseif orientation_details[:direction] == :out
+            scale = -1.0
+        else
+            @error "invalid value of direction: must be :in or :out"
+            @assert false
+        end
+        if orientation_details[:side] == :from
+            data_dict[:ir] = [Ir0_from_to * scale]
+            data_dict[:ii] = [Ii0_from_to * scale]
+            bus_number_voltage_measurement =
+                PSY.get_number(PSY.get_from(PSY.get_arc(branch)))
+        elseif orientation_details[:side] == :to
+            data_dict[:ir] = [Ir0_from_to * scale * -1.0]
+            data_dict[:ii] = [Ii0_from_to * scale * -1.0]
+            bus_number_voltage_measurement = PSY.get_number(PSY.get_to(PSY.get_arc(branch)))
+        else
+            @error "invalid value of side: must be :to or :from"
+            @assert false
+        end
+        Vr0 = ic["V_R"][bus_number_voltage_measurement]
+        Vi0 = ic["V_I"][bus_number_voltage_measurement]
+        data_dict[:vr] = [Vr0]
+        data_dict[:vi] = [Vi0]
+        data_dict[:p] = data_dict[:vr] .* data_dict[:ir] .- data_dict[:vi] .* data_dict[:ii]
+        data_dict[:q] = data_dict[:vr] .* data_dict[:ii] .+ data_dict[:vi] .* data_dict[:ir]
     end
-    if orientation_details[:side] == :from
-        data_dict[:ir] = Ir_from_to * scale
-        data_dict[:ii] = Ii_from_to * scale
-        bus_number_voltage_measurement = PSY.get_number(PSY.get_from(PSY.get_arc(branch)))
-    elseif orientation_details[:side] == :to
-        data_dict[:ir] = Ir_from_to * scale * -1.0
-        data_dict[:ii] = Ii_from_to * scale * -1.0
-        bus_number_voltage_measurement = PSY.get_number(PSY.get_to(PSY.get_arc(branch)))
-    else
-        @error "invalid value of side: must be :to or :from"
-        @assert false
-    end
-    V =
-        PSID.get_voltage_magnitude_series(results, bus_number_voltage_measurement)[2][save_indices]
-    θ =
-        PSID.get_voltage_angle_series(results, bus_number_voltage_measurement)[2][save_indices]
-    data_dict[:vr] = V .* cos.(θ)
-    data_dict[:vi] = V .* sin.(θ)
-    data_dict[:p] = data_dict[:vr] .* data_dict[:ir] .- data_dict[:vi] .* data_dict[:ii]
-    data_dict[:q] = data_dict[:vr] .* data_dict[:ii] .+ data_dict[:vi] .* data_dict[:ir]
-
     terminal_data_dict[device_name] = data_dict
 end
 
