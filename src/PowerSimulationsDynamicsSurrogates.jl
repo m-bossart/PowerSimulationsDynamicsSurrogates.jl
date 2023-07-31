@@ -2,6 +2,7 @@ module PowerSimulationsDynamicsSurrogates
 
 export ChirpVariableSource
 export FrequencyChirpVariableSource
+export FrequencySource
 
 export SteadyStateNODEObs
 export get_SteadyStateNODEObs_states
@@ -25,6 +26,8 @@ export get_input_limits
 export get_target_min
 export get_target_max
 export get_target_limits
+export get_Tv
+export get_Tω
 export get_base_power
 export get_states
 export get_n_states
@@ -38,6 +41,8 @@ export set_node_parameters!
 export set_observer_parameters!
 export set_base_power!
 export set_θ_ref_frame!
+export set_Tv!
+export set_Tω!
 export set_ext!
 
 export get_component_parameters
@@ -102,6 +107,7 @@ import SciMLBase
 import NLsolve
 import Random
 import Sundials
+import TimerOutputs
 
 const IS = InfrastructureSystems
 const PSY = PowerSystems
@@ -120,6 +126,8 @@ include("components/ChirpVariableSource/psy.jl")
 include("components/ChirpVariableSource/psid.jl")
 include("components/FrequencyChirpVariableSource/psy.jl")
 include("components/FrequencyChirpVariableSource/psid.jl")
+include("components/FrequencySource/psy.jl")
+include("components/FrequencySource/psid.jl")
 include("generate_data/Perturbations.jl")
 include("generate_data/OperatingPointChanges.jl")
 include("generate_data/datasets/generate.jl")
