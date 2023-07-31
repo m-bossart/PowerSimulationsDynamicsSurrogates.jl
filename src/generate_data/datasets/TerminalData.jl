@@ -297,7 +297,7 @@ end
 Matches the operating point from the ground truth dataset when generating the dataset for a surrogate model. 
 """
 function match_operating_point(sys, data_aux::TerminalData, surrogate_params)
-    @assert length(data_aux.device_terminal_data) == 1  #assumes only one entry in TerminalData.device_terminal_data
+    @assert data_aux.built == true 
     for (_, v) in data_aux.device_terminal_data
         Vr0 = v[:vr][1]
         Vi0 = v[:vi][1]
