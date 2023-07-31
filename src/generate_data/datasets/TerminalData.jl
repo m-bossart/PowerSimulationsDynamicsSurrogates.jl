@@ -3,6 +3,7 @@ mutable struct TerminalData <: SurrogateDataset
     tsteps::AbstractArray
     tstops::AbstractArray
     stable::Bool
+    built::Bool
     solve_time::Float64
     device_terminal_data::Dict{String, Dict{Symbol, AbstractArray}} #string is device name, "symbol is :vr, :vi, :ir, :ii, :p, :q", arrays are the data
 end
@@ -12,10 +13,19 @@ function TerminalData(;
     tsteps = [],
     tstops = [],
     stable = false,
+    built = false,
     solve_time = 0.0,
     device_terminal_data = Dict{String, Dict{Symbol, AbstractArray}}(),
 )
-    return TerminalData(type, tsteps, tstops, stable, solve_time, device_terminal_data)
+    return TerminalData(
+        type,
+        tsteps,
+        tstops,
+        stable,
+        built,
+        solve_time,
+        device_terminal_data,
+    )
 end
 
 function fill_surrogate_data!(
@@ -52,14 +62,17 @@ function fill_surrogate_data!(
         data.tstops = unique(results.solution.t)
         data.tsteps = unique(results.solution.t)[save_indices]
         data.stable = true
+        data.built = true
         data.solve_time = results.time_log[:timed_solve_time]
         data.device_terminal_data = terminal_data_dict
-    else
-        #data.tstops = unique(results.solution.t)
-        #data.tsteps = unique(results.solution.t)[save_indices]
+    elseif sim_full.status == PSID.SIMULATION_FAILED
         data.stable = false
-        #data.solve_time = results.time_log[:timed_solve_time]
-        #data.device_terminal_data = terminal_data_dict
+        data.built = true
+    elseif sim_full.status == PSID.BUILD_FAILED
+        data.stable = false
+        data.built = false
+    else
+        @error "Cannot hanldle the PSID simulation status $(sim_full.status)"
     end
 end
 
@@ -284,7 +297,7 @@ end
 Matches the operating point from the ground truth dataset when generating the dataset for a surrogate model. 
 """
 function match_operating_point(sys, data_aux::TerminalData, surrogate_params)
-    @assert length(data_aux.device_terminal_data) == 1  #assumes only one entry in TerminalData.device_terminal_data
+    @assert data_aux.built == true 
     for (_, v) in data_aux.device_terminal_data
         Vr0 = v[:vr][1]
         Vi0 = v[:vi][1]
