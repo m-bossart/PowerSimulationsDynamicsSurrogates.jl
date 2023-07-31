@@ -19,7 +19,7 @@ include("data_tests/data_utils.jl")
 include("data_tests/dynamic_test_data.jl")
 
 logger = PSY.configure_logging(;
-    console_level = Logging.Error,  # Logging.Error, Logging.Debug
+    console_level = Logging.Warn,  # Logging.Error, Logging.Debug
     file_level = Logging.Error,
 )
 with_logger(logger) do
@@ -32,6 +32,7 @@ with_logger(logger) do
     include("test_SteadyStateNODEObs.jl")
     include("test_type_format.jl")
     include("test_data_generation.jl")
+    include("test_dataset_aux.jl")
     include("test_ChirpVariableSource.jl")
     include("test_FrequencyChirpVariableSource.jl")
 end

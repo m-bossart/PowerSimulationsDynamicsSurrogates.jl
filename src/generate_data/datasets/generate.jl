@@ -149,16 +149,33 @@ function generate_surrogate_data(
         add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
     end
     dummy_data = EmptyTrainDataSet(dataset_type)
-    if dataset_aux !== nothing
+    if dataset_aux !== nothing && dataset_aux[1].built == true
         match_operating_point(sys, dataset_aux[1], surrogate_params)    #TODO - not tested
+        sim_full = _build_run_simulation_perturbations(
+            sys,
+            data_collection_params,
+            psid_perturbations,
+        )
+        @assert issubset(
+            data_collection_params.tsave,
+            union(data_collection_params.tstops, sim_full.tstops),
+        )
+        fill_surrogate_data!(dummy_data, device_details, data_collection_params, sim_full)
+    elseif dataset_aux === nothing
+        sim_full = _build_run_simulation_perturbations(
+            sys,
+            data_collection_params,
+            psid_perturbations,
+        )
+        @assert issubset(
+            data_collection_params.tsave,
+            union(data_collection_params.tstops, sim_full.tstops),
+        )
+        fill_surrogate_data!(dummy_data, device_details, data_collection_params, sim_full)
+    else
+        @warn "Simulation not attempted because the ground truth scenario could not be built"
     end
-    sim_full =
-        _build_run_simulation_perturbations(sys, data_collection_params, psid_perturbations)
-    @assert issubset(
-        data_collection_params.tsave,
-        union(data_collection_params.tstops, sim_full.tstops),
-    )
-    fill_surrogate_data!(dummy_data, device_details, data_collection_params, sim_full)
+
     ########################################################################################
     ########################################################################################
 
@@ -171,23 +188,36 @@ function generate_surrogate_data(
                 add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
             end
             data = EmptyTrainDataSet(dataset_type)
-            if dataset_aux !== nothing
+            if dataset_aux !== nothing && dataset_aux[1].built == true
                 match_operating_point(
                     sys,
                     dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p],
                     surrogate_params,
                 )    #TODO - not tested
+                sim_full = _build_run_simulation_perturbations(
+                    sys,
+                    data_collection_params,
+                    psid_perturbations,
+                )
+                @assert issubset(
+                    data_collection_params.tsave,
+                    union(data_collection_params.tstops, sim_full.tstops),
+                )
+                fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
+            elseif dataset_aux === nothing
+                sim_full = _build_run_simulation_perturbations(
+                    sys,
+                    data_collection_params,
+                    psid_perturbations,
+                )
+                @assert issubset(
+                    data_collection_params.tsave,
+                    union(data_collection_params.tstops, sim_full.tstops),
+                )
+                fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
+            else
+                @warn "Simulation not attempted because the ground truth scenario could not be built"
             end
-            sim_full = _build_run_simulation_perturbations(
-                sys,
-                data_collection_params,
-                psid_perturbations,
-            )
-            @assert issubset(
-                data_collection_params.tsave,
-                union(data_collection_params.tstops, sim_full.tstops),
-            )
-            fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
             push!(train_data, data)
         end
     end
@@ -249,17 +279,20 @@ function _build_run_simulation_perturbations(sys, data_collection, psid_perturba
             )
         end
     end
-    PSID.execute!(
-        sim_full,
-        solver,
-        abstol = abstol,
-        reltol = reltol,
-        tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
-        save_everystep = true,
-        saveat = data_collection.tsave,
-        reset_simulation = false,
-        enable_progress_bar = false,
-    )
+    if sim_full.status == PSID.BUILT
+        PSID.execute!(
+            sim_full,
+            solver,
+            abstol = abstol,
+            reltol = reltol,
+            tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
+            save_everystep = true,
+            saveat = data_collection.tsave,
+            reset_simulation = false,
+            enable_progress_bar = false,
+        )
+    end
+
     return sim_full
 end
 
@@ -345,4 +378,8 @@ function fill_surrogate_data!(
     save_indices,
 )
     @warn "collect_data not implemented for this type of SurrogateDataSet: $(typeof(data))"
+end
+
+function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::Nothing)
+    @error "Passed auxiliary dataset without passing surrogate parameters. Should only be used for tests."
 end
