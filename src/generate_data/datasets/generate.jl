@@ -188,7 +188,7 @@ function generate_surrogate_data(
                 add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
             end
             data = EmptyTrainDataSet(dataset_type)
-            if dataset_aux !== nothing && dataset_aux[1].built == true
+            if dataset_aux !== nothing && dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p].built == true
                 match_operating_point(
                     sys,
                     dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p],
