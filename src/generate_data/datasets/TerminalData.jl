@@ -331,6 +331,8 @@ function _match_operating_point(
     end
 end
 
+#Note: Don't set reactive power in _match_operating_point for surrogates that can have multiple components
+#The redistribution of reactive power is handled by the post-processing in PowerFlows.jl to match the surrogate implementation.
 function _match_operating_point(
     sys,
     P0,
@@ -347,10 +349,11 @@ function _match_operating_point(
         base_power = PSY.get_base_power(s)
         base_power_ratio = 100.0 / base_power
         PSY.set_active_power!(s, P0 * base_power_ratio)
-        PSY.set_reactive_power!(s, Q0 * base_power_ratio)
     end
 end
 
+#Note: Don't set reactive power in _match_operating_point for surrogates that can have multiple components
+#The redistribution of reactive power is handled by the post-processing in PowerFlows.jl to match the surrogate implementation.
 function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::ZIPParams)
     load = PSY.get_component(PSY.StandardLoad, sys, surrogate_params.name)
     total_P =
@@ -366,33 +369,21 @@ function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::ZIPPara
         load,
         -1 * P0 * PSY.get_max_impedance_active_power(load) / total_P,
     )
-    PSY.set_impedance_reactive_power!(
-        load,
-        -1 * Q0 * PSY.get_max_impedance_reactive_power(load) / total_Q,
-    )
-
     PSY.set_current_active_power!(
         load,
         -1 * P0 * PSY.get_max_current_active_power(load) / total_P,
     )
-    PSY.set_current_reactive_power!(
-        load,
-        -1 * Q0 * PSY.get_max_current_reactive_power(load) / total_Q,
-    )
-
     PSY.set_constant_active_power!(
         load,
         -1 * P0 * PSY.get_max_constant_active_power(load) / total_P,
     )
-    PSY.set_constant_reactive_power!(
-        load,
-        -1 * Q0 * PSY.get_max_constant_reactive_power(load) / total_Q,
-    )
 end
 
+#Note: Don't set reactive power in _match_operating_point for surrogates that can have multiple components
+#The redistribution of reactive power is handled by the post-processing in PowerFlows.jl to match the surrogate implementation.
 function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::MultiDeviceParams)
     P_device_available = []
-    Q_device_available = []
+    load_polarity_factor = -1.0
     for s in surrogate_params.static_devices
         if typeof(s) == ZIPParams
             device = PSY.get_component(PSY.StandardLoad, sys, s.name)
@@ -400,34 +391,25 @@ function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::MultiDe
                 PSY.get_max_impedance_active_power(device) +
                 PSY.get_max_current_active_power(device) +
                 PSY.get_max_constant_active_power(device)
-            reactive_power_available =
-                PSY.get_max_impedance_reactive_power(device) +
-                PSY.get_max_current_reactive_power(device) +
-                PSY.get_max_constant_reactive_power(device)
-            push!(P_device_available, active_power_available)
-            push!(Q_device_available, reactive_power_available)
+            push!(P_device_available, load_polarity_factor * active_power_available)
         else
             device = PSY.get_component(PSY.Component, sys, s.name)
-            push!(P_device_available, PSY.get_max_active_power(device))
-            push!(Q_device_available, PSY.get_max_reactive_power(device))
+            push!(P_device_available, load_polarity_factor * PSY.get_max_active_power(device))
         end
     end
     for s in surrogate_params.dynamic_devices
         device = PSY.get_component(PSY.StaticInjection, sys, s.name)
         push!(P_device_available, PSY.get_max_active_power(device))
-        push!(Q_device_available, PSY.get_max_reactive_power(device))
     end
-    P_total_available = sum(P_device_available) #Is P positive for Load that is consuming power? Make sense to sum P_device_available with loads both consuming and generators producing P? 
-    Q_total_available = sum(Q_device_available)
+    P_total_available = sum(P_device_available)
     P_device = P_device_available ./ P_total_available .* P0
-    Q_device = Q_device_available ./ Q_total_available .* Q0
     ix = 1
     for s in surrogate_params.static_devices
-        _match_operating_point(sys, P_device[ix], Q_device[ix], Vm0, θ0, s)
+        _match_operating_point(sys, P_device[ix], nothing, Vm0, θ0, s)
         ix += 1
     end
     for s in surrogate_params.dynamic_devices
-        _match_operating_point(sys, P_device[ix], Q_device[ix], Vm0, θ0, s)
+        _match_operating_point(sys, P_device[ix], nothing, Vm0, θ0, s)
         ix += 1
     end
 end
