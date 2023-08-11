@@ -297,6 +297,8 @@ end
 Matches the operating point from the ground truth dataset when generating the dataset for a surrogate model. 
 """
 function match_operating_point(sys, data_aux::TerminalData, surrogate_params)
+    settings_unit_cache = deepcopy(sys.units_settings.unit_system)
+    PSY.set_units_base_system!(sys, "SYSTEM_BASE")
     @assert data_aux.built == true 
     for (_, v) in data_aux.device_terminal_data
         Vr0 = v[:vr][1]
@@ -309,6 +311,7 @@ function match_operating_point(sys, data_aux::TerminalData, surrogate_params)
         θ0 = atan(Vi0, Vr0)
         _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params)
     end
+    PSY.set_units_base_system!(sys, settings_unit_cache)
 end
 
 function _match_operating_point(
@@ -346,9 +349,7 @@ function _match_operating_point(
         PSY.StaticInjection,
         sys,
     )
-        base_power = PSY.get_base_power(s)
-        base_power_ratio = 100.0 / base_power
-        PSY.set_active_power!(s, P0 * base_power_ratio)
+        PSY.set_active_power!(s, P0)
     end
 end
 
