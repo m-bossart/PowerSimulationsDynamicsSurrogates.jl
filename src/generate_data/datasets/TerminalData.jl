@@ -91,12 +91,12 @@ end
 function _fill_terminal_data!(
     terminal_data_dict,
     results,
-    device::Union{PSY.Line, PSY.DynamicBranch},
+    device::Union{PSY.Line, PSY.Transformer2W, PSY.DynamicBranch},
     orientation_details,
     data_collection_params,
     sys,
 )
-    @error "Line name was passed, running _fill_terminal_data for corresponding ARC"
+    @error "Line or transformer name was passed, running _fill_terminal_data for corresponding ARC"
     arc = PSY.get_arc(device)
     return _fill_terminal_data!(
         terminal_data_dict,
@@ -191,7 +191,8 @@ function _fill_terminal_data!(
         for b in corresponding_branches
             branch_name = PSY.get_name(b)
             #TODO - get rid of the if/else logic below after this PSID issue is resolve: https://github.com/NREL-SIIP/PowerSimulationsDynamics.jl/issues/283
-            if data_collection_params.all_lines_dynamic
+            if data_collection_params.all_lines_dynamic && typeof(b) == PSY.Line ||
+               data_collection_params.all_branches_dynamic
                 Ir_from_to +=
                     PSID.get_state_series(results, (branch_name, :Il_R))[2][save_indices]
                 Ii_from_to +=
@@ -299,7 +300,7 @@ Matches the operating point from the ground truth dataset when generating the da
 function match_operating_point(sys, data_aux::TerminalData, surrogate_params)
     settings_unit_cache = deepcopy(sys.units_settings.unit_system)
     PSY.set_units_base_system!(sys, "SYSTEM_BASE")
-    @assert data_aux.built == true 
+    @assert data_aux.built == true
     for (_, v) in data_aux.device_terminal_data
         Vr0 = v[:vr][1]
         Vi0 = v[:vi][1]
@@ -395,7 +396,10 @@ function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::MultiDe
             push!(P_device_available, load_polarity_factor * active_power_available)
         else
             device = PSY.get_component(PSY.Component, sys, s.name)
-            push!(P_device_available, load_polarity_factor * PSY.get_max_active_power(device))
+            push!(
+                P_device_available,
+                load_polarity_factor * PSY.get_max_active_power(device),
+            )
         end
     end
     for s in surrogate_params.dynamic_devices
@@ -426,6 +430,7 @@ function solver_map(key)
         "TRBDF2" => OrdinaryDiffEq.TRBDF2,
         "Tsit5" => OrdinaryDiffEq.Tsit5,
         "IDA" => Sundials.IDA,
+        #"IDA(linear_solver = :KLU)" => Sundials.IDA(linear_solver = :KLU),
     )
     return d[key]
 end
@@ -436,14 +441,14 @@ end
 
 function generate_empty_plot(T::Type{TerminalData})
     p = PlotlyJS.make_subplots(
-        rows = 3,
+        rows = 2,
         cols = 4,
         specs = [
             PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec()
             PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec()
             PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec()
         ],
-        subplot_titles = ["vr" "vi" "ir" "ii" "vd" "vq" "P" "Q" "id" "iq" "im" "iθ"],
+        subplot_titles = ["vr" "vi" "ir" "ii" "P" "Q" "im" "iθ"],
         vertical_spacing = 0.1,
     )
     return p
@@ -457,13 +462,6 @@ function add_data_trace!(p, data::TerminalData; color = "", name = "")
         Ii = device_data_dict[:ii]
         P = device_data_dict[:p]
         Q = device_data_dict[:q]
-        θ = atan(Vi[1], Vr[1])
-        Vd = sin(θ) .* Vr .- cos(θ) .* Vi
-        Vq = cos(θ) .* Vr .+ sin(θ) .* Vi
-        Id = sin(θ) .* Ir .- cos(θ) .* Ii
-        Iq = cos(θ) .* Ir .+ sin(θ) .* Ii
-        Iθ = tan.(Id ./ Iq)
-        Im = sqrt.(Id .^ 2 .+ Iq .^ 2)
 
         PlotlyJS.add_trace!(
             p,
@@ -509,29 +507,6 @@ function add_data_trace!(p, data::TerminalData; color = "", name = "")
             row = 1,
             col = 4,
         )
-
-        PlotlyJS.add_trace!(
-            p,
-            PlotlyJS.scatter(;
-                x = data.tsteps,
-                y = Vd,
-                marker = PlotlyJS.attr(color = color),
-                name = string(device_name, name),
-            ),
-            row = 2,
-            col = 1,
-        )
-        PlotlyJS.add_trace!(
-            p,
-            PlotlyJS.scatter(;
-                x = data.tsteps,
-                y = Vq,
-                marker = PlotlyJS.attr(color = color),
-                name = string(device_name, name),
-            ),
-            row = 2,
-            col = 2,
-        )
         PlotlyJS.add_trace!(
             p,
             PlotlyJS.scatter(;
@@ -541,7 +516,7 @@ function add_data_trace!(p, data::TerminalData; color = "", name = "")
                 name = string(device_name, name),
             ),
             row = 2,
-            col = 3,
+            col = 1,
         )
         PlotlyJS.add_trace!(
             p,
@@ -552,52 +527,7 @@ function add_data_trace!(p, data::TerminalData; color = "", name = "")
                 name = string(device_name, name),
             ),
             row = 2,
-            col = 4,
-        )
-
-        PlotlyJS.add_trace!(
-            p,
-            PlotlyJS.scatter(;
-                x = data.tsteps,
-                y = Id,
-                marker = PlotlyJS.attr(color = color),
-                name = string(device_name, name),
-            ),
-            row = 3,
-            col = 1,
-        )
-        PlotlyJS.add_trace!(
-            p,
-            PlotlyJS.scatter(;
-                x = data.tsteps,
-                y = Iq,
-                marker = PlotlyJS.attr(color = color),
-                name = string(device_name, name),
-            ),
-            row = 3,
             col = 2,
-        )
-        PlotlyJS.add_trace!(
-            p,
-            PlotlyJS.scatter(;
-                x = data.tsteps,
-                y = Im,
-                marker = PlotlyJS.attr(color = color),
-                name = string(device_name, name),
-            ),
-            row = 3,
-            col = 3,
-        )
-        PlotlyJS.add_trace!(
-            p,
-            PlotlyJS.scatter(;
-                x = data.tsteps,
-                y = Iθ,
-                marker = PlotlyJS.attr(color = color),
-                name = string(device_name, name),
-            ),
-            row = 3,
-            col = 4,
         )
     end
     return p

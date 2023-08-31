@@ -1,6 +1,8 @@
 using Revise
 using NLsolve
 using Plots
+using JSON3
+using LinearAlgebra
 using PowerFlows
 using PowerSystems
 using PowerSimulationsDynamics
@@ -24,8 +26,10 @@ logger = PSY.configure_logging(;
 )
 with_logger(logger) do
     #run tests
-    include("test_model_architectures.jl")  #TODO - write this test (test the parsing via test input/output)
+    include("test_model_architectures.jl")
     include("test_TerminalDataSurrogate.jl")
+    include("test_PhysicsInformedSurrogate.jl")
+    include("test_SourceLoad.jl")
     include("test_build_systems.jl")
     include("test_onebus.jl")
     include("test_SteadyStateNODE.jl")

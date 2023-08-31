@@ -1,4 +1,4 @@
-mutable struct TerminalDataSurrogate{
+mutable struct PhysicsInformedSurrogate{
     M <: MLLayer,
     D <: PSY.DynamicInjection,
     S <: DataScaler,
@@ -16,14 +16,13 @@ mutable struct TerminalDataSurrogate{
     model_parameters::Vector{Float64}
     underlying_dynamic_model::D
     data_scaler::S
-    θ_ref_frame::Float64
     n_past_timesteps::Int64
     services::Vector{PSY.Service}
     ext::Dict{String, Any}
     internal::IS.InfrastructureSystemsInternal
 end
 
-function TerminalDataSurrogate(
+function PhysicsInformedSurrogate(
     name,
     available,
     bus,
@@ -37,12 +36,11 @@ function TerminalDataSurrogate(
     model_parameters,
     underlying_dynamic_model,
     data_scaler,
-    θ_ref_frame,
     n_past_timesteps,
     services = PSY.Service[],
     ext = Dict{String, Any}(),
 )
-    TerminalDataSurrogate(
+    PhysicsInformedSurrogate(
         name,
         available,
         bus,
@@ -56,7 +54,6 @@ function TerminalDataSurrogate(
         model_parameters,
         underlying_dynamic_model,
         data_scaler,
-        θ_ref_frame,
         n_past_timesteps,
         services,
         ext,
@@ -64,7 +61,7 @@ function TerminalDataSurrogate(
     )
 end
 
-function TerminalDataSurrogate(;
+function PhysicsInformedSurrogate(;
     name,
     available,
     bus,
@@ -78,12 +75,11 @@ function TerminalDataSurrogate(;
     model_parameters,
     underlying_dynamic_model,
     data_scaler,
-    θ_ref_frame,
     n_past_timesteps,
     services = PSY.Service[],
     ext = Dict{String, Any}(),
 )
-    TerminalDataSurrogate(
+    PhysicsInformedSurrogate(
         name,
         available,
         bus,
@@ -97,7 +93,6 @@ function TerminalDataSurrogate(;
         model_parameters,
         underlying_dynamic_model,
         data_scaler,
-        θ_ref_frame,
         n_past_timesteps,
         services,
         ext,
@@ -106,8 +101,8 @@ function TerminalDataSurrogate(;
 end
 
 # Constructor for demo purposes; non-functional.
-function TerminalDataSurrogate(::Nothing)
-    TerminalDataSurrogate(;
+function PhysicsInformedSurrogate(::Nothing)
+    PhysicsInformedSurrogate(;
         name = "init",
         available = false,
         bus = PSY.Bus(nothing),
@@ -121,7 +116,6 @@ function TerminalDataSurrogate(::Nothing)
         model_parameters = [0.0],
         underlying_dynamic_model = PSY.GenericDER(nothing),
         data_scaler = MinMaxScaler(nothing),
-        θ_ref_frame = 0.0,
         n_past_timesteps = 0,
         services = PSY.Service[],
         ext = Dict{String, Any}(),
@@ -129,34 +123,34 @@ function TerminalDataSurrogate(::Nothing)
 end
 
 #If function exists in PSY, overload it here. 
-PSY.get_name(value::TerminalDataSurrogate) = value.name
-PSY.get_available(value::TerminalDataSurrogate) = value.available
-PSY.get_bus(value::TerminalDataSurrogate) = value.bus
-PSY.get_active_power(value::TerminalDataSurrogate) = value.active_power
-PSY.get_reactive_power(value::TerminalDataSurrogate) = value.reactive_power
-PSY.get_active_power_limits(value::TerminalDataSurrogate) = value.active_power_limits
-PSY.get_reactive_power_limits(value::TerminalDataSurrogate) = value.reactive_power_limits
-PSY.get_internal_voltage(value::TerminalDataSurrogate) = value.internal_voltage
-PSY.get_internal_angle(value::TerminalDataSurrogate) = value.internal_angle
-get_model_architecture(value::TerminalDataSurrogate) = value.model_architecture
-get_model_parameters(value::TerminalDataSurrogate) = value.model_parameters
-get_underlying_dynamic_model(value::TerminalDataSurrogate) = value.underlying_dynamic_model
-get_data_scaler(value::TerminalDataSurrogate) = value.data_scaler
-get_θ_ref_frame(value::TerminalDataSurrogate) = value.θ_ref_frame
-get_n_past_timesteps(value::TerminalDataSurrogate) = value.n_past_timesteps
-PSY.get_ext(value::TerminalDataSurrogate) = value.ext
-PSY.get_internal(value::TerminalDataSurrogate) = value.internal
+PSY.get_name(value::PhysicsInformedSurrogate) = value.name
+PSY.get_available(value::PhysicsInformedSurrogate) = value.available
+PSY.get_bus(value::PhysicsInformedSurrogate) = value.bus
+PSY.get_active_power(value::PhysicsInformedSurrogate) = value.active_power
+PSY.get_reactive_power(value::PhysicsInformedSurrogate) = value.reactive_power
+PSY.get_active_power_limits(value::PhysicsInformedSurrogate) = value.active_power_limits
+PSY.get_reactive_power_limits(value::PhysicsInformedSurrogate) = value.reactive_power_limits
+PSY.get_internal_voltage(value::PhysicsInformedSurrogate) = value.internal_voltage
+PSY.get_internal_angle(value::PhysicsInformedSurrogate) = value.internal_angle
+get_model_architecture(value::PhysicsInformedSurrogate) = value.model_architecture
+get_model_parameters(value::PhysicsInformedSurrogate) = value.model_parameters
+get_underlying_dynamic_model(value::PhysicsInformedSurrogate) =
+    value.underlying_dynamic_model
+get_data_scaler(value::PhysicsInformedSurrogate) = value.data_scaler
+get_n_past_timesteps(value::PhysicsInformedSurrogate) = value.n_past_timesteps
+PSY.get_ext(value::PhysicsInformedSurrogate) = value.ext
+PSY.get_internal(value::PhysicsInformedSurrogate) = value.internal
 
-PSY.set_available!(value::TerminalDataSurrogate, val) = value.available = val
-PSY.set_bus!(value::TerminalDataSurrogate, val) = value.bus = val
-PSY.set_active_power!(value::TerminalDataSurrogate, val) = value.active_power = val
-PSY.set_reactive_power!(value::TerminalDataSurrogate, val) = value.reactive_power = val
-PSY.set_active_power_limits!(value::TerminalDataSurrogate, val) =
+PSY.set_available!(value::PhysicsInformedSurrogate, val) = value.available = val
+PSY.set_bus!(value::PhysicsInformedSurrogate, val) = value.bus = val
+PSY.set_active_power!(value::PhysicsInformedSurrogate, val) = value.active_power = val
+PSY.set_reactive_power!(value::PhysicsInformedSurrogate, val) = value.reactive_power = val
+PSY.set_active_power_limits!(value::PhysicsInformedSurrogate, val) =
     value.active_power_limits = val
-PSY.set_reactive_power_limits!(value::TerminalDataSurrogate, val) =
+PSY.set_reactive_power_limits!(value::PhysicsInformedSurrogate, val) =
     value.reactive_power_limits = val
-PSY.set_internal_voltage!(value::TerminalDataSurrogate, val) = value.internal_voltage = val
-PSY.set_internal_angle!(value::TerminalDataSurrogate, val) = value.internal_angle = val
-set_θ_ref_frame!(value::TerminalDataSurrogate, val) = value.θ_ref_frame = val
-set_model_parameters!(value::TerminalDataSurrogate, val) = value.model_parameters = val
-PSY.set_ext!(value::TerminalDataSurrogate, val) = value.ext = val
+PSY.set_internal_voltage!(value::PhysicsInformedSurrogate, val) =
+    value.internal_voltage = val
+PSY.set_internal_angle!(value::PhysicsInformedSurrogate, val) = value.internal_angle = val
+set_model_parameters!(value::PhysicsInformedSurrogate, val) = value.model_parameters = val
+PSY.set_ext!(value::PhysicsInformedSurrogate, val) = value.ext = val

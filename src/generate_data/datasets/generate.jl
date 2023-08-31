@@ -188,7 +188,8 @@ function generate_surrogate_data(
                 add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
             end
             data = EmptyTrainDataSet(dataset_type)
-            if dataset_aux !== nothing && dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p].built == true
+            if dataset_aux !== nothing &&
+               dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p].built == true
                 match_operating_point(
                     sys,
                     dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p],
@@ -289,7 +290,7 @@ function _build_run_simulation_perturbations(sys, data_collection, psid_perturba
             save_everystep = true,
             saveat = data_collection.tsave,
             reset_simulation = false,
-            enable_progress_bar = false,
+            enable_progress_bar = true,
         )
     end
 
@@ -364,7 +365,7 @@ function _build_run_simulation_initial_conditions(sys, data_collection, initial_
         save_everystep = true,
         saveat = data_collection.tsave,
         reset_simulation = false,
-        enable_progress_bar = false,
+        enable_progress_bar = true,
     )
     return sim_full
 end

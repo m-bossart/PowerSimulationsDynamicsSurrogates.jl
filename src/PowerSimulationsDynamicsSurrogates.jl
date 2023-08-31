@@ -2,6 +2,7 @@ module PowerSimulationsDynamicsSurrogates
 
 export ChirpVariableSource
 export FrequencyChirpVariableSource
+export SourceLoad
 
 export SteadyStateNODEObs
 export get_SteadyStateNODEObs_states
@@ -9,8 +10,15 @@ export SteadyStateNODE
 export get_SteadyStateNODE_states
 export SolutionPredictionSurrogate
 export TerminalDataSurrogate
-export FullyConnected
-export SolutionSurrogateCacheValues
+export PhysicsInformedSurrogate
+export FFNN
+export parse_h5
+export RNN
+export LSTM
+export MinMaxScaler
+export StandardScaler
+export TerminalDataSurrogateCacheValues
+export PhysicsInformedSurrogateCacheValues
 export initializer_psids
 export get_name
 export get_initializer_structure
@@ -92,6 +100,8 @@ export create_train_system_from_buses
 import DataFrames
 import DiffEqCallbacks
 import Distributions
+import HDF5
+import JSON3
 import InfrastructureSystems
 import OrdinaryDiffEq
 import PlotlyJS
@@ -109,15 +119,22 @@ const PSID = PowerSimulationsDynamics
 
 include("utils.jl")
 include("components/abstract_component_types.jl")
-include("components/TerminalDataSurrogate/model_architectures.jl")
+include("components/MLLayer/psy.jl")
+include("components/DataScaler/psy.jl")
 include("components/TerminalDataSurrogate/psy.jl")
+include("components/PhysicsInformedSurrogate/psy.jl")
+include("components/MLLayer/psid.jl")
+include("components/DataScaler/psid.jl")
 include("components/TerminalDataSurrogate/psid.jl")
+include("components/PhysicsInformedSurrogate/psid.jl")
 include("components/SteadyStateNODE/psy.jl")
 include("components/SteadyStateNODE/psid.jl")
 include("components/SteadyStateNODEObs/psy.jl")
 include("components/SteadyStateNODEObs/psid.jl")
 include("components/ChirpVariableSource/psy.jl")
 include("components/ChirpVariableSource/psid.jl")
+include("components/SourceLoad/psy.jl")
+include("components/SourceLoad/psid.jl")
 include("components/FrequencyChirpVariableSource/psy.jl")
 include("components/FrequencyChirpVariableSource/psid.jl")
 include("generate_data/Perturbations.jl")

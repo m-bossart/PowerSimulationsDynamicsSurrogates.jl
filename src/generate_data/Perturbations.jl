@@ -36,6 +36,58 @@ function add_surrogate_perturbation!(
     push!(psid_perturbations, perturbation)
 end
 
+#NOTE: Remove and use built in option after this issue is addressed: https://github.com/NREL-Sienna/PowerSimulationsDynamics.jl/issues/336
+###############################################################################
+################################## PerturbStateAbsolute #######################
+###############################################################################
+"""
+    function PerturbState(
+        time::Float64,
+        index::Int,
+        value::Float64,
+    )
+Allows the user to modify the state `index` by adding `value`. The user should modify dynamic states only, since algebraic state may require to do a reinitialization.
+# Arguments:
+- `time::Float64` : Defines when the modification of the state will happen. This time should be inside the time span considered in the Simulation.
+- `index::Int` : Defines which state index you want to modify
+- `value::Float64` : Defines how much the state will increase in value
+"""
+mutable struct PerturbStateAbsolute <: PSID.Perturbation
+    time::Float64
+    index::Int
+    value::Float64
+end
+
+function PSID.get_affect(::PSID.SimulationInputs, ::PSY.System, pert::PerturbStateAbsolute)
+    return (integrator) -> begin
+        @debug "Modifying state"
+        integrator.u[pert.index] = pert.value
+        return
+    end
+end
+
+###############################################################################
+################################## ParameterChange ############################
+###############################################################################
+
+mutable struct ParameterChange <: PSID.Perturbation
+    time::Float64
+    device::PSY.DynamicInjection
+    parameter::Symbol
+    value::Float64
+end
+
+function PSID.get_affect(inputs::PSID.SimulationInputs, ::PSY.System, pert::ParameterChange)
+    wrapped_device_ix = PSID._find_device_index(inputs, pert.device)
+    return (integrator) -> begin
+        wrapped_device = PSID.get_dynamic_injectors(integrator.p)[wrapped_device_ix]
+        @debug "Changing $(PSY.get_name(wrapped_device)) $(pert.parameter) to $(pert.value)"
+        machine = PSY.get_machine(PSID.get_device(wrapped_device))
+        PSY.set_eq_p!(machine, pert.value)
+        return
+    end
+end
+
 ###############################################################################
 ################################## BranchTrip #################################
 ###############################################################################
