@@ -82,7 +82,6 @@ function _allocate_layer_parameters!(
 )
     input_dim = get_input_dim(layer)
     output_dim = get_output_dim(layer)
-    @show input_dim, output_dim
     bias = get_bias(layer)
     #input kerlels (f,i,o,c)
     for i in 1:4
@@ -242,9 +241,6 @@ function parse_h5(h5_file_path)
         elseif config["class_name"] == "SimpleRNN"   #Need to find both time dimension and return sequences 
             input_size = size(layer_weights[name][name]["simple_rnn_cell"]["kernel:0"])[2]
             output_size = size(layer_weights[name][name]["simple_rnn_cell"]["kernel:0"])[1]
-            #@show size(layer_weights[name][name]["simple_rnn_cell"]["kernel:0"])
-            #@show size(layer_weights[name][name]["simple_rnn_cell"]["recurrent_kernel:0"])
-            #@show size(layer_weights[name][name]["simple_rnn_cell"]["bias:0"])
             @assert size(layer_weights[name][name]["simple_rnn_cell"]["bias:0"])[1] != 0
             model_parameters = vcat(
                 model_parameters,
@@ -271,17 +267,8 @@ function parse_h5(h5_file_path)
                 ),
             )
         elseif config["class_name"] == "LSTM"
-            @show keys(layer_weights[name][name])
-            @show size(layer_weights[name][name]["lstm_cell"]["kernel:0"])
-            @show size(layer_weights[name][name]["lstm_cell"]["recurrent_kernel:0"])
-            @show size(layer_weights[name][name]["lstm_cell"]["bias:0"])
-
             input_size = size(layer_weights[name][name]["lstm_cell"]["kernel:0"])[2]
-            @show size(layer_weights[name][name]["lstm_cell"]["recurrent_kernel:0"])
             output_size = size(layer_weights[name][name]["lstm_cell"]["kernel:0"])[1] / 4       #four different kernels in 1 
-            #@show size(layer_weights[name][name]["lstm_cell"]["kernel:0"])
-            #@show size(layer_weights[name][name]["lstm_cell"]["recurrent_kernel:0"])
-            #@show size(layer_weights[name][name]["lstm_cell"]["bias:0"])
             @assert size(layer_weights[name][name]["lstm_cell"]["bias:0"])[1] != 0
             for i in 1:4
                 model_parameters = vcat(
