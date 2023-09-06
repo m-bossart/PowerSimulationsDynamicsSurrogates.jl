@@ -1,5 +1,8 @@
 using Revise
 using NLsolve
+using CSV
+using Random
+using DataFrames
 using Plots
 using JSON3
 using LinearAlgebra
@@ -26,6 +29,7 @@ logger = PSY.configure_logging(;
 )
 with_logger(logger) do
     #run tests
+    include("test_datascaler.jl")
     include("test_model_architectures.jl")
     include("test_TerminalDataSurrogate.jl")
     include("test_PhysicsInformedSurrogate.jl")
