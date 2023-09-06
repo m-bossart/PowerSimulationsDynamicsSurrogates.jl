@@ -207,8 +207,8 @@ function _reshape_input(static_input, dynamic_input, layer::Union{RNN, LSTM})
 end
 
 function parse_h5(h5_file_path)
-    model_architecture = []
-    model_parameters = Vector{Float64}[]
+    model_architecture = MLLayer[]
+    model_parameters = Float64[]
 
     fid = HDF5.h5open(h5_file_path, "r")
     layer_names = HDF5.read_attribute(fid["model_weights"], "layer_names")
