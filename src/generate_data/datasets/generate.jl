@@ -151,6 +151,7 @@ function generate_surrogate_data(
     for s in PSY.get_components(TerminalDataSurrogate, sys)
         push!(psid_perturbations, TerminalDataSurrogateCacheValues(s))
     end
+    rng_state = copy(Random.default_rng())
     dummy_data = EmptyTrainDataSet(dataset_type)
     if dataset_aux !== nothing && dataset_aux[1].built == true
         match_operating_point(sys, dataset_aux[1], surrogate_params)    #TODO - not tested
@@ -178,6 +179,7 @@ function generate_surrogate_data(
     else
         @warn "Simulation not attempted because the ground truth scenario could not be built"
     end
+    copy!(Random.default_rng(), rng_state)
 
     ########################################################################################
     ########################################################################################
@@ -193,6 +195,7 @@ function generate_surrogate_data(
             for s in PSY.get_components(TerminalDataSurrogate, sys)
                 push!(psid_perturbations, TerminalDataSurrogateCacheValues(s))
             end
+            rng_state = copy(Random.default_rng())
             data = EmptyTrainDataSet(dataset_type)
             if dataset_aux !== nothing &&
                dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p].built == true
@@ -226,6 +229,7 @@ function generate_surrogate_data(
                 @warn "Simulation not attempted because the ground truth scenario could not be built"
             end
             push!(train_data, data)
+            copy!(Random.default_rng(), rng_state)
         end
     end
     return train_data
