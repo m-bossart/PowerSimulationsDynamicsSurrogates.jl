@@ -97,6 +97,7 @@ export generate_surrogate_data
 export create_validation_system_from_buses
 export create_train_system_from_buses
 
+import CSV
 import DataFrames
 import DiffEqCallbacks
 import Distributions
