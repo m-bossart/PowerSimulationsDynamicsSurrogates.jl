@@ -149,7 +149,7 @@ function _build_inputs(
             dynamic_input[i, :] = vcat(
                 [ext["past_values"]["t"][i-1] - ext["past_values"]["t"][i]],
                 PSID.ri_dq(ref_frame_angle) * [ext["past_values"]["vr"][i-1]; ext["past_values"]["vi"][i-1]] .- PSID.ri_dq(ref_frame_angle) * [ext["past_values"]["vr"][i]; ext["past_values"]["vi"][i]],
-                PSID.ri_dq(ref_frame_angle) * [ext["past_values"]["ir"][1]; ext["past_values"]["ii"][1]] .- PSID.ri_dq(ref_frame_angle) * [ext["past_values"]["ir"][i+1]; ext["past_values"]["ii"][i+1]],
+                PSID.ri_dq(ref_frame_angle) * [ext["past_values"]["ir"][i]; ext["past_values"]["ii"][i]] .- PSID.ri_dq(ref_frame_angle) * [ext["past_values"]["ir"][i+1]; ext["past_values"]["ii"][i+1]],
             )
         end
     end
