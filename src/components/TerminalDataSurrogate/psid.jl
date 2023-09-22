@@ -141,17 +141,15 @@ function _build_inputs(
     for i in 1:(static_device.n_past_timesteps)
         if i == 1
             dynamic_input[i, :] = vcat(
-                PSID.ri_dq(ref_frame_angle) * [voltage_r; voltage_i],
-                [0.0; 0.0],               # TODO - should these be set to zero before or after scaling?
                 [t - ext["past_values"]["t"][1]],
+                PSID.ri_dq(ref_frame_angle) * [voltage_r; voltage_i] .- PSID.ri_dq(ref_frame_angle) * [ext["past_values"]["vr"][1]; ext["past_values"]["vi"][1]],
+                PSID.ri_dq(ref_frame_angle) * [ext["past_values"]["ir"][1]; ext["past_values"]["ii"][1]] .- PSID.ri_dq(ref_frame_angle) * [ext["past_values"]["ir"][2]; ext["past_values"]["ii"][2]],
             )
-        else
+        else    #voltage and time are offset from current by one timestep
             dynamic_input[i, :] = vcat(
-                PSID.ri_dq(ref_frame_angle) *
-                [ext["past_values"]["vr"][i]; ext["past_values"]["vi"][i]],
-                PSID.ri_dq(ref_frame_angle) *
-                [ext["past_values"]["ir"][i]; ext["past_values"]["ii"][i]],
-                [ext["past_values"]["t"][i] - ext["past_values"]["t"][i - 1]],
+                [ext["past_values"]["t"][i-1] - ext["past_values"]["t"][i]],
+                PSID.ri_dq(ref_frame_angle) * [ext["past_values"]["vr"][i-1]; ext["past_values"]["vi"][i-1]] .- PSID.ri_dq(ref_frame_angle) * [ext["past_values"]["vr"][i]; ext["past_values"]["vi"][i]],
+                PSID.ri_dq(ref_frame_angle) * [ext["past_values"]["ir"][1]; ext["past_values"]["ii"][1]] .- PSID.ri_dq(ref_frame_angle) * [ext["past_values"]["ir"][i+1]; ext["past_values"]["ii"][i+1]],
             )
         end
     end
