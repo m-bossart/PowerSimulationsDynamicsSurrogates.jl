@@ -27,7 +27,7 @@ end
     target_lims = (-1.0, 1.0)
 
     #THESE LAYERS DO THE SCALING WITHIN THE FLUX NNs
-    layer_initializer_input = Parallel(
+    layer_initializer_input = Flux.Parallel(
         vcat,
         (x) -> PowerSimulationsDynamicsSurrogates.min_max_normalization(
             x,
@@ -44,7 +44,7 @@ end
             target_lims[1],
         ),
     )  #Second output only 
-    layer_node_input = Parallel(
+    layer_node_input = Flux.Parallel(
         vcat,
         (x) -> x,
         (x) -> PowerSimulationsDynamicsSurrogates.min_max_normalization(
@@ -65,9 +65,9 @@ end
             target_lims[1],
         )
 
-    initializer = Chain(layer_initializer_input, Dense(3, 5, tanh; bias = true))
-    node = Chain(layer_node_input, Dense(7, 3, tanh; bias = true))
-    observer = Chain(Dense(3, 2, tanh; bias = true), layer_observer_output)
+    initializer = Flux.Chain(layer_initializer_input, Flux.Dense(3, 5, tanh; bias = true))
+    node = Flux.Chain(layer_node_input, Flux.Dense(7, 3, tanh; bias = true))
+    observer = Flux.Chain(Flux.Dense(3, 2, tanh; bias = true), layer_observer_output)
 
     function SteadyStateNODEObs_simple(source)
         return SteadyStateNODEObs(
@@ -166,7 +166,7 @@ end
     @test execute!(sim, IDA(), saveat = tsteps) == PSID.SIMULATION_FINALIZED
     results = read_results(sim)
 
-    #Plot results - for debug only 
+#=     #Plot results - for debug only 
     p = plot()
     for b in get_components(Bus, sys)
         plot!(
@@ -178,5 +178,5 @@ end
     r1 = PSID.get_state_series(results, ("InfBus", :r1))
     p2 = plot()
     plot!(p2, r1, label = "r1")
-    display(plot(p, p2))
+    display(plot(p, p2)) =#
 end

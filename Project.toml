@@ -4,11 +4,8 @@ authors = ["Matt Bossart"]
 version = "0.1.0"
 
 [deps]
-CSV = "336ed68f-0bac-5ca0-87d4-7b16caf5d00b"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
-DiffEqCallbacks = "459566f4-90b8-5000-8ac3-15dfb0a30def"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
-HDF5 = "f67ccb44-e63f-5c2f-98bd-6dc0ccc4ba2f"
 InfrastructureSystems = "2cd47ed4-ca9b-11e9-27f2-ab636a7671f1"
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 NLsolve = "2774e3e8-f4cf-5e23-947b-6d7e65073b56"
@@ -18,11 +15,11 @@ PowerFlows = "94fada2c-fd9a-4e89-8d82-81405f5cb4f6"
 PowerSimulationsDynamics = "398b2ede-47ed-4edc-b52e-69e4a48b4336"
 PowerSystems = "bcd98974-b02a-5e2f-9ee0-a103f5c450dd"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 Sundials = "c3572dad-4567-51f8-b174-8c6c989267f4"
 
 [compat]
 julia = "1.1"
+PlotlyJS = "<0.18.11"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"

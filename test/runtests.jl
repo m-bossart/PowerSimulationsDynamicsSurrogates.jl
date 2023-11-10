@@ -1,9 +1,8 @@
 using Revise
+using BSON: @save, @load
 using NLsolve
-using CSV
 using Random
 using DataFrames
-using Plots
 using JSON3
 using LinearAlgebra
 using PowerFlows
@@ -11,6 +10,7 @@ using PowerSystems
 using PowerSimulationsDynamics
 using PowerSimulationsDynamicsSurrogates
 using Sundials
+using Lux 
 using Flux
 using Test
 using Random
@@ -29,10 +29,8 @@ logger = PSY.configure_logging(;
 )
 with_logger(logger) do
     #run tests
-    include("test_datascaler.jl")
-    include("test_model_architectures.jl")
     include("test_TerminalDataSurrogate.jl")
-    include("test_PhysicsInformedSurrogate.jl")
+    include("test_serialization.jl")
     include("test_SourceLoad.jl")
     include("test_build_systems.jl")
     include("test_onebus.jl")

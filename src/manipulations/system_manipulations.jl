@@ -32,6 +32,7 @@ function create_validation_system_from_buses(
     _remove_static_and_dynamic_injectors!(sys, surrogate_bus_numbers)
     connecting_branch_data =
         _get_connecting_branch_power(sys, surrogate_bus_numbers, powerflow_df) #inner terminal is the bus that is within the numbers provided. For the validation system that is the bus where the source is added. 
+    display(connecting_branch_data)
     _remove_internal_branches!(sys, surrogate_bus_numbers)
 
     #Keep the buses within the surrogate that are connecting to the rest of the system (this is where the surrogate component will attach)
@@ -108,22 +109,41 @@ end
 
 function _add_sources!(sys, connecting_branch_data, location)
     #Add a source to the connecting buses within the surrogate with appropriate active power set point. Ensure that the type of bus is either connecting_branch_data or PV
+    bus_numbers_powers = Dict()
     for (ix, data) in enumerate(connecting_branch_data)
         if (data.inner_terminal == :from) && (location == :inner)   #Building the validation system
             bus = PSY.get_component(PSY.Bus, sys, data.from_bus_name)
-            P_source = data.P_from_to
+            if !haskey(bus_numbers_powers, bus)
+                bus_numbers_powers[bus] = data.P_from_to
+            else 
+                bus_numbers_powers[bus] +=  data.P_from_to
+            end 
         elseif (data.inner_terminal == :to) && (location == :outer) #Building the train system
             bus = PSY.get_component(PSY.Bus, sys, data.from_bus_name)
-            P_source = data.P_from_to * -1
+            if !haskey(bus_numbers_powers, bus)
+                bus_numbers_powers[bus] = data.P_from_to * -1
+            else 
+                bus_numbers_powers[bus] +=  data.P_from_to * -1
+            end 
         elseif (data.inner_terminal == :to) && (location == :inner)  #Building the validation system
             bus = PSY.get_component(PSY.Bus, sys, data.to_bus_name)
-            P_source = data.P_to_from
+            if !haskey(bus_numbers_powers, bus)
+                bus_numbers_powers[bus] = data.P_to_from 
+            else 
+                bus_numbers_powers[bus] +=  data.P_to_from
+            end 
         elseif (data.inner_terminal == :from) && (location == :outer) #Building the train system
             bus = PSY.get_component(PSY.Bus, sys, data.to_bus_name)
-            P_source = data.P_to_from * -1
+            if !haskey(bus_numbers_powers, bus)
+                bus_numbers_powers[bus] = data.P_to_from * -1
+            else 
+                bus_numbers_powers[bus] +=  data.P_to_from * -1
+            end 
         else
             @error "Invalid value for inner_terminal: $(data.inner_terminal)"
         end
+    end 
+    for (ix, (bus, active_power)) in enumerate(bus_numbers_powers)
         @assert bus !== nothing
         PSY.get_bustype(bus) !== PSY.BusTypes.REF && PSY.set_bustype!(bus, PSY.BusTypes.PV)
         if length(
@@ -131,7 +151,7 @@ function _add_sources!(sys, connecting_branch_data, location)
         ) == 0  #If there is already a source at bus, don't build another one (double line case) 
             source = PSY.Source(
                 name = string("source_", ix),
-                active_power = P_source / 100,
+                active_power = active_power / 100,
                 available = true,
                 reactive_power = 0.0,
                 bus = bus,
@@ -142,7 +162,7 @@ function _add_sources!(sys, connecting_branch_data, location)
             )
             PSY.add_component!(sys, source)
         end
-    end
+    end 
 end
 function _ensure_a_reference_bus!(sys)
     reference_buses =

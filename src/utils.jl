@@ -40,7 +40,7 @@ function init_underlying_device(
 ) where {D <: PSY.DynamicInjection}
     sys = PSY.System(100.0)
     b = PSY.Bus(1, "Bus1", PSY.BusTypes.REF, θ0, Vm0, (min = 0.0, max = 2.0), 1.0, nothing)
-    PSY.add_component!(sys, b)
+    PSY.add_component!(sys, b; skip_validation=true)
     gen = PSY.ThermalStandard(;
         name = PSY.get_name(device),
         available = true,
@@ -53,7 +53,7 @@ function init_underlying_device(
         reactive_power_limits = nothing,
         ramp_limits = nothing,
         operation_cost = PSY.ThreePartCost(nothing),
-        base_power = 100.0,
+        base_power = PSY.get_base_power(device),
         time_limits = nothing,
         must_run = false,
         prime_mover = PSY.PrimeMovers.OT,
@@ -74,6 +74,7 @@ function init_underlying_device(
     PSY.add_component!(sys, gen)
     PSY.add_component!(sys, source)
     PSY.add_component!(sys, device, gen)
+    rng_state = copy(Random.default_rng())
     sim = PSID.Simulation!(
         PSID.MassMatrixModel,
         sys,
@@ -81,6 +82,7 @@ function init_underlying_device(
         (0.0, 1.0);
         disable_timer_outputs = true,
     )
+    copy!(Random.default_rng(), rng_state)
     refs = PSID.get_setpoints(sim)[PSY.get_name(device)]
     x0 = PSID.read_initial_conditions(sim)[PSY.get_name(device)]
     return x0, refs
@@ -132,4 +134,14 @@ function _push_layer_weights_and_biases!(Ws, bs, layers, p, p_index_start)
         end
     end
     return p_index
+end
+
+function min_max_normalization(x, xmin, xmax, u, l)  #https://www.baeldung.com/cs/normalizing-inputs-artificial-neural-network
+    x_prime = (x .- xmin) ./ (xmax .- xmin) .* (u .- l) .+ l
+    return x_prime
+end
+
+function min_max_normalization_inverse(x_prime, xmin, xmax, u, l)
+    x = (x_prime .- l) .* (xmax .- xmin) ./ (u .- l) .+ xmin
+    return x
 end

@@ -1,8 +1,4 @@
-mutable struct TerminalDataSurrogate{
-    M <: MLLayer,
-    D <: PSY.DynamicInjection,
-    S <: DataScaler,
-} <: LearnedSolutionSurrogate
+mutable struct TerminalDataSurrogate <: LearnedSolutionSurrogate
     name::String
     available::Bool
     bus::PSY.Bus
@@ -12,14 +8,10 @@ mutable struct TerminalDataSurrogate{
     reactive_power_limits::Union{Nothing, PSY.MinMax}
     internal_voltage::Float64
     internal_angle::Float64
-    model_architecture::Vector{M}
-    model_parameters::Vector{Float64}
-    underlying_dynamic_model::D
-    data_scaler::S
-    θ_ref_frame::Float64
-    n_past_timesteps::Int64
+    τ::Float64
+    window_size::Int64
     services::Vector{PSY.Service}
-    ext::Dict{String, Any}
+    ext::Dict{String, Any}     
     internal::IS.InfrastructureSystemsInternal
 end
 
@@ -33,12 +25,8 @@ function TerminalDataSurrogate(
     reactive_power_limits,
     internal_voltage,
     internal_angle,
-    model_architecture,
-    model_parameters,
-    underlying_dynamic_model,
-    data_scaler,
-    θ_ref_frame,
-    n_past_timesteps,
+    τ,
+    window_size, 
     services = PSY.Service[],
     ext = Dict{String, Any}(),
 )
@@ -52,12 +40,8 @@ function TerminalDataSurrogate(
         reactive_power_limits,
         internal_voltage,
         internal_angle,
-        model_architecture,
-        model_parameters,
-        underlying_dynamic_model,
-        data_scaler,
-        θ_ref_frame,
-        n_past_timesteps,
+        τ,
+        window_size, 
         services,
         ext,
         IS.InfrastructureSystemsInternal(),
@@ -74,12 +58,8 @@ function TerminalDataSurrogate(;
     reactive_power_limits,
     internal_voltage,
     internal_angle,
-    model_architecture,
-    model_parameters,
-    underlying_dynamic_model,
-    data_scaler,
-    θ_ref_frame,
-    n_past_timesteps,
+    τ,
+    window_size, 
     services = PSY.Service[],
     ext = Dict{String, Any}(),
 )
@@ -93,12 +73,8 @@ function TerminalDataSurrogate(;
         reactive_power_limits,
         internal_voltage,
         internal_angle,
-        model_architecture,
-        model_parameters,
-        underlying_dynamic_model,
-        data_scaler,
-        θ_ref_frame,
-        n_past_timesteps,
+        τ,
+        window_size,
         services,
         ext,
         IS.InfrastructureSystemsInternal(),
@@ -117,12 +93,8 @@ function TerminalDataSurrogate(::Nothing)
         reactive_power_limits = (min = 0.0, max = 1.0),
         internal_voltage = 0.0,
         internal_angle = 0.0,
-        model_architecture = [FFNN(nothing)],
-        model_parameters = [0.0],
-        underlying_dynamic_model = PSY.GenericDER(nothing),
-        data_scaler = MinMaxScaler(nothing),
-        θ_ref_frame = 0.0,
-        n_past_timesteps = 0,
+        τ = 0.0,
+        window_size = 1,
         services = PSY.Service[],
         ext = Dict{String, Any}(),
     )
@@ -138,12 +110,8 @@ PSY.get_active_power_limits(value::TerminalDataSurrogate) = value.active_power_l
 PSY.get_reactive_power_limits(value::TerminalDataSurrogate) = value.reactive_power_limits
 PSY.get_internal_voltage(value::TerminalDataSurrogate) = value.internal_voltage
 PSY.get_internal_angle(value::TerminalDataSurrogate) = value.internal_angle
-get_model_architecture(value::TerminalDataSurrogate) = value.model_architecture
-get_model_parameters(value::TerminalDataSurrogate) = value.model_parameters
-get_underlying_dynamic_model(value::TerminalDataSurrogate) = value.underlying_dynamic_model
-get_data_scaler(value::TerminalDataSurrogate) = value.data_scaler
-get_θ_ref_frame(value::TerminalDataSurrogate) = value.θ_ref_frame
-get_n_past_timesteps(value::TerminalDataSurrogate) = value.n_past_timesteps
+get_τ(value::TerminalDataSurrogate) = value.τ
+get_window_size(value::TerminalDataSurrogate) = value.window_size
 PSY.get_ext(value::TerminalDataSurrogate) = value.ext
 PSY.get_internal(value::TerminalDataSurrogate) = value.internal
 
@@ -157,6 +125,4 @@ PSY.set_reactive_power_limits!(value::TerminalDataSurrogate, val) =
     value.reactive_power_limits = val
 PSY.set_internal_voltage!(value::TerminalDataSurrogate, val) = value.internal_voltage = val
 PSY.set_internal_angle!(value::TerminalDataSurrogate, val) = value.internal_angle = val
-set_θ_ref_frame!(value::TerminalDataSurrogate, val) = value.θ_ref_frame = val
-set_model_parameters!(value::TerminalDataSurrogate, val) = value.model_parameters = val
 PSY.set_ext!(value::TerminalDataSurrogate, val) = value.ext = val
