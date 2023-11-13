@@ -118,7 +118,8 @@ function _fill_references_data!(
     references[:ω_ref] = 1.0
     references[:V_ref] = PSY.get_V_ref(dynamic_device)
     references[:Q_ref] = PSY.get_reactive_power(device)
-    if typeof(dynamic_device) <: PSY.DynamicGenerator
+    if typeof(dynamic_device) <: PSY.DynamicGenerator &&
+       typeof(PSY.get_machine(dynamic_device)) == PSY.BaseMachine
         references[:eq_p] = PSY.get_eq_p(PSY.get_machine(dynamic_device))
     end
     refs_data_dict[dynamic_device_name] = references

@@ -3,6 +3,7 @@ abstract type SurrogateDataset end
 struct GenerateDataParams
     solver::String
     solver_tols::NamedTuple{(:reltol, :abstol), Tuple{Float64, Float64}}
+    dtmax::Union{Nothing, Float64}
     tspan::Tuple{Float64, Float64}
     tstops::Vector{Float64}
     tsave::Vector{Float64}
@@ -16,6 +17,7 @@ end
 function GenerateDataParams(;
     solver = "IDA",
     solver_tols = (reltol = 1e-6, abstol = 1e-6),
+    dtmax = nothing,
     tspan = (0.0, 1.0),
     tstops = [],
     tsave = [],
@@ -28,6 +30,7 @@ function GenerateDataParams(;
     GenerateDataParams(
         solver,
         solver_tols,
+        dtmax,
         tspan,
         tstops,
         tsave,
@@ -148,6 +151,11 @@ function generate_surrogate_data(
     for p_single in perturbations[1]
         add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
     end
+    for s in PSY.get_components(TerminalDataSurrogate, sys)
+        push!(psid_perturbations, TerminalDataSurrogateCacheValues(s))
+    end
+    #TODO - add same loop for pinns 
+    rng_state = copy(Random.default_rng())
     dummy_data = EmptyTrainDataSet(dataset_type)
     if dataset_aux !== nothing && dataset_aux[1].built == true
         match_operating_point(sys, dataset_aux[1], surrogate_params)    #TODO - not tested
@@ -175,6 +183,7 @@ function generate_surrogate_data(
     else
         @warn "Simulation not attempted because the ground truth scenario could not be built"
     end
+    copy!(Random.default_rng(), rng_state)
 
     ########################################################################################
     ########################################################################################
@@ -187,8 +196,13 @@ function generate_surrogate_data(
             for p_single in p
                 add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
             end
+            for s in PSY.get_components(TerminalDataSurrogate, sys)
+                push!(psid_perturbations, TerminalDataSurrogateCacheValues(s))
+            end
+            rng_state = copy(Random.default_rng())
             data = EmptyTrainDataSet(dataset_type)
-            if dataset_aux !== nothing && dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p].built == true
+            if dataset_aux !== nothing &&
+               dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p].built == true
                 match_operating_point(
                     sys,
                     dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p],
@@ -205,6 +219,7 @@ function generate_surrogate_data(
                 )
                 fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
             elseif dataset_aux === nothing
+                #Instead of running the simulation, just compare the error in the model 
                 sim_full = _build_run_simulation_perturbations(
                     sys,
                     data_collection_params,
@@ -219,6 +234,7 @@ function generate_surrogate_data(
                 @warn "Simulation not attempted because the ground truth scenario could not be built"
             end
             push!(train_data, data)
+            copy!(Random.default_rng(), rng_state)
         end
     end
     return train_data
@@ -280,17 +296,33 @@ function _build_run_simulation_perturbations(sys, data_collection, psid_perturba
         end
     end
     if sim_full.status == PSID.BUILT
-        PSID.execute!(
-            sim_full,
-            solver,
-            abstol = abstol,
-            reltol = reltol,
-            tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
-            save_everystep = true,
-            saveat = data_collection.tsave,
-            reset_simulation = false,
-            enable_progress_bar = false,
-        )
+        if data_collection.dtmax === nothing
+            #PSID.show_states_initial_value(sim_full)   #For debugging of SS error for surrogate
+            PSID.execute!(
+                sim_full,
+                solver,
+                abstol = abstol,
+                reltol = reltol,
+                tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
+                save_everystep = true,
+                saveat = data_collection.tsave,
+                reset_simulation = false,
+                enable_progress_bar = true,
+            )
+        else
+            PSID.execute!(
+                sim_full,
+                solver,
+                abstol = abstol,
+                reltol = reltol,
+                tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
+                save_everystep = true,
+                saveat = data_collection.tsave,
+                reset_simulation = false,
+                enable_progress_bar = true,
+                dtmax = data_collection.dtmax,
+            )
+        end
     end
 
     return sim_full
@@ -355,17 +387,32 @@ function _build_run_simulation_initial_conditions(sys, data_collection, initial_
             )
         end
     end
-    PSID.execute!(
-        sim_full,
-        solver,
-        abstol = abstol,
-        reltol = reltol,
-        tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
-        save_everystep = true,
-        saveat = data_collection.tsave,
-        reset_simulation = false,
-        enable_progress_bar = false,
-    )
+    if data_collection.dtmax === nothing
+        PSID.execute!(
+            sim_full,
+            solver,
+            abstol = abstol,
+            reltol = reltol,
+            tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
+            save_everystep = true,
+            saveat = data_collection.tsave,
+            reset_simulation = false,
+            enable_progress_bar = true,
+        )
+    else
+        PSID.execute!(
+            sim_full,
+            solver,
+            abstol = abstol,
+            reltol = reltol,
+            tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
+            save_everystep = true,
+            saveat = data_collection.tsave,
+            reset_simulation = false,
+            enable_progress_bar = true,
+            dtmax = data_collection.dtmax,
+        )
+    end
     return sim_full
 end
 
