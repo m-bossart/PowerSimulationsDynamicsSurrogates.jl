@@ -44,12 +44,12 @@ end
     b = collect(get_components(x -> get_number(x) == 102, Bus, sys))[1]
     v0_path = Lux.Chain(Lux.Dense(2, 2))
     i0_path = Lux.Chain(Lux.Dense(2, 2))
-    v_path = Lux.Chain(Lux.FlattenLayer(), Lux.Dense(10,2))
-    i_path = Lux.Chain(Lux.FlattenLayer(), Lux.Dense(10,2))
+    v_path = Lux.Chain(Lux.FlattenLayer(), Lux.Dense(10, 2))
+    i_path = Lux.Chain(Lux.FlattenLayer(), Lux.Dense(10, 2))
     model = Lux.Chain(Lux.Parallel(+, v0_path, i0_path, v_path, i_path))
     rng = Random.default_rng()
     Random.seed!(rng, 0)
-    ps, st = Lux.setup(rng, model) 
+    ps, st = Lux.setup(rng, model)
 
     s = TerminalDataSurrogate(
         name = "test",
@@ -61,9 +61,9 @@ end
         reactive_power_limits = (min = 0.0, max = 1.0),
         internal_voltage = 1.0,
         internal_angle = 0.0,
-        τ = 0.1, 
-        window_size = 5, 
-        ext = Dict{String, Any}("model"=>model, "ps"=>ps, "st"=> st),
+        τ = 0.1,
+        window_size = 5,
+        ext = Dict{String, Any}("model" => model, "ps" => ps, "st" => st),
     )
     add_component!(sys, s)
     display(sys)

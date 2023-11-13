@@ -78,7 +78,7 @@ export GenerateDataParams
 
 export generate_surrogate_data
 export create_validation_system_from_buses
-export create_train_system_from_buses 
+export create_train_system_from_buses
 
 import DataFrames
 import Distributions
@@ -95,7 +95,7 @@ import Random
 
 const IS = InfrastructureSystems
 const PSY = PowerSystems
-const PSID = PowerSimulationsDynamics 
+const PSID = PowerSimulationsDynamics
 
 include("utils.jl")
 include("components/abstract_component_types.jl")
@@ -119,5 +119,5 @@ include("generate_data/datasets/AllStatesData.jl")
 include("generate_data/datasets/BusData.jl")
 include("generate_data/datasets/FullSolutionData.jl")
 include("manipulations/system_manipulations.jl")
-include("manipulations/parameter_manipulations.jl") 
+include("manipulations/parameter_manipulations.jl")
 end

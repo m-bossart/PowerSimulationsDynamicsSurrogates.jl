@@ -14,7 +14,7 @@ function PSID.StaticWrapper(device::TerminalDataSurrogate, bus_ix::Int)
     )
 end
 
-add_dim(x) = reshape(x, (size(x)...,1))
+add_dim(x) = reshape(x, (size(x)..., 1))
 
 function PSID.initialize_static_device!(
     device::PSID.StaticWrapper{TerminalDataSurrogate, T},
@@ -46,7 +46,7 @@ function PSID.initialize_static_device!(
     i_ss = add_dim(hcat(fill(IR0, window_size), fill(II0, window_size)))
     ss_input = ([VR0, VI0], [IR0, II0], v_ss, i_ss)
     y, st = model(ss_input, ps, st)
-    ext_wrapper["offset"] =  y - [IR0, II0]
+    ext_wrapper["offset"] = y - [IR0, II0]
 
     #TODO -add a warning if offset is too large; offset should be zero if well trained at steady state operation
     PSID.set_V_ref(device, Vm)
@@ -88,7 +88,7 @@ function mdl_solution_prediction_surrogate!(
     ext_wrapper = PSID.get_ext(static_device)
     ext_device = PSY.get_ext(static_device.device)
     window_size = get_window_size(static_device.device)
-    τ = get_τ(static_device.device )
+    τ = get_τ(static_device.device)
     v0 = ext_wrapper["v0"]
     i0 = ext_wrapper["i0"]
     offset = ext_wrapper["offset"]

@@ -11,7 +11,7 @@ mutable struct TerminalDataSurrogate <: LearnedSolutionSurrogate
     τ::Float64
     window_size::Int64
     services::Vector{PSY.Service}
-    ext::Dict{String, Any}     
+    ext::Dict{String, Any}
     internal::IS.InfrastructureSystemsInternal
 end
 
@@ -26,7 +26,7 @@ function TerminalDataSurrogate(
     internal_voltage,
     internal_angle,
     τ,
-    window_size, 
+    window_size,
     services = PSY.Service[],
     ext = Dict{String, Any}(),
 )
@@ -41,7 +41,7 @@ function TerminalDataSurrogate(
         internal_voltage,
         internal_angle,
         τ,
-        window_size, 
+        window_size,
         services,
         ext,
         IS.InfrastructureSystemsInternal(),
@@ -59,7 +59,7 @@ function TerminalDataSurrogate(;
     internal_voltage,
     internal_angle,
     τ,
-    window_size, 
+    window_size,
     services = PSY.Service[],
     ext = Dict{String, Any}(),
 )

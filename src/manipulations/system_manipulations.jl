@@ -115,34 +115,34 @@ function _add_sources!(sys, connecting_branch_data, location)
             bus = PSY.get_component(PSY.Bus, sys, data.from_bus_name)
             if !haskey(bus_numbers_powers, bus)
                 bus_numbers_powers[bus] = data.P_from_to
-            else 
-                bus_numbers_powers[bus] +=  data.P_from_to
-            end 
+            else
+                bus_numbers_powers[bus] += data.P_from_to
+            end
         elseif (data.inner_terminal == :to) && (location == :outer) #Building the train system
             bus = PSY.get_component(PSY.Bus, sys, data.from_bus_name)
             if !haskey(bus_numbers_powers, bus)
                 bus_numbers_powers[bus] = data.P_from_to * -1
-            else 
-                bus_numbers_powers[bus] +=  data.P_from_to * -1
-            end 
+            else
+                bus_numbers_powers[bus] += data.P_from_to * -1
+            end
         elseif (data.inner_terminal == :to) && (location == :inner)  #Building the validation system
             bus = PSY.get_component(PSY.Bus, sys, data.to_bus_name)
             if !haskey(bus_numbers_powers, bus)
-                bus_numbers_powers[bus] = data.P_to_from 
-            else 
-                bus_numbers_powers[bus] +=  data.P_to_from
-            end 
+                bus_numbers_powers[bus] = data.P_to_from
+            else
+                bus_numbers_powers[bus] += data.P_to_from
+            end
         elseif (data.inner_terminal == :from) && (location == :outer) #Building the train system
             bus = PSY.get_component(PSY.Bus, sys, data.to_bus_name)
             if !haskey(bus_numbers_powers, bus)
                 bus_numbers_powers[bus] = data.P_to_from * -1
-            else 
-                bus_numbers_powers[bus] +=  data.P_to_from * -1
-            end 
+            else
+                bus_numbers_powers[bus] += data.P_to_from * -1
+            end
         else
             @error "Invalid value for inner_terminal: $(data.inner_terminal)"
         end
-    end 
+    end
     for (ix, (bus, active_power)) in enumerate(bus_numbers_powers)
         @assert bus !== nothing
         PSY.get_bustype(bus) !== PSY.BusTypes.REF && PSY.set_bustype!(bus, PSY.BusTypes.PV)
@@ -162,7 +162,7 @@ function _add_sources!(sys, connecting_branch_data, location)
             )
             PSY.add_component!(sys, source)
         end
-    end 
+    end
 end
 function _ensure_a_reference_bus!(sys)
     reference_buses =

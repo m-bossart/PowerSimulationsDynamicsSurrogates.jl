@@ -17,7 +17,7 @@ end
 function GenerateDataParams(;
     solver = "IDA",
     solver_tols = (reltol = 1e-6, abstol = 1e-6),
-    dtmax = nothing, 
+    dtmax = nothing,
     tspan = (0.0, 1.0),
     tstops = [],
     tsave = [],
@@ -30,7 +30,7 @@ function GenerateDataParams(;
     GenerateDataParams(
         solver,
         solver_tols,
-        dtmax, 
+        dtmax,
         tspan,
         tstops,
         tsave,
@@ -296,7 +296,7 @@ function _build_run_simulation_perturbations(sys, data_collection, psid_perturba
         end
     end
     if sim_full.status == PSID.BUILT
-        if data_collection.dtmax === nothing 
+        if data_collection.dtmax === nothing
             #PSID.show_states_initial_value(sim_full)   #For debugging of SS error for surrogate
             PSID.execute!(
                 sim_full,
@@ -309,7 +309,7 @@ function _build_run_simulation_perturbations(sys, data_collection, psid_perturba
                 reset_simulation = false,
                 enable_progress_bar = true,
             )
-        else 
+        else
             PSID.execute!(
                 sim_full,
                 solver,
@@ -322,7 +322,7 @@ function _build_run_simulation_perturbations(sys, data_collection, psid_perturba
                 enable_progress_bar = true,
                 dtmax = data_collection.dtmax,
             )
-        end 
+        end
     end
 
     return sim_full
@@ -387,7 +387,7 @@ function _build_run_simulation_initial_conditions(sys, data_collection, initial_
             )
         end
     end
-    if data_collection.dtmax === nothing 
+    if data_collection.dtmax === nothing
         PSID.execute!(
             sim_full,
             solver,
@@ -399,7 +399,7 @@ function _build_run_simulation_initial_conditions(sys, data_collection, initial_
             reset_simulation = false,
             enable_progress_bar = true,
         )
-    else 
+    else
         PSID.execute!(
             sim_full,
             solver,
@@ -412,7 +412,7 @@ function _build_run_simulation_initial_conditions(sys, data_collection, initial_
             enable_progress_bar = true,
             dtmax = data_collection.dtmax,
         )
-    end 
+    end
     return sim_full
 end
 

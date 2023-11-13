@@ -9,7 +9,7 @@ function relu(x)
 end
 
 function activation_map(activation)
-    d = Dict("tanh" => tanh, "hardtanh" => hardtanh, "relu" => relu, "linear" => (x) -> x)
+    d = Dict("tanh" => tanh, "hardtanh" => hardtanh, "relu" => relu, "identity" => (x) -> x)
     return d[activation]
 end
 
@@ -40,7 +40,7 @@ function init_underlying_device(
 ) where {D <: PSY.DynamicInjection}
     sys = PSY.System(100.0)
     b = PSY.Bus(1, "Bus1", PSY.BusTypes.REF, θ0, Vm0, (min = 0.0, max = 2.0), 1.0, nothing)
-    PSY.add_component!(sys, b; skip_validation=true)
+    PSY.add_component!(sys, b; skip_validation = true)
     gen = PSY.ThermalStandard(;
         name = PSY.get_name(device),
         available = true,

@@ -10,7 +10,7 @@ using PowerSystems
 using PowerSimulationsDynamics
 using PowerSimulationsDynamicsSurrogates
 using Sundials
-using Lux 
+using Lux
 using Flux
 using Test
 using Random

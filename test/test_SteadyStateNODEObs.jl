@@ -166,17 +166,17 @@ end
     @test execute!(sim, IDA(), saveat = tsteps) == PSID.SIMULATION_FINALIZED
     results = read_results(sim)
 
-#=     #Plot results - for debug only 
-    p = plot()
-    for b in get_components(Bus, sys)
-        plot!(
-            p,
-            PSID.get_voltage_magnitude_series(results, get_number(b)),
-            label = string(get_number(b)),
-        )
-    end
-    r1 = PSID.get_state_series(results, ("InfBus", :r1))
-    p2 = plot()
-    plot!(p2, r1, label = "r1")
-    display(plot(p, p2)) =#
+    #=     #Plot results - for debug only 
+        p = plot()
+        for b in get_components(Bus, sys)
+            plot!(
+                p,
+                PSID.get_voltage_magnitude_series(results, get_number(b)),
+                label = string(get_number(b)),
+            )
+        end
+        r1 = PSID.get_state_series(results, ("InfBus", :r1))
+        p2 = plot()
+        plot!(p2, r1, label = "r1")
+        display(plot(p, p2)) =#
 end
