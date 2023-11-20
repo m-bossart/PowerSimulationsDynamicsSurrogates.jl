@@ -540,7 +540,6 @@ function add_surrogate_perturbation!(
     end
     s = rand(static_injectors)
     s_new = PSY.get_component(typeof(s), sys, PSY.get_name(s))
-    s_new = PSY.get_component(typeof(s), sys, "generator-103-1")
     println(PSY.get_active_power(s_new))
     multiplier =
         rand() * (P_multiplier_range[2] - P_multiplier_range[1]) + P_multiplier_range[1]
