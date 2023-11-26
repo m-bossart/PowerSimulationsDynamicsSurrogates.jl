@@ -455,7 +455,7 @@ function generate_empty_plot(T::Type{TerminalData})
     return p
 end
 
-function add_data_trace!(p, data::TerminalData; color = "", name = "")
+function add_data_trace!(p, data::TerminalData; mode = "lines", color = "", name = "")
     for (device_name, device_data_dict) in data.device_terminal_data
         Vr = device_data_dict[:vr]
         Vi = device_data_dict[:vi]
@@ -470,7 +470,7 @@ function add_data_trace!(p, data::TerminalData; color = "", name = "")
                 x = data.tsteps,
                 y = Vr,
                 marker = PlotlyJS.attr(color = color),
-                mode = "lines+markers",
+                mode = mode,
                 name = string(device_name, name),
             ),
             row = 1,
@@ -482,7 +482,7 @@ function add_data_trace!(p, data::TerminalData; color = "", name = "")
                 x = data.tsteps,
                 y = Vi,
                 marker = PlotlyJS.attr(color = color),
-                mode = "lines+markers",
+                mode = mode,
                 name = string(device_name, name),
             ),
             row = 1,
@@ -494,7 +494,7 @@ function add_data_trace!(p, data::TerminalData; color = "", name = "")
                 x = data.tsteps,
                 y = Ir,
                 marker = PlotlyJS.attr(color = color),
-                mode = "lines+markers",
+                mode = mode,
                 name = string(device_name, name),
             ),
             row = 1,
@@ -506,7 +506,7 @@ function add_data_trace!(p, data::TerminalData; color = "", name = "")
                 x = data.tsteps,
                 y = Ii,
                 marker = PlotlyJS.attr(color = color),
-                mode = "lines+markers",
+                mode = mode,
                 name = string(device_name, name),
             ),
             row = 1,
