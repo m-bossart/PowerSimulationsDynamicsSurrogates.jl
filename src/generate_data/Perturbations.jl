@@ -544,7 +544,7 @@ function add_surrogate_perturbation!(
     multiplier =
         rand() * (P_multiplier_range[2] - P_multiplier_range[1]) + P_multiplier_range[1]
     println(multiplier)
-    Pnew = PSY.get_P_ref(get_dynamic_injector(s_new)) * multiplier
+    Pnew = PSY.get_P_ref(PSY.get_dynamic_injector(s_new)) * multiplier
     #Qnew = PSY.get_impedance_reactive_power(l_new) * multiplier
     println(
         PSID.ControlReferenceChange(time, PSY.get_dynamic_injector(s_new), :P_ref, Pnew),
