@@ -494,8 +494,11 @@ function add_surrogate_perturbation!(
         load_multiplier_range[1]
     Pnew = PSY.get_impedance_active_power(l_new) * multiplier
     Qnew = PSY.get_impedance_reactive_power(l_new) * multiplier
-    push!(psid_perturbations, PSID.LoadChange(time, l_new, :P_ref_impedance, Pnew))
-    push!(psid_perturbations, PSID.LoadChange(time, l_new, :Q_ref_impedance, Qnew))
+    psid_perturbation_1 = PSID.LoadChange(time, l_new, :P_ref_impedance, Pnew)
+    psid_perturbation_2 = PSID.LoadChange(time, l_new, :Q_ref_impedance, Qnew)
+    @info "Perturbation", psid_perturbation_1, psid_perturbation_2
+    push!(psid_perturbations, psid_perturbation_1)
+    push!(psid_perturbations, psid_perturbation_2)
 end
 
 ###############################################################################
@@ -533,25 +536,19 @@ function add_surrogate_perturbation!(
             sys_aux,
         ),
     )
-    println(PSY.get_name.(static_injectors))
     if length(static_injectors) === 0
         @error "Trying to change a dynamic injector but a dynamic injector not found in system"
         return
     end
     s = rand(static_injectors)
     s_new = PSY.get_component(typeof(s), sys, PSY.get_name(s))
-    println(PSY.get_active_power(s_new))
     multiplier =
         rand() * (P_multiplier_range[2] - P_multiplier_range[1]) + P_multiplier_range[1]
-    println(multiplier)
     Pnew = PSY.get_P_ref(PSY.get_dynamic_injector(s_new)) * multiplier
     #Qnew = PSY.get_impedance_reactive_power(l_new) * multiplier
-    println(
-        PSID.ControlReferenceChange(time, PSY.get_dynamic_injector(s_new), :P_ref, Pnew),
-    )
-    push!(
-        psid_perturbations,
-        PSID.ControlReferenceChange(time, PSY.get_dynamic_injector(s_new), :P_ref, Pnew),
-    )
+    psid_perturbation =
+        PSID.ControlReferenceChange(time, PSY.get_dynamic_injector(s_new), :P_ref, Pnew)
+    @info "Perturbation", psid_perturbation
+    push!(psid_perturbations, psid_perturbation)
     #push!(psid_perturbations, PSID.LoadChange(time, d_new, :Q_ref_impedance, Qnew))
 end

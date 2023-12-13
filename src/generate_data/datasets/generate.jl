@@ -147,6 +147,7 @@ function generate_surrogate_data(
     ########################################################################################
     sys = deepcopy(sys_main)
     update_operating_point!(sys, operating_points[1], sys_aux)
+    PSID.Simulation!(PSID.MassMatrixModel, sys, pwd(), (0.0, 0.0))  #Run power flow and re-init devices before defining perturbation
     psid_perturbations = PSID.Perturbation[]
     for p_single in perturbations[1]
         add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
@@ -192,6 +193,7 @@ function generate_surrogate_data(
         for (ix_p, p) in enumerate(perturbations)
             sys = deepcopy(sys_main)
             update_operating_point!(sys, o, sys_aux)
+            PSID.Simulation!(PSID.MassMatrixModel, sys, pwd(), (0.0, 0.0))  #Run power flow and re-init devices before defining perturbation
             psid_perturbations = PSID.Perturbation[]
             for p_single in p
                 add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
