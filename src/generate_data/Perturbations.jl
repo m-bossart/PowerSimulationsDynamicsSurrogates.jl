@@ -28,17 +28,95 @@ function add_surrogate_perturbation!(
 )
     if PSY.get_component(PSY.DynamicBranch, sys, perturbation.branch_name) !== nothing
         dyn_branch = PSY.get_component(PSY.DynamicBranch, sys, perturbation.branch_name)
-        @error "removing this dynamic line", perturbation.branch_name
-        @show dyn_branch
-        @show fieldnames(typeof(dyn_branch))
-        branch = PSY.get_branch(dyn_branch)
-        @show branch
-
+        branch = dyn_branch.branch
+        @error "removing this dynamic line in order to trip it", perturbation.branch_name
         PSY.remove_component!(sys, dyn_branch)
         PSY.add_component!(sys, branch)
-        display(sys)
     end
     push!(psid_perturbations, perturbation)
+end
+
+#NOTE: Remove and use built in option after this issue is addressed: https://github.com/NREL-Sienna/PowerSimulationsDynamics.jl/issues/336
+###############################################################################
+################################## PerturbStateAbsolute #######################
+###############################################################################
+"""
+    function PerturbState(
+        time::Float64,
+        index::Int,
+        value::Float64,
+    )
+Allows the user to modify the state `index` by adding `value`. The user should modify dynamic states only, since algebraic state may require to do a reinitialization.
+# Arguments:
+- `time::Float64` : Defines when the modification of the state will happen. This time should be inside the time span considered in the Simulation.
+- `index::Int` : Defines which state index you want to modify
+- `value::Float64` : Defines how much the state will increase in value
+"""
+mutable struct PerturbStateAbsolute <: PSID.Perturbation
+    time::Float64
+    index::Int
+    value::Float64
+end
+
+function PSID.get_affect(::PSID.SimulationInputs, ::PSY.System, pert::PerturbStateAbsolute)
+    return (integrator) -> begin
+        @debug "Modifying state"
+        integrator.u[pert.index] = pert.value
+        return
+    end
+end
+
+###############################################################################
+################################## ParameterChange ############################
+###############################################################################
+
+mutable struct ParameterChange <: PSID.Perturbation
+    time::Float64
+    device::PSY.DynamicInjection
+    parameter::Symbol
+    value::Float64
+end
+
+function PSID.get_affect(inputs::PSID.SimulationInputs, ::PSY.System, pert::ParameterChange)
+    wrapped_device_ix = PSID._find_device_index(inputs, pert.device)
+    return (integrator) -> begin
+        wrapped_device = PSID.get_dynamic_injectors(integrator.p)[wrapped_device_ix]
+        @debug "Changing $(PSY.get_name(wrapped_device)) $(pert.parameter) to $(pert.value)"
+        machine = PSY.get_machine(PSID.get_device(wrapped_device))
+        PSY.set_eq_p!(machine, pert.value)
+        return
+    end
+end
+
+###############################################################################
+################################## BranchTrip #################################
+###############################################################################
+
+struct LineTrip <: SurrogatePerturbation
+    type::String
+    time::Float64
+    line_name::String
+end
+
+function LineTrip(; type = "LineTrip", time = 0.0, line_name = "")
+    LineTrip(type, time, line_name)
+end
+
+function add_surrogate_perturbation!(
+    sys::PSY.System,
+    psid_perturbations,
+    perturbation::LineTrip,
+    sys_aux::PSY.System,
+)
+    psid_perturbation = PSID.BranchTrip(perturbation.time, PSY.Line, perturbation.line_name)
+    if PSY.get_component(PSY.DynamicBranch, sys, perturbation.line_name) !== nothing
+        dyn_branch = PSY.get_component(PSY.DynamicBranch, sys, perturbation.line_name)
+        branch = dyn_branch.branch
+        @error "removing this dynamic line in order to trip it", perturbation.line_name
+        PSY.remove_component!(sys, dyn_branch)
+        PSY.add_component!(sys, branch)
+    end
+    push!(psid_perturbations, psid_perturbation)
 end
 
 ###############################################################################
@@ -416,8 +494,11 @@ function add_surrogate_perturbation!(
         load_multiplier_range[1]
     Pnew = PSY.get_impedance_active_power(l_new) * multiplier
     Qnew = PSY.get_impedance_reactive_power(l_new) * multiplier
-    push!(psid_perturbations, PSID.LoadChange(time, l_new, :P_ref_impedance, Pnew))
-    push!(psid_perturbations, PSID.LoadChange(time, l_new, :Q_ref_impedance, Qnew))
+    psid_perturbation_1 = PSID.LoadChange(time, l_new, :P_ref_impedance, Pnew)
+    psid_perturbation_2 = PSID.LoadChange(time, l_new, :Q_ref_impedance, Qnew)
+    @info "Perturbation", psid_perturbation_1, psid_perturbation_2
+    push!(psid_perturbations, psid_perturbation_1)
+    push!(psid_perturbations, psid_perturbation_2)
 end
 
 ###############################################################################
@@ -455,7 +536,6 @@ function add_surrogate_perturbation!(
             sys_aux,
         ),
     )
-    println(PSY.get_name.(static_injectors))
     if length(static_injectors) === 0
         @error "Trying to change a dynamic injector but a dynamic injector not found in system"
         return
@@ -464,14 +544,11 @@ function add_surrogate_perturbation!(
     s_new = PSY.get_component(typeof(s), sys, PSY.get_name(s))
     multiplier =
         rand() * (P_multiplier_range[2] - P_multiplier_range[1]) + P_multiplier_range[1]
-    Pnew = PSY.get_active_power(s_new) * multiplier
+    Pnew = PSY.get_P_ref(PSY.get_dynamic_injector(s_new)) * multiplier
     #Qnew = PSY.get_impedance_reactive_power(l_new) * multiplier
-    println(
-        PSID.ControlReferenceChange(time, PSY.get_dynamic_injector(s_new), :P_ref, Pnew),
-    )
-    push!(
-        psid_perturbations,
-        PSID.ControlReferenceChange(time, PSY.get_dynamic_injector(s_new), :P_ref, Pnew),
-    )
+    psid_perturbation =
+        PSID.ControlReferenceChange(time, PSY.get_dynamic_injector(s_new), :P_ref, Pnew)
+    @info "Perturbation", psid_perturbation
+    push!(psid_perturbations, psid_perturbation)
     #push!(psid_perturbations, PSID.LoadChange(time, d_new, :Q_ref_impedance, Qnew))
 end

@@ -33,44 +33,52 @@ function fill_surrogate_data!(
     device_details,
     data_collection_params,
     sim_full,
-    results,
-    save_indices,
 )
-    sys = sim_full.sys
-    states_data_dict = Dict{String, Dict{Symbol, AbstractArray}}()
-    references_data_dict = Dict{String, Dict{Symbol, Float64}}()
-    for (device_name, orientation_details) in device_details
-        all_components_with_name =
-            PSY.get_components_by_name(PSY.Component, sys, device_name)
-        exclude_dynamic_injectors =
-            filter!(x -> !(typeof(x) <: PSY.DynamicInjection), all_components_with_name)
-        @assert length(exclude_dynamic_injectors) == 1
-        device = exclude_dynamic_injectors[1]
-        _fill_states_data!(
-            states_data_dict,
-            results,
-            device,
-            save_indices,
-            orientation_details,
-            data_collection_params,
-            sys,
-        )
-        _fill_references_data!(
-            references_data_dict,
-            results,
-            device,
-            save_indices,
-            orientation_details,
-            data_collection_params,
-            sys,
-        )
+    if sim_full.status == PSID.SIMULATION_FINALIZED
+        results = PSID.read_results(sim_full)
+        if length(data_collection_params.tsave) == 0
+            save_indices = 1:length(unique(results.solution.t))
+        else
+            save_indices = indexin(data_collection_params.tsave, unique(results.solution.t))
+        end
+        sys = sim_full.sys
+        states_data_dict = Dict{String, Dict{Symbol, AbstractArray}}()
+        references_data_dict = Dict{String, Dict{Symbol, Float64}}()
+        for (device_name, orientation_details) in device_details
+            all_components_with_name =
+                PSY.get_components_by_name(PSY.Component, sys, device_name)
+            exclude_dynamic_injectors =
+                filter!(x -> !(typeof(x) <: PSY.DynamicInjection), all_components_with_name)
+            @assert length(exclude_dynamic_injectors) == 1
+            device = exclude_dynamic_injectors[1]
+            _fill_states_data!(
+                states_data_dict,
+                results,
+                device,
+                save_indices,
+                orientation_details,
+                data_collection_params,
+                sys,
+            )
+            _fill_references_data!(
+                references_data_dict,
+                results,
+                device,
+                save_indices,
+                orientation_details,
+                data_collection_params,
+                sys,
+            )
+        end
+        data.tstops = unique(results.solution.t)
+        data.tsteps = unique(results.solution.t)[save_indices]
+        data.stable = true
+        data.solve_time = results.time_log[:timed_solve_time]
+        data.device_states_data = states_data_dict
+        data.device_ref_data = references_data_dict
+    else
+        @error "Simulation was not stable, not recording any data for AllStatesData"
     end
-    data.tstops = unique(results.solution.t)
-    data.tsteps = unique(results.solution.t)[save_indices]
-    data.stable = true
-    data.solve_time = results.time_log[:timed_solve_time]
-    data.device_states_data = states_data_dict
-    data.device_ref_data = references_data_dict
 end
 
 function _fill_states_data!(
@@ -110,7 +118,8 @@ function _fill_references_data!(
     references[:ω_ref] = 1.0
     references[:V_ref] = PSY.get_V_ref(dynamic_device)
     references[:Q_ref] = PSY.get_reactive_power(device)
-    if typeof(dynamic_device) <: PSY.DynamicGenerator
+    if typeof(dynamic_device) <: PSY.DynamicGenerator &&
+       typeof(PSY.get_machine(dynamic_device)) == PSY.BaseMachine
         references[:eq_p] = PSY.get_eq_p(PSY.get_machine(dynamic_device))
     end
     refs_data_dict[dynamic_device_name] = references

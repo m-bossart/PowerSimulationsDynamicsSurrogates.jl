@@ -552,3 +552,26 @@ function inv_case78(static_device)
         filter = filt(), #filter
     )
 end
+
+function outer_control_droop()
+    function active_droop()
+        return PSY.ActivePowerDroop(; Rp = 0.05, ωz = 2 * pi * 5)
+    end
+    function reactive_droop()
+        return ReactivePowerDroop(; kq = 0.2, ωf = 1000.0)
+    end
+    return OuterControl(active_droop(), reactive_droop())
+end
+
+function inv_droop(static_device)
+    return DynamicInverter(
+        name = get_name(static_device),
+        ω_ref = 1.0, # ω_ref,
+        converter = converter_high_power(), #converter
+        outer_control = outer_control_droop(), #outer control
+        inner_control = inner_control(), #inner control voltage source
+        dc_source = dc_source_lv(), #dc source
+        freq_estimator = pll(), #pll
+        filter = filt(), #filter
+    )
+end

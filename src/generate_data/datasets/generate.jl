@@ -3,6 +3,7 @@ abstract type SurrogateDataset end
 struct GenerateDataParams
     solver::String
     solver_tols::NamedTuple{(:reltol, :abstol), Tuple{Float64, Float64}}
+    dtmax::Union{Nothing, Float64}
     tspan::Tuple{Float64, Float64}
     tstops::Vector{Float64}
     tsave::Vector{Float64}
@@ -16,6 +17,7 @@ end
 function GenerateDataParams(;
     solver = "IDA",
     solver_tols = (reltol = 1e-6, abstol = 1e-6),
+    dtmax = nothing,
     tspan = (0.0, 1.0),
     tstops = [],
     tsave = [],
@@ -28,6 +30,7 @@ function GenerateDataParams(;
     GenerateDataParams(
         solver,
         solver_tols,
+        dtmax,
         tspan,
         tstops,
         tsave,
@@ -82,22 +85,7 @@ function generate_surrogate_data(
         data_collection_params.tsave,
         union(data_collection_params.tstops, sim_full.tstops),
     )
-    if sim_full.status == PSID.SIMULATION_FINALIZED
-        results = PSID.read_results(sim_full)
-        if length(data_collection_params.tsave) == 0
-            save_indices = 1:length(unique(results.solution.t))
-        else
-            save_indices = indexin(data_collection_params.tsave, unique(results.solution.t))
-        end
-        fill_surrogate_data!(
-            dummy_data,
-            device_details,
-            data_collection_params,
-            sim_full,
-            results,
-            save_indices,
-        )
-    end
+    fill_surrogate_data!(dummy_data, device_details, data_collection_params, sim_full)
     ########################################################################################
     ########################################################################################
     @assert length(operating_points) == length(ics)
@@ -111,25 +99,9 @@ function generate_surrogate_data(
             data_collection_params.tsave,
             union(data_collection_params.tstops, sim_full.tstops),
         )
-        if sim_full.status == PSID.SIMULATION_FINALIZED
-            results = PSID.read_results(sim_full)
-            if length(data_collection_params.tsave) == 0
-                save_indices = 1:length(unique(results.solution.t))
-            else
-                save_indices =
-                    indexin(data_collection_params.tsave, unique(results.solution.t))
-            end
-            fill_surrogate_data!(
-                data,
-                device_details,
-                data_collection_params,
-                sim_full,
-                results,
-                save_indices,
-            )
-            @show PSY.get_internal_voltage(collect(PSY.get_components(PSY.Source, sys))[1])
-            @show PSY.get_internal_angle(collect(PSY.get_components(PSY.Source, sys))[1])
-        end
+        fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
+        @show PSY.get_internal_voltage(collect(PSY.get_components(PSY.Source, sys))[1])
+        @show PSY.get_internal_angle(collect(PSY.get_components(PSY.Source, sys))[1])
         push!(train_data, data)
     end
     return train_data
@@ -175,36 +147,45 @@ function generate_surrogate_data(
     ########################################################################################
     sys = deepcopy(sys_main)
     update_operating_point!(sys, operating_points[1], sys_aux)
+    PSID.Simulation!(PSID.MassMatrixModel, sys, pwd(), (0.0, 0.0))  #Run power flow and re-init devices before defining perturbation
     psid_perturbations = PSID.Perturbation[]
     for p_single in perturbations[1]
         add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
     end
+    for s in PSY.get_components(TerminalDataSurrogate, sys)
+        push!(psid_perturbations, TerminalDataSurrogateCacheValues(s))
+    end
+    #TODO - add same loop for pinns 
+    rng_state = copy(Random.default_rng())
     dummy_data = EmptyTrainDataSet(dataset_type)
-    if dataset_aux !== nothing
+    if dataset_aux !== nothing && dataset_aux[1].built == true
         match_operating_point(sys, dataset_aux[1], surrogate_params)    #TODO - not tested
-    end
-    sim_full =
-        _build_run_simulation_perturbations(sys, data_collection_params, psid_perturbations)
-    @assert issubset(
-        data_collection_params.tsave,
-        union(data_collection_params.tstops, sim_full.tstops),
-    )
-    if sim_full.status == PSID.SIMULATION_FINALIZED
-        results = PSID.read_results(sim_full)
-        if length(data_collection_params.tsave) == 0
-            save_indices = 1:length(unique(results.solution.t))
-        else
-            save_indices = indexin(data_collection_params.tsave, unique(results.solution.t))
-        end
-        fill_surrogate_data!(
-            dummy_data,
-            device_details,
+        sim_full = _build_run_simulation_perturbations(
+            sys,
             data_collection_params,
-            sim_full,
-            results,
-            save_indices,
+            psid_perturbations,
         )
+        @assert issubset(
+            data_collection_params.tsave,
+            union(data_collection_params.tstops, sim_full.tstops),
+        )
+        fill_surrogate_data!(dummy_data, device_details, data_collection_params, sim_full)
+    elseif dataset_aux === nothing
+        sim_full = _build_run_simulation_perturbations(
+            sys,
+            data_collection_params,
+            psid_perturbations,
+        )
+        @assert issubset(
+            data_collection_params.tsave,
+            union(data_collection_params.tstops, sim_full.tstops),
+        )
+        fill_surrogate_data!(dummy_data, device_details, data_collection_params, sim_full)
+    else
+        @warn "Simulation not attempted because the ground truth scenario could not be built"
     end
+    copy!(Random.default_rng(), rng_state)
+
     ########################################################################################
     ########################################################################################
 
@@ -212,45 +193,50 @@ function generate_surrogate_data(
         for (ix_p, p) in enumerate(perturbations)
             sys = deepcopy(sys_main)
             update_operating_point!(sys, o, sys_aux)
+            PSID.Simulation!(PSID.MassMatrixModel, sys, pwd(), (0.0, 0.0))  #Run power flow and re-init devices before defining perturbation
             psid_perturbations = PSID.Perturbation[]
             for p_single in p
                 add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
             end
+            for s in PSY.get_components(TerminalDataSurrogate, sys)
+                push!(psid_perturbations, TerminalDataSurrogateCacheValues(s))
+            end
+            rng_state = copy(Random.default_rng())
             data = EmptyTrainDataSet(dataset_type)
-            if dataset_aux !== nothing
+            if dataset_aux !== nothing &&
+               dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p].built == true
                 match_operating_point(
                     sys,
                     dataset_aux[(ix_o - 1) * size(perturbations)[1] + ix_p],
                     surrogate_params,
                 )    #TODO - not tested
-            end
-            sim_full = _build_run_simulation_perturbations(
-                sys,
-                data_collection_params,
-                psid_perturbations,
-            )
-            @assert issubset(
-                data_collection_params.tsave,
-                union(data_collection_params.tstops, sim_full.tstops),
-            )
-            if sim_full.status == PSID.SIMULATION_FINALIZED
-                results = PSID.read_results(sim_full)
-                if length(data_collection_params.tsave) == 0
-                    save_indices = 1:length(unique(results.solution.t))
-                else
-                    save_indices =
-                        indexin(data_collection_params.tsave, unique(results.solution.t))
-                end
-                fill_surrogate_data!(
-                    data,
-                    device_details,
+                sim_full = _build_run_simulation_perturbations(
+                    sys,
                     data_collection_params,
-                    sim_full,
-                    results,
-                    save_indices,
+                    psid_perturbations,
                 )
+                @assert issubset(
+                    data_collection_params.tsave,
+                    union(data_collection_params.tstops, sim_full.tstops),
+                )
+                fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
+            elseif dataset_aux === nothing
+                #Instead of running the simulation, just compare the error in the model 
+                sim_full = _build_run_simulation_perturbations(
+                    sys,
+                    data_collection_params,
+                    psid_perturbations,
+                )
+                @assert issubset(
+                    data_collection_params.tsave,
+                    union(data_collection_params.tstops, sim_full.tstops),
+                )
+                fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
+            else
+                @warn "Simulation not attempted because the ground truth scenario could not be built"
             end
             push!(train_data, data)
+            copy!(Random.default_rng(), rng_state)
         end
     end
     return train_data
@@ -311,17 +297,36 @@ function _build_run_simulation_perturbations(sys, data_collection, psid_perturba
             )
         end
     end
-    PSID.execute!(
-        sim_full,
-        solver,
-        abstol = abstol,
-        reltol = reltol,
-        tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
-        save_everystep = true,
-        saveat = data_collection.tsave,
-        reset_simulation = false,
-        enable_progress_bar = false,
-    )
+    if sim_full.status == PSID.BUILT
+        if data_collection.dtmax === nothing
+            #PSID.show_states_initial_value(sim_full)   #For debugging of SS error for surrogate
+            PSID.execute!(
+                sim_full,
+                solver,
+                abstol = abstol,
+                reltol = reltol,
+                tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
+                save_everystep = true,
+                saveat = data_collection.tsave,
+                reset_simulation = false,
+                enable_progress_bar = true,
+            )
+        else
+            PSID.execute!(
+                sim_full,
+                solver,
+                abstol = abstol,
+                reltol = reltol,
+                tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
+                save_everystep = true,
+                saveat = data_collection.tsave,
+                reset_simulation = false,
+                enable_progress_bar = true,
+                dtmax = data_collection.dtmax,
+            )
+        end
+    end
+
     return sim_full
 end
 
@@ -384,17 +389,32 @@ function _build_run_simulation_initial_conditions(sys, data_collection, initial_
             )
         end
     end
-    PSID.execute!(
-        sim_full,
-        solver,
-        abstol = abstol,
-        reltol = reltol,
-        tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
-        save_everystep = true,
-        saveat = data_collection.tsave,
-        reset_simulation = false,
-        enable_progress_bar = false,
-    )
+    if data_collection.dtmax === nothing
+        PSID.execute!(
+            sim_full,
+            solver,
+            abstol = abstol,
+            reltol = reltol,
+            tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
+            save_everystep = true,
+            saveat = data_collection.tsave,
+            reset_simulation = false,
+            enable_progress_bar = true,
+        )
+    else
+        PSID.execute!(
+            sim_full,
+            solver,
+            abstol = abstol,
+            reltol = reltol,
+            tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
+            save_everystep = true,
+            saveat = data_collection.tsave,
+            reset_simulation = false,
+            enable_progress_bar = true,
+            dtmax = data_collection.dtmax,
+        )
+    end
     return sim_full
 end
 
@@ -407,4 +427,8 @@ function fill_surrogate_data!(
     save_indices,
 )
     @warn "collect_data not implemented for this type of SurrogateDataSet: $(typeof(data))"
+end
+
+function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::Nothing)
+    @error "Passed auxiliary dataset without passing surrogate parameters. Should only be used for tests."
 end
