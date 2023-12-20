@@ -328,6 +328,19 @@ function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::SourceP
     end
 end
 
+function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::SourceLoadParams)
+    @error P0, Q0, Vm0, θ0
+    for s in PSY.get_components(SourceLoad, sys)
+        PSY.set_active_power!(s, P0)
+        PSY.set_reactive_power!(s, Q0)
+        #PSY.set_internal_voltage!(s, Vm0)
+        #PSY.set_internal_angle!(s, θ0)
+        b = PSY.get_bus(s)
+        PSY.set_magnitude!(b, Vm0)
+        PSY.set_angle!(b, θ0)
+    end
+end
+
 function _match_operating_point(
     sys,
     P0,

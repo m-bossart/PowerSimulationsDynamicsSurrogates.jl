@@ -178,6 +178,14 @@ function SourceParams(; type = "SourceParams", name = "surrogate-Source")
     SourceParams(type, name)
 end
 
+mutable struct SourceLoadParams <: SurrogateModelParams
+    type::String
+    name::String
+end
+function SourceLoadParams(; type = "SourceLoadParams", name = "surrogate-SourceLoad")
+    SourceLoadParams(type, name)
+end
+
 mutable struct ClassicGenParams <: SurrogateModelParams
     type::String
     name::String

@@ -43,6 +43,7 @@ export NODEParams
 export SteadyStateNODEParams
 export SteadyStateNODEObsParams
 export SourceParams
+export SourceLoadParams
 export ClassicGenParams
 export GFLParams
 export GFMParams
