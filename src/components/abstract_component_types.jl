@@ -1,5 +1,6 @@
-abstract type LearnedDynamicsSurrogate <: PSY.DynamicInjection end
-abstract type LearnedSolutionSurrogate <: PSY.StaticInjection end
+abstract type DataDrivenSurrogate <: PSY.DynamicInjection end
+abstract type TimeSteppingSurrogate <: DataDrivenSurrogate end
+abstract type DirectSolutionSurrogate <: DataDrivenSurrogate end
 
 abstract type SurrogateModelParams end
 
@@ -166,6 +167,15 @@ function SteadyStateNODEObsParams(;
         observation_width_layers_relative_input,
         observation_activation,
     )
+end
+
+mutable struct SourceParams <: SurrogateModelParams
+    type::String
+    name::String
+end
+
+function SourceParams(; type = "SourceParams", name = "surrogate-Source")
+    SourceParams(type, name)
 end
 
 mutable struct ClassicGenParams <: SurrogateModelParams

@@ -315,6 +315,19 @@ function match_operating_point(sys, data_aux::TerminalData, surrogate_params)
     PSY.set_units_base_system!(sys, settings_unit_cache)
 end
 
+function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::SourceParams)
+    @error P0, Q0, Vm0, θ0
+    for s in PSY.get_components(PSY.Source, sys)
+        PSY.set_active_power!(s, P0)
+        PSY.set_reactive_power!(s, Q0)
+        PSY.set_internal_voltage!(s, Vm0)
+        PSY.set_internal_angle!(s, θ0)
+        b = PSY.get_bus(s)
+        PSY.set_magnitude!(b, Vm0)
+        PSY.set_angle!(b, θ0)
+    end
+end
+
 function _match_operating_point(
     sys,
     P0,

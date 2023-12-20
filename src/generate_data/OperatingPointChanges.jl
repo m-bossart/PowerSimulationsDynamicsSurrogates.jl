@@ -210,7 +210,7 @@ function update_operating_point!(
             @error "Device from auxiliary system not found in main system"
         end
         PSY.set_active_power!(g_new, PSY.get_active_power(g_new) * generation_scale)
-        if PSY.get_bustype(PSY.get_bus(g_new)) == PSY.BusTypes.PQ
+        if PSY.get_bustype(PSY.get_bus(g_new)) == PSY.ACBusTypes.PQ
             PSY.set_reactive_power!(g_new, PSY.get_reactive_power(g_new) * generation_scale)
         end
     end
@@ -221,7 +221,7 @@ function update_operating_point!(
             @error "Device from auxiliary system not found in main system"
         end
         PSY.set_active_power!(g_new, PSY.get_active_power(g_new) * generation_scale)
-        if PSY.get_bustype(PSY.get_bus(g_new)) == PSY.BusTypes.PQ
+        if PSY.get_bustype(PSY.get_bus(g_new)) == PSY.ACBusTypes.PQ
             PSY.set_reactive_power!(g_new, PSY.get_reactive_power(g_new) * generation_scale)
         end
     end

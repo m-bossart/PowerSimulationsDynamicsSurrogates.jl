@@ -1,7 +1,7 @@
 @testset "Add SteadyStateNODEObs to system" begin
     sys = System(100)
-    bus = Bus(nothing)
-    set_bustype!(bus, BusTypes.SLACK)
+    bus = ACBus(nothing)
+    set_bustype!(bus, ACBusTypes.SLACK)
     add_component!(sys, bus)
     source = Source(nothing)
     set_bus!(source, bus)

@@ -42,7 +42,7 @@ Experimental surrogate
 - `ext::Dict{String, Any}`
 - `internal::InfrastructureSystemsInternal`: power system internal reference, do not modify
 """
-mutable struct SteadyStateNODEObs <: LearnedDynamicsSurrogate
+mutable struct SteadyStateNODEObs <: TimeSteppingSurrogate
     name::String
     "layers of the initializer"
     initializer_structure::Vector{Tuple{Int64, Int64, Bool, String}}

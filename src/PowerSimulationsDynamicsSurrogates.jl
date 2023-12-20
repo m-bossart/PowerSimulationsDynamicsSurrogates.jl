@@ -42,6 +42,7 @@ export add_data_trace!
 export NODEParams
 export SteadyStateNODEParams
 export SteadyStateNODEObsParams
+export SourceParams
 export ClassicGenParams
 export GFLParams
 export GFMParams
@@ -80,6 +81,10 @@ export generate_surrogate_data
 export create_validation_system_from_buses
 export create_train_system_from_buses
 
+export to_json_with_surrogates
+export deserialize_with_surrogates
+
+import BSON
 import DataFrames
 import Distributions
 import InfrastructureSystems

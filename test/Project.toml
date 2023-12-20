@@ -1,6 +1,6 @@
 [deps]
-BSON = "fbb218c0-5317-5bc6-957e-2ee96dd4b1f0"
 DataFrames = "a93c6f00-e57d-5684-b7b6-d8193f3e46c0"
+DelayDiffEq = "bcd4f6db-9728-5f36-b5f7-82caef46ccdb"
 Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
 JSON3 = "0f8b85d8-7281-11e9-16c2-39a750bddbf1"
 Lux = "b2108857-7c20-44ae-9111-449ecde12c47"

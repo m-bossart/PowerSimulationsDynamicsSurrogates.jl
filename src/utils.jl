@@ -39,7 +39,16 @@ function init_underlying_device(
     θ0,
 ) where {D <: PSY.DynamicInjection}
     sys = PSY.System(100.0)
-    b = PSY.Bus(1, "Bus1", PSY.BusTypes.REF, θ0, Vm0, (min = 0.0, max = 2.0), 1.0, nothing)
+    b = PSY.ACBus(
+        1,
+        "Bus1",
+        PSY.ACBusTypes.REF,
+        θ0,
+        Vm0,
+        (min = 0.0, max = 2.0),
+        1.0,
+        nothing,
+    )
     PSY.add_component!(sys, b; skip_validation = true)
     gen = PSY.ThermalStandard(;
         name = PSY.get_name(device),
@@ -56,7 +65,7 @@ function init_underlying_device(
         base_power = PSY.get_base_power(device),
         time_limits = nothing,
         must_run = false,
-        prime_mover = PSY.PrimeMovers.OT,
+        prime_mover_type = PSY.PrimeMovers.OT,
         fuel = PSY.ThermalFuels.OTHER,
         services = PSY.Device[],
     )
@@ -144,4 +153,42 @@ end
 function min_max_normalization_inverse(x_prime, xmin, xmax, u, l)
     x = (x_prime .- l) .* (xmax .- xmin) ./ (u .- l) .+ xmin
     return x
+end
+
+function to_json_with_surrogates(sys, full_path)
+    for g in PSY.get_components(DataDrivenSurrogate, sys)
+        model = PSY.get_ext(g)["model"]
+        p = PSY.get_ext(g)["ps"]
+        st = PSY.get_ext(g)["st"]
+        dir = dirname(full_path)
+        mkpath(joinpath(dir, "surrogate_models"))
+        BSON.@save joinpath(dir, "surrogate_models", PSY.get_name(g)) model p st
+        PSY.set_ext!(
+            g,
+            Dict{String, Any}(
+                "model_path" => joinpath(dir, "surrogate_models", PSY.get_name(g)),
+                "model" => nothing,
+                "ps" => nothing,
+                "st" => nothing,
+            ),
+        )
+    end
+    PSY.to_json(sys, full_path; force = true)
+end
+
+function deserialize_with_surrogates(full_path)
+    sys = PSY.System(full_path)
+    for g in PSY.get_components(DataDrivenSurrogate, sys)
+        BSON.@load PSY.get_ext(g)["model_path"] model p st
+        PSY.set_ext!(
+            g,
+            Dict{String, Any}(
+                "model_path" => nothing,
+                "model" => model,
+                "ps" => p,
+                "st" => st,
+            ),
+        )
+    end
+    return sys
 end

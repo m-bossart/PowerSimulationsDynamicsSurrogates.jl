@@ -10,66 +10,39 @@ rng = Random.default_rng()
             Lux.Dense(2, 5, NNlib.relu),
             Lux.Dense(5, 2),
         )
+        Random.seed!(rng, 0)
         p1, st1 = Lux.setup(rng, model)
         sys = System("test/data_tests/9BusSystem.json")
-        g = collect(get_components(ThermalStandard, sys))[1]
-        set_ext!(
-            g,
-            Dict{String, Any}(
-                "model_path" => "",
-                "model" => model,
-                "ps" => p1,
-                "st" => st1,
-            ),
-        )  #Store the Flux model in the ext field of a component
 
-        #TODO - make these functions general and move to the package, then test them here. 
-        # Might require some modification into type structure of surrogate components (static or dynamic injectors?).
-        function to_json_with_surrogates(sys, full_path)
-            g = collect(get_components(ThermalStandard, sys))[1]    #Note: loop over abstract surrogate type to search for models.
-            model = get_ext(g)["model"]
-            p = get_ext(g)["ps"]
-            st = get_ext(g)["st"]
-            dir = dirname(full_path)
-            println(dir)
-            mkpath(joinpath(dir, "surrogate_models"))
-            @save joinpath(dir, "surrogate_models", get_name(g)) model p st
-            set_ext!(
-                g,
-                Dict{String, Any}(
-                    "model_path" => joinpath(dir, "surrogate_models", get_name(g)),
-                    "model" => nothing,
-                ),
-            )
-            to_json(sys, full_path; force = true)
-        end
-
-        function deserialize_with_surrogates(full_path)
-            sys = System(full_path)
-            g = collect(get_components(ThermalStandard, sys))[1]
-            @load get_ext(g)["model_path"] model p st
-            set_ext!(
-                g,
-                Dict{String, Any}(
-                    "model_path" => nothing,
+        #Replace all dynamic models with a surrogate. 
+        for g in get_components(ThermalStandard, sys)
+            dyn_gen = remove_component!(sys, get_dynamic_injector(g))
+            s = TerminalDataSurrogate(
+                name = get_name(g),
+                τ = 0.1,
+                window_size = 5,
+                ext = Dict{String, Any}(
+                    "model_path" => "",
                     "model" => model,
-                    "ps" => p,
-                    "st" => st,
+                    "ps" => p1,
+                    "st" => st1,
                 ),
             )
-            return sys
+            add_component!(sys, s, g)
         end
 
         to_json_with_surrogates(sys, joinpath(path, "test.json"))
         sys_2 = deserialize_with_surrogates(joinpath(path, "test.json"))
         g_2 = collect(get_components(ThermalStandard, sys_2))[1]
-        model2 = get_ext(g_2)["model"]
-        p2 = get_ext(g_2)["ps"]
-        st2 = get_ext(g_2)["st"]
+
+        model2 = get_ext(get_dynamic_injector(g_2))["model"]
+        p2 = get_ext(get_dynamic_injector(g_2))["ps"]
+        st2 = get_ext(get_dynamic_injector(g_2))["st"]
 
         y_1, st_1 = Lux.apply(model, input, p1, st1)
         y2, st_2 = Lux.apply(model2, input, p2, st2)
         @test isapprox(y_1, y2)
+        @test length(readdir(joinpath(path, "surrogate_models"))) == 3
     finally
         @info("removing test files")
         rm(path, force = true, recursive = true)

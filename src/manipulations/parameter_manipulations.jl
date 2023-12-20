@@ -127,7 +127,7 @@ function add_aggregate_model!(
         bus_to_add = collect(
             PowerSystems.get_components(
                 x -> PSY.get_number(x) == bus_number,
-                PSY.Bus,
+                PSY.ACBus,
                 sys_add,
             ),
         )[1]

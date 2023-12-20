@@ -32,6 +32,7 @@ function PSID.device!(
     ::AbstractArray{T},
     ::AbstractArray{T},
     dynamic_device::PSID.DynamicWrapper{SteadyStateNODEObs},
+    h,
     t,
 ) where {T <: PSID.ACCEPTED_REAL_TYPES}
     θ = dynamic_device.ext["θ0"]
@@ -108,6 +109,7 @@ function PSID.DynamicWrapper(
     device::PSY.Source,
     dynamic_device::SteadyStateNODEObs,
     bus_ix::Int,
+    bus_size::Int,
     ix_range,
     ode_range,
     inner_var_range,
@@ -132,6 +134,7 @@ function PSID.DynamicWrapper(
         collect(ix_range),
         collect(ode_range),
         bus_ix,
+        bus_size,
         Base.ImmutableDict(Dict(device_states .=> ix_range)...),
         Base.ImmutableDict{Int, Vector{Int}}(),
         Base.ImmutableDict{Int, Vector{Int}}(),

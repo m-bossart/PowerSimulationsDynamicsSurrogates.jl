@@ -31,6 +31,7 @@ function PSID.device!(
     ::AbstractArray{T},
     ::AbstractArray{T},
     dynamic_device::PSID.DynamicWrapper{FrequencyChirpVariableSource},
+    h,
     t,
 ) where {T <: PSID.ACCEPTED_REAL_TYPES}
 
