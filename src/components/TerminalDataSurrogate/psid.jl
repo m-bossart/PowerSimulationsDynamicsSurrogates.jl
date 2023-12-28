@@ -136,22 +136,22 @@ function PSID.device!(
     ii_ix = ix_range[2]
 
     v = add_dim(
-        hcat(
-            vcat(
+        vcat(
+            hcat(
+                [h(nothing, t - N * τ; idxs = vr_ix) for N in (window_size - 1):-1:1]',
                 [voltage_r],
-                [h(nothing, t - N * τ; idxs = vr_ix) for N in 1:(window_size - 1)],
             ),
-            vcat(
+            hcat(
+                [h(nothing, t - N * τ; idxs = vi_ix) for N in (window_size - 1):-1:1]',
                 [voltage_i],
-                [h(nothing, t - N * τ; idxs = vi_ix) for N in 1:(window_size - 1)],
             ),
         ),
     )
 
     i = add_dim(
-        hcat(
-            [h(nothing, t - N * τ; idxs = ir_ix) for N in 1:window_size],
-            [h(nothing, t - N * τ; idxs = ii_ix) for N in 1:window_size],
+        vcat(
+            [h(nothing, t - N * τ; idxs = ir_ix) for N in window_size:-1:1]',
+            [h(nothing, t - N * τ; idxs = ii_ix) for N in window_size:-1:1]',
         ),
     )
     x = (v0, i0, v, i)
