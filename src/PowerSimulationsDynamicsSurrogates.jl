@@ -44,6 +44,7 @@ export SteadyStateNODEParams
 export SteadyStateNODEObsParams
 export SourceParams
 export SourceLoadParams
+export TerminalDataSurrogateParams
 export ClassicGenParams
 export GFLParams
 export GFMParams
@@ -91,7 +92,8 @@ import Distributions
 import InfrastructureSystems
 import JSON3
 import NLsolve
-import OrdinaryDiffEq   #should remove this dependency
+import OrdinaryDiffEq   #should remove this dependency: pass solver to data generation function
+import DelayDiffEq      #should remove this dependency: pass solver to data generation function
 import PlotlyJS
 import PowerFlows
 import PowerSimulationsDynamics

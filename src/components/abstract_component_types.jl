@@ -186,6 +186,14 @@ function SourceLoadParams(; type = "SourceLoadParams", name = "surrogate-SourceL
     SourceLoadParams(type, name)
 end
 
+mutable struct TerminalDataSurrogateParams <: SurrogateModelParams
+    type::String
+    name::String
+end
+function TerminalDataSurrogateParams(; type = "TerminalDataSurrogateParams", name = "surrogate-TerminalDataSurrogate")
+    TerminalDataSurrogateParams(type, name)
+end
+
 mutable struct ClassicGenParams <: SurrogateModelParams
     type::String
     name::String
