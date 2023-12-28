@@ -87,9 +87,9 @@ function PSID.initialize_dynamic_device!(
     ps = ext_device["ps"]
     st = ext_device["st"]
     window_size = get_window_size(device)
-    v_ss = add_dim(vcat(fill(VR0, (1, window_size)), fill(VI0, (1,window_size))))
-    i_ss = add_dim(vcat(fill(IR0, (1, window_size)), fill(II0, (1,window_size))))
-    @assert size(v_ss)[1] == 2 
+    v_ss = add_dim(vcat(fill(VR0, (1, window_size)), fill(VI0, (1, window_size))))
+    i_ss = add_dim(vcat(fill(IR0, (1, window_size)), fill(II0, (1, window_size))))
+    @assert size(v_ss)[1] == 2
     ss_input = (add_dim([VR0, VI0]), add_dim([IR0, II0]), v_ss, i_ss)
     y, st = model(ss_input, ps, st)
     ext_wrapper["offset"] = y - [IR0, II0]

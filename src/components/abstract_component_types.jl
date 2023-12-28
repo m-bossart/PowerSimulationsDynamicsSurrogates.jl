@@ -190,7 +190,10 @@ mutable struct TerminalDataSurrogateParams <: SurrogateModelParams
     type::String
     name::String
 end
-function TerminalDataSurrogateParams(; type = "TerminalDataSurrogateParams", name = "surrogate-TerminalDataSurrogate")
+function TerminalDataSurrogateParams(;
+    type = "TerminalDataSurrogateParams",
+    name = "surrogate-TerminalDataSurrogate",
+)
     TerminalDataSurrogateParams(type, name)
 end
 

@@ -316,7 +316,6 @@ function match_operating_point(sys, data_aux::TerminalData, surrogate_params)
 end
 
 function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::SourceParams)
-    @error P0, Q0, Vm0, θ0
     for s in PSY.get_components(PSY.Source, sys)
         PSY.set_active_power!(s, P0)
         PSY.set_reactive_power!(s, Q0)
@@ -329,7 +328,6 @@ function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::SourceP
 end
 
 function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::SourceLoadParams)
-    @error P0, Q0, Vm0, θ0
     for s in PSY.get_components(SourceLoad, sys)
         PSY.set_active_power!(s, P0)
         PSY.set_reactive_power!(s, Q0)
@@ -446,7 +444,11 @@ function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::MultiDe
 end
 
 function instantiate_solver(inputs)
-    return solver_map(inputs.solver)()
+    if occursin("MethodOfSteps", inputs.solver)
+        return solver_map(inputs.solver)
+    else
+        return solver_map(inputs.solver)()
+    end
 end
 
 function solver_map(key)
@@ -457,6 +459,8 @@ function solver_map(key)
         "TRBDF2" => OrdinaryDiffEq.TRBDF2,
         "Tsit5" => OrdinaryDiffEq.Tsit5,
         "IDA" => Sundials.IDA,
+        "MethodOfSteps(Rodas5(autodiff=false))" =>
+            DelayDiffEq.MethodOfSteps(OrdinaryDiffEq.Rodas5(autodiff = false)),
         #"IDA(linear_solver = :KLU)" => Sundials.IDA(linear_solver = :KLU),
     )
     return d[key]

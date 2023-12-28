@@ -152,10 +152,6 @@ function generate_surrogate_data(
     for p_single in perturbations[1]
         add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
     end
-    for s in PSY.get_components(TerminalDataSurrogate, sys)
-        push!(psid_perturbations, TerminalDataSurrogateCacheValues(s))
-    end
-    #TODO - add same loop for pinns 
     rng_state = copy(Random.default_rng())
     dummy_data = EmptyTrainDataSet(dataset_type)
     if dataset_aux !== nothing && dataset_aux[1].built == true
@@ -197,9 +193,6 @@ function generate_surrogate_data(
             psid_perturbations = PSID.Perturbation[]
             for p_single in p
                 add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
-            end
-            for s in PSY.get_components(TerminalDataSurrogate, sys)
-                push!(psid_perturbations, TerminalDataSurrogateCacheValues(s))
             end
             rng_state = copy(Random.default_rng())
             data = EmptyTrainDataSet(dataset_type)
