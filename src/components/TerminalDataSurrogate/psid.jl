@@ -1,4 +1,4 @@
-PSID.get_delays(dynamic_injector::TerminalDataSurrogate) = get_τ(dynamic_injector)
+PSID.get_delays(dynamic_injector::TerminalDataSurrogate) = [x*get_τ(dynamic_injector) for x in 1:get_window_size(dynamic_injector)+1]
 PSID.is_valid(::TerminalDataSurrogate) = nothing
 PSID.get_inner_vars_count(::TerminalDataSurrogate) = 0
 PSID._get_frequency_state(d::PSID.DynamicWrapper{TerminalDataSurrogate}) = 0
@@ -17,7 +17,8 @@ function mass_matrix_entries!(
     pvs::PSID.DynamicWrapper{TerminalDataSurrogate},
     global_index::Base.ImmutableDict{Symbol, Int64},
 )
-    @debug "Using default mass matrix entries $pvs"
+    mass_matrix[global_index[:ir], global_index[:ir]] = 0.0
+    mass_matrix[global_index[:ii], global_index[:ii]] = 0.0
 end
 
 function PSID.DynamicWrapper(
@@ -158,11 +159,11 @@ function PSID.device!(
     x = (v0, i0, v, i)
     y_pred, st = model(x, ps, st)
 
-    #@error "v0", v0
-    #@error "i0", i0
-    #@error "v", v
-    #@error "i", i
-    current_r[1] += y_pred[1] - offset[1]
-    current_i[1] += y_pred[2] - offset[2]
+    ir = y_pred[1] - offset[1]
+    ii = y_pred[2] - offset[2]
+    output_ode[1] = ir - device_states[1]
+    output_ode[2] = ii - device_states[2]
+    current_r[1] += ir
+    current_i[1] += ii
     return
 end

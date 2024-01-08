@@ -69,6 +69,8 @@
         add_data_trace!(p, d)
     end
     display(p)
+    @test length(dataset) == 4 
+    @test dataset[1].stable == true 
 end
 
 @testset "1 bus system- generate terminal data from source" begin
@@ -153,6 +155,8 @@ end
         add_data_trace!(p, d)
     end
     display(p)
+    @test length(dataset) == 2
+    @test dataset[1].stable == true 
 end
 
 @testset "1 bus system- generate FullSolutionData" begin
@@ -234,6 +238,8 @@ end
         add_data_trace!(p, d)
     end
     display(p)
+    @test length(dataset) == 2 
+    @test dataset[1].stable == true 
 end
 
 @testset "2 bus system- generate AllStatesData from generator" begin
@@ -295,6 +301,8 @@ end
         add_data_trace!(p, d)
     end
     display(p)
+    @test length(dataset) == 1 
+    @test dataset[1].stable == true 
 end
 
 @testset "1 bus system- generate FullSolutionData from initial conditions" begin
@@ -341,4 +349,6 @@ end
         add_data_trace!(p, d)
     end
     display(p)
+    @test length(dataset) == 1 
+    @test typeof(dataset[1].psid_result) == PSID.SimulationResults 
 end

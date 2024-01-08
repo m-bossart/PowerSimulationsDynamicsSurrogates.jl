@@ -44,13 +44,14 @@ end
 
 """
     function generate_surrogate_data(
+        dataset_type::Type{T},
         sys_main::PSY.System,
         sys_aux::PSY.System, 
         ics::Vector{Vector{Float64}},
         data_params::D,
         data_collection_params::GenerateDataParams,
         dataset_aux = nothing,
-    ) where {O <: SurrogateOperatingPoint, D <: SurrogateDatasetParams}
+    ) where {O <: SurrogateOperatingPoint, T <: SurrogateDataset}
 
 This function creates a new deepcopy of `sys_main` for each initial condition and then generates a dataset acording to `data_params` and `data_collection_params`.
 - `sys_main` is the system that is changed and perturbed and used to generate data. \\
@@ -109,6 +110,7 @@ end
 
 """
     function generate_surrogate_data(
+        dataset_type::Type{T},
         sys_main::PSY.System,
         sys_aux::PSY.System,          
         perturbations::Vector{Vector{Union{SurrogatePerturbation, PSID.Perturbation}}},
@@ -116,7 +118,7 @@ end
         data_params::D,
         data_collection_params::GenerateDataParams,
         dataset_aux = nothing,
-    ) where {O <: SurrogateOperatingPoint, D <: SurrogateDatasetParams}
+    ) where {O <: SurrogateOperatingPoint, T <: SurrogateDataset}
 
 This function creates a new deepcopy of `sys_main` for each pair of (`perturbations`, `operating_points`) and then generates a dataset acording to `data_params` and `data_collection_params`.
 - `sys_main` is the system that is changed and perturbed and used to generate data. \\
