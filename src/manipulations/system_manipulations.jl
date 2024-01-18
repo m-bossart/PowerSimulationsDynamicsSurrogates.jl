@@ -232,20 +232,22 @@ end
 
 #Removes only the branches within the bus_numbers (both sides)
 function _remove_internal_branches!(sys, bus_numbers)
-    internal_branches = collect(
+    internal_arcs = collect(
         PSY.get_components(
             x ->
-                (PSY.get_number(PSY.get_from(PSY.get_arc(x)))) ∈ bus_numbers &&
-                    (PSY.get_number(PSY.get_to(PSY.get_arc(x)))) ∈ bus_numbers,
-            PSY.Branch,
+                (PSY.get_number(PSY.get_from(x))) ∈ bus_numbers &&
+                    (PSY.get_number(PSY.get_to(x))) ∈ bus_numbers,
+            PSY.Arc,
             sys,
         ),
     )
-    for branch in internal_branches
-        arc = PSY.get_arc(branch)
+    for arc in internal_arcs
+        corresponding_branches = PSY.get_components(x-> PSY.get_arc(x) == arc , PSY.Branch, sys)
         PSY.remove_component!(sys, arc)
-        PSY.remove_component!(sys, branch)
-    end
+        for branch in corresponding_branches
+            PSY.remove_component!(sys, branch)
+        end 
+    end 
 end
 
 function _get_connecting_branch_power(sys, bus_numbers, powerflow_df)
