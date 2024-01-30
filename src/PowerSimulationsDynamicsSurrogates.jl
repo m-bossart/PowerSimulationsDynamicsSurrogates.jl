@@ -29,6 +29,7 @@ export set_initializer_parameters!
 export set_node_parameters!
 export set_observer_parameters!
 export set_base_power!
+export set_fc!
 export set_ext!
 
 export get_component_parameters

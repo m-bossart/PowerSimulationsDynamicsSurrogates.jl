@@ -27,6 +27,9 @@ mutable struct TerminalDataSurrogate <: DirectSolutionSurrogate
     name::String
     τ::Float64
     window_size::Int64
+    steadystate_offset_correction::Bool
+    trained_voltage_range::Tuple{Float64, Float64}
+    fc::Float64
     base_power::Float64
     states::Vector{Symbol}
     n_states::Int
@@ -39,6 +42,9 @@ function TerminalDataSurrogate(
     name,
     τ = 0.0,
     window_size = 1,
+    steadystate_offset_correction = true, 
+    trained_voltage_range= (0.0, 1.0),
+    fc = 0.0,
     base_power = 100.0,
     ext = Dict{String, Any}(),
 )
@@ -46,10 +52,13 @@ function TerminalDataSurrogate(
         name,
         τ,
         window_size,
+        steadystate_offset_correction,
+        trained_voltage_range,
+        fc,
         base_power,
-        [:ir, :ii],
-        2,
-        [PSY.StateTypes.Algebraic, PSY.StateTypes.Algebraic],
+        [:ir, :ii, :vr, :vi],
+        4,
+        [PSY.StateTypes.Algebraic, PSY.StateTypes.Algebraic, PSY.StateTypes.Differential, PSY.StateTypes.Differential],
         ext,
         IS.InfrastructureSystemsInternal(),
     )
@@ -59,10 +68,13 @@ function TerminalDataSurrogate(;
     name,
     τ = 0.0,
     window_size = 1,
+    steadystate_offset_correction = true, 
+    trained_voltage_range = (0.0, 1.0),
+    fc = 0.0,
     base_power = 100.0,
-    states = [:ir, :ii],
-    n_states = 2,
-    states_types = [PSY.StateTypes.Algebraic, PSY.StateTypes.Algebraic],
+    states = [:ir, :ii, :vr, :vi],
+    n_states = 4,
+    states_types = [PSY.StateTypes.Algebraic, PSY.StateTypes.Algebraic, PSY.StateTypes.Differential, PSY.StateTypes.Differential],
     ext = Dict{String, Any}(),
     internal = IS.InfrastructureSystemsInternal(),
 )
@@ -70,6 +82,9 @@ function TerminalDataSurrogate(;
         name,
         τ,
         window_size,
+        steadystate_offset_correction,
+        trained_voltage_range,
+        fc,
         base_power,
         states,
         n_states,
@@ -85,6 +100,9 @@ function TerminalDataSurrogate(::Nothing)
         name = "init",
         τ = 0.0,
         window_size = 1,
+        steadystate_offset_correction = true, 
+        trained_voltage_range = (0.0, 1.0),
+        fc = 0.0,
         base_power = 100.0,
         ext = Dict{String, Any}(),
     )
@@ -94,6 +112,9 @@ end
 PSY.get_name(value::TerminalDataSurrogate) = value.name
 get_τ(value::TerminalDataSurrogate) = value.τ
 get_window_size(value::TerminalDataSurrogate) = value.window_size
+get_steadystate_offset_correction(value::TerminalDataSurrogate) = value.steadystate_offset_correction
+get_trained_voltage_range(value::TerminalDataSurrogate) = value.trained_voltage_range
+get_fc(value::TerminalDataSurrogate) = value.fc
 PSY.get_states(value::TerminalDataSurrogate) = value.states
 PSY.get_n_states(value::TerminalDataSurrogate) = value.n_states
 PSY.get_states_types(value::TerminalDataSurrogate) = value.states_types
@@ -102,3 +123,4 @@ PSY.get_internal(value::TerminalDataSurrogate) = value.internal
 
 PSY.set_base_power!(value::TerminalDataSurrogate, val) = value.base_power = val
 PSY.set_ext!(value::TerminalDataSurrogate, val) = value.ext = val
+set_fc!(value::TerminalDataSurrogate, val) = value.fc = val

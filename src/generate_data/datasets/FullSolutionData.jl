@@ -1,18 +1,10 @@
-#= mutable struct FullSolutionDataParams <: SurrogateDatasetParams
-    type::String
-end
-
-function FullSolutionDataParams(;type = "FullSolutionDataParams")
-    return FullSolutionDataParams(type)
-end
- =#
 mutable struct FullSolutionData <: SurrogateDataset
     type::String
     tsteps::AbstractArray
     tstops::AbstractArray
     stable::Bool
     solve_time::Float64
-    u::Vector{AbstractArray}
+    psid_result::Union{Nothing, PSID.SimulationResults} 
 end
 
 function FullSolutionData(;
@@ -21,9 +13,9 @@ function FullSolutionData(;
     tstops = [],
     stable = false,
     solve_time = 0.0,
-    u = Vector{AbstractArray}(),
+    psid_result = nothing, # Vector{AbstractArray}(),
 )
-    return FullSolutionData(type, tsteps, tstops, stable, solve_time, u)
+    return FullSolutionData(type, tsteps, tstops, stable, solve_time, psid_result)
 end
 
 function fill_surrogate_data!(
@@ -41,7 +33,7 @@ function fill_surrogate_data!(
         end
         data.tstops = unique(results.solution.t)
         data.tsteps = unique(results.solution.t)[save_indices]
-        data.u = results.solution.u[save_indices]
+        data.psid_result = results #  results.solution.u[save_indices]
         data.stable = true
         data.solve_time = results.time_log[:timed_solve_time]
     else
@@ -57,13 +49,5 @@ function generate_empty_plot(T::Type{FullSolutionData})
     return PlotlyJS.plot()
 end
 
-function add_data_trace!(p, data::FullSolutionData; name = "")
-    n_values = length(data.u[1])
-    for n in 1:n_values
-        y = [u[n] for u in data.u]
-        PlotlyJS.add_trace!(
-            p,
-            PlotlyJS.scatter(; x = data.tsteps, y = y, title = "All values together"),
-        )
-    end
+function add_data_trace!(p, data::FullSolutionData; name = "", color = "")
 end

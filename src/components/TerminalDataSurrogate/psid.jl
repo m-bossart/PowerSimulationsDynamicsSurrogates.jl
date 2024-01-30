@@ -17,8 +17,11 @@ function mass_matrix_entries!(
     pvs::PSID.DynamicWrapper{TerminalDataSurrogate},
     global_index::Base.ImmutableDict{Symbol, Int64},
 )
+    fc = get_fc(pvs.device) 
     mass_matrix[global_index[:ir], global_index[:ir]] = 0.0
     mass_matrix[global_index[:ii], global_index[:ii]] = 0.0
+    mass_matrix[global_index[:vr], global_index[:vr]] = fc
+    mass_matrix[global_index[:vi], global_index[:vi]] = fc
 end
 
 function PSID.DynamicWrapper(
@@ -83,6 +86,7 @@ function PSID.initialize_dynamic_device!(
 
     ext_wrapper["v0"] = [VR0, VI0]
     ext_wrapper["i0"] = [IR0, II0]
+    ext_wrapper["voltage_violation_warning"] = false 
 
     model = ext_device["model"]
     ps = ext_device["ps"]
@@ -93,9 +97,14 @@ function PSID.initialize_dynamic_device!(
     @assert size(v_ss)[1] == 2
     ss_input = (add_dim([VR0, VI0]), add_dim([IR0, II0]), v_ss, i_ss)
     y, st = model(ss_input, ps, st)
-    ext_wrapper["offset"] = y - [IR0, II0]
-    device_states = [IR0, II0]
-    @warn "The surrogate model has a non-zero error at time zero which is corrected with an offset. Ir: $(ext_wrapper["offset"][1]), Ii: $(ext_wrapper["offset"][2]) "
+    if get_steadystate_offset_correction(device)
+        ext_wrapper["offset"] = y - [IR0, II0]
+        device_states = [IR0, II0, VR0, VI0]
+        @warn "The surrogate model has a non-zero error at time zero which is corrected with an offset. Ir: $(ext_wrapper["offset"][1]), Ii: $(ext_wrapper["offset"][2])"
+    else 
+        ext_wrapper["offset"] = [0.0, 0.0]
+        device_states = [y[1], y[2], VR0, VI0]
+    end 
     PSID.set_V_ref(dynamic_device, Vm)
     return device_states
 end
@@ -116,6 +125,7 @@ function PSID.device!(
     ext_wrapper = PSID.get_ext(dynamic_device)
     ext_device = PSY.get_ext(dynamic_device.device)
     window_size = get_window_size(dynamic_device.device)
+    trained_voltage_range = get_trained_voltage_range(dynamic_device.device)
     τ = get_τ(dynamic_device.device)
     v0 = add_dim(ext_wrapper["v0"])
     i0 = add_dim(ext_wrapper["i0"])
@@ -123,29 +133,36 @@ function PSID.device!(
     model = ext_device["model"]
     ps = ext_device["ps"]
     st = ext_device["st"]
-
+    vm = sqrt(voltage_r ^2 + voltage_i^2)
+    if ((vm < trained_voltage_range[1]) || (vm > trained_voltage_range[2])) && t>0.0 && !ext_wrapper["voltage_violation_warning"]
+        @error "Voltage $vm outside of trained range ($trained_voltage_range) at time $t"
+        ext_wrapper["voltage_violation_warning"] = true 
+    end 
     #JUST USE ALL STEADY STATE VALUES:
     #v_ss = add_dim(hcat(fill(v0[1], window_size), fill(v0[2], window_size)))
     #i_ss = add_dim(hcat(fill(i0[1], window_size), fill(i0[2], window_size)))
     #x = (v0, i0, v_ss, i_ss)
 
-    bus_ix = dynamic_device.bus_ix
-    bus_size = dynamic_device.bus_size
     ix_range = dynamic_device.ix_range
-    vr_ix = bus_ix
-    vi_ix = bus_ix + bus_size
     ir_ix = ix_range[1]
     ii_ix = ix_range[2]
+    vr_ix = ix_range[3]
+    vi_ix = ix_range[4]
+
+    ir = device_states[1]
+    ii = device_states[2]
+    vr = device_states[3]
+    vi = device_states[4]
 
     v = add_dim(
         vcat(
             hcat(
                 [h(nothing, t - N * τ; idxs = vr_ix) for N in (window_size - 1):-1:1]',
-                [voltage_r],
+                [vr],
             ),
             hcat(
                 [h(nothing, t - N * τ; idxs = vi_ix) for N in (window_size - 1):-1:1]',
-                [voltage_i],
+                [vi],
             ),
         ),
     )
@@ -158,11 +175,11 @@ function PSID.device!(
     )
     x = (v0, i0, v, i)
     y_pred, st = model(x, ps, st)
-
-    ir = y_pred[1] - offset[1]
-    ii = y_pred[2] - offset[2]
-    output_ode[1] = ir - device_states[1]
-    output_ode[2] = ii - device_states[2]
+    
+    output_ode[1] = y_pred[1] - offset[1] - ir  #algebraic state for currents
+    output_ode[2] = y_pred[2] - offset[2] - ii
+    output_ode[3] = voltage_r - vr              #low pass filter for voltage
+    output_ode[4] = voltage_i - vi
     current_r[1] += ir
     current_i[1] += ii
     return

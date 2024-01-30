@@ -11,6 +11,7 @@ using PowerSystems
 using PowerSimulationsDynamics
 using PowerSimulationsDynamicsSurrogates
 using Sundials
+using PowerSystemCaseBuilder
 using Lux
 using Flux
 using Test
@@ -30,6 +31,7 @@ logger = PSY.configure_logging(;
 )
 with_logger(logger) do
     #run tests
+    #include("test_CurrentPlayback.jl")
     include("test_TerminalDataSurrogate.jl")
     include("test_serialization.jl")
     include("test_SourceLoad.jl")

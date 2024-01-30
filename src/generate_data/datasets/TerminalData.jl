@@ -5,7 +5,7 @@ mutable struct TerminalData <: SurrogateDataset
     stable::Bool
     built::Bool
     solve_time::Float64
-    device_terminal_data::Dict{String, Dict{Symbol, AbstractArray}} #string is device name, "symbol is :vr, :vi, :ir, :ii, :p, :q", arrays are the data
+    device_terminal_data::Dict{String, Dict{Symbol, AbstractArray}} #string is device name, symbol is :vr, :vi, :ir, :ii, :p, :q, arrays are the data
 end
 
 function TerminalData(;
@@ -475,13 +475,12 @@ end
 function generate_empty_plot(T::Type{TerminalData})
     p = PlotlyJS.make_subplots(
         rows = 2,
-        cols = 4,
+        cols = 2,
         specs = [
-            PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec()
-            PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec()
-            PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec()
+            PlotlyJS.Spec() PlotlyJS.Spec() 
+            PlotlyJS.Spec() PlotlyJS.Spec()
         ],
-        subplot_titles = ["vr" "vi" "ir" "ii" "P" "Q" "im" "iθ"],
+        subplot_titles = ["vr" "vi" "ir" "ii"],
         vertical_spacing = 0.1,
     )
     return p
@@ -493,8 +492,8 @@ function add_data_trace!(p, data::TerminalData; mode = "lines", color = "", name
         Vi = device_data_dict[:vi]
         Ir = device_data_dict[:ir]
         Ii = device_data_dict[:ii]
-        P = device_data_dict[:p]
-        Q = device_data_dict[:q]
+        #P = device_data_dict[:p]
+        #Q = device_data_dict[:q]
 
         PlotlyJS.add_trace!(
             p,
@@ -515,6 +514,7 @@ function add_data_trace!(p, data::TerminalData; mode = "lines", color = "", name
                 y = Vi,
                 marker = PlotlyJS.attr(color = color),
                 mode = mode,
+                #showlegend=false,
                 name = string(device_name, name),
             ),
             row = 1,
@@ -527,30 +527,7 @@ function add_data_trace!(p, data::TerminalData; mode = "lines", color = "", name
                 y = Ir,
                 marker = PlotlyJS.attr(color = color),
                 mode = mode,
-                name = string(device_name, name),
-            ),
-            row = 1,
-            col = 3,
-        )
-        PlotlyJS.add_trace!(
-            p,
-            PlotlyJS.scatter(;
-                x = data.tsteps,
-                y = Ii,
-                marker = PlotlyJS.attr(color = color),
-                mode = mode,
-                name = string(device_name, name),
-            ),
-            row = 1,
-            col = 4,
-        )
-        PlotlyJS.add_trace!(
-            p,
-            PlotlyJS.scatter(;
-                x = data.tsteps,
-                y = P,
-                marker = PlotlyJS.attr(color = color),
-                mode = mode,
+                #showlegend=false,
                 name = string(device_name, name),
             ),
             row = 2,
@@ -560,9 +537,10 @@ function add_data_trace!(p, data::TerminalData; mode = "lines", color = "", name
             p,
             PlotlyJS.scatter(;
                 x = data.tsteps,
-                y = Q,
+                y = Ii,
                 marker = PlotlyJS.attr(color = color),
                 mode = mode,
+                #showlegend=false,
                 name = string(device_name, name),
             ),
             row = 2,

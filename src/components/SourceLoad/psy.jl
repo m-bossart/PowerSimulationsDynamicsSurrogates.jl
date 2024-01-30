@@ -118,7 +118,7 @@ function SourceLoad(::Nothing)
         name = "init",
         available = false,
         bus = PSY.ACBus(nothing),
-        base_poewr = 0.0,
+        base_power = 0.0,
         constant_active_power = 0.0,
         constant_reactive_power = 0.0,
         impedance_active_power = 0.0,
