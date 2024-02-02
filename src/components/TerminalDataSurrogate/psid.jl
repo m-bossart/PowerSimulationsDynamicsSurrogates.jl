@@ -18,8 +18,8 @@ function mass_matrix_entries!(
     global_index::Base.ImmutableDict{Symbol, Int64},
 )
     fc = get_fc(pvs.device) 
-    mass_matrix[global_index[:ir], global_index[:ir]] = 0.0
-    mass_matrix[global_index[:ii], global_index[:ii]] = 0.0
+    mass_matrix[global_index[:ir], global_index[:ir]] = fc
+    mass_matrix[global_index[:ii], global_index[:ii]] = fc
     mass_matrix[global_index[:vr], global_index[:vr]] = fc
     mass_matrix[global_index[:vi], global_index[:vi]] = fc
 end
@@ -176,11 +176,11 @@ function PSID.device!(
     x = (v0, i0, v, i)
     y_pred, st = model(x, ps, st)
     
-    output_ode[1] = y_pred[1] - offset[1] - ir  #algebraic state for currents
+    output_ode[1] = y_pred[1] - offset[1] - ir  
     output_ode[2] = y_pred[2] - offset[2] - ii
-    output_ode[3] = voltage_r - vr              #low pass filter for voltage
+    output_ode[3] = voltage_r - vr              
     output_ode[4] = voltage_i - vi
-    current_r[1] += ir
-    current_i[1] += ii
+    current_r[1] += y_pred[1] - offset[1]
+    current_i[1] += y_pred[2] - offset[2]
     return
 end

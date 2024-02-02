@@ -58,7 +58,7 @@ function TerminalDataSurrogate(
         base_power,
         [:ir, :ii, :vr, :vi],
         4,
-        [PSY.StateTypes.Algebraic, PSY.StateTypes.Algebraic, PSY.StateTypes.Differential, PSY.StateTypes.Differential],
+        [PSY.StateTypes.Differential, PSY.StateTypes.Differential, PSY.StateTypes.Differential, PSY.StateTypes.Differential],
         ext,
         IS.InfrastructureSystemsInternal(),
     )
@@ -74,7 +74,7 @@ function TerminalDataSurrogate(;
     base_power = 100.0,
     states = [:ir, :ii, :vr, :vi],
     n_states = 4,
-    states_types = [PSY.StateTypes.Algebraic, PSY.StateTypes.Algebraic, PSY.StateTypes.Differential, PSY.StateTypes.Differential],
+    states_types = [PSY.StateTypes.Differential, PSY.StateTypes.Differential, PSY.StateTypes.Differential, PSY.StateTypes.Differential],
     ext = Dict{String, Any}(),
     internal = IS.InfrastructureSystemsInternal(),
 )
