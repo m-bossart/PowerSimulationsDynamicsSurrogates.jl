@@ -24,25 +24,25 @@ function mass_matrix_entries!(
     mass_matrix[global_index[:vi], global_index[:vi]] = fc
 end
 
-function PSID.DynamicWrapper(
-    device::PSY.Source,
+function DynamicWrapper(
+    static_device::PSY.Source,
     dynamic_device::TerminalDataSurrogate,
     bus_ix::Int,
-    bus_size::Int,
     ix_range,
     ode_range,
+    p_range,
     inner_var_range,
     sys_base_power,
     sys_base_freq,
-)
+) 
     device_states = PSY.get_states(dynamic_device)
-    ext = Dict{String, Any}()
+
     return PSID.DynamicWrapper(
         dynamic_device,
         sys_base_power,
         sys_base_freq,
         PSY.Source,
-        PSID.BUS_MAP[PSY.get_bustype(PSY.get_bus(device))],
+        BUS_MAP[PSY.get_bustype(PSY.get_bus(static_device))],
         Base.Ref(1.0),
         Base.Ref(0.0),
         Base.Ref(0.0),
@@ -51,12 +51,13 @@ function PSID.DynamicWrapper(
         collect(inner_var_range),
         collect(ix_range),
         collect(ode_range),
+        collect(p_range),
         bus_ix,
-        bus_size,
         Base.ImmutableDict(Dict(device_states .=> ix_range)...),
         Base.ImmutableDict{Int, Vector{Int}}(),
         Base.ImmutableDict{Int, Vector{Int}}(),
-        ext,
+        Base.ImmutableDict{Int, Vector{Int}}(),
+        Dict{String, Any}(),
     )
 end
 
