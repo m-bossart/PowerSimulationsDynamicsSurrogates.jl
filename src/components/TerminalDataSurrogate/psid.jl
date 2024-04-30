@@ -24,7 +24,7 @@ function mass_matrix_entries!(
     mass_matrix[global_index[:vi], global_index[:vi]] = fc
 end
 
-function DynamicWrapper(
+function PSID.DynamicWrapper(
     static_device::PSY.Source,
     dynamic_device::TerminalDataSurrogate,
     bus_ix::Int,
