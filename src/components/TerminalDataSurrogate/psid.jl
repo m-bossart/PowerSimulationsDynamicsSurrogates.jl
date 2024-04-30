@@ -42,7 +42,7 @@ function PSID.DynamicWrapper(
         sys_base_power,
         sys_base_freq,
         PSY.Source,
-        BUS_MAP[PSY.get_bustype(PSY.get_bus(static_device))],
+        PSID.BUS_MAP[PSY.get_bustype(PSY.get_bus(static_device))],
         Base.Ref(1.0),
         Base.Ref(0.0),
         Base.Ref(0.0),
