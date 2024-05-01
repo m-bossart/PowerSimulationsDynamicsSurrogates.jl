@@ -37,7 +37,7 @@ with_logger(logger) do
     include("test_SourceLoad.jl")
     include("test_onebus.jl")
     include("test_SteadyStateNODE.jl")
-    include("test_SteadyStateNODEObs.jl")
+    #include("test_SteadyStateNODEObs.jl") -- not used anywhere, can stop supporting this 
     include("test_type_format.jl")
     include("test_data_generation.jl")
     include("test_dataset_aux.jl")

@@ -14,6 +14,3 @@ PowerSystemCaseBuilder = "f00506e0-b84f-492a-93c2-c0a9afc4364e"
 PowerSystems = "bcd98974-b02a-5e2f-9ee0-a103f5c450dd"
 Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
 Sundials = "c3572dad-4567-51f8-b174-8c6c989267f4"
-
-[compat]
-Flux = "<0.13.12"
