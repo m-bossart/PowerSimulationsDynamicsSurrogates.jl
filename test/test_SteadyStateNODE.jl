@@ -57,8 +57,9 @@ end
         (x) -> x,
     )
 
-    initializer = Flux.Chain(layer_initializer_input, Flux.Dense(3, 5, tanh; bias = true))
-    node = Flux.Chain(layer_node_input, Flux.Dense(7, 3, tanh; bias = true))
+    initializer =
+        Flux.f64(Flux.Chain(layer_initializer_input, Flux.Dense(3, 5, tanh; bias = true)))
+    node = Flux.f64(Flux.Chain(layer_node_input, Flux.Dense(7, 3, tanh; bias = true)))
 
     function SteadyStateNODE_simple(source)
         return SteadyStateNODE(

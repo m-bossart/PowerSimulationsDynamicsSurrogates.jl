@@ -4,7 +4,7 @@ mutable struct FullSolutionData <: SurrogateDataset
     tstops::AbstractArray
     stable::Bool
     solve_time::Float64
-    psid_result::Union{Nothing, PSID.SimulationResults} 
+    psid_result::Union{Nothing, PSID.SimulationResults}
 end
 
 function FullSolutionData(;
@@ -49,5 +49,4 @@ function generate_empty_plot(T::Type{FullSolutionData})
     return PlotlyJS.plot()
 end
 
-function add_data_trace!(p, data::FullSolutionData; name = "", color = "")
-end
+function add_data_trace!(p, data::FullSolutionData; name = "", color = "") end

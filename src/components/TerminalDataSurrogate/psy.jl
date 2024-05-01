@@ -42,8 +42,8 @@ function TerminalDataSurrogate(
     name,
     τ = 0.0,
     window_size = 1,
-    steadystate_offset_correction = true, 
-    trained_voltage_range= (0.0, 1.0),
+    steadystate_offset_correction = true,
+    trained_voltage_range = (0.0, 1.0),
     fc = 0.0,
     base_power = 100.0,
     ext = Dict{String, Any}(),
@@ -58,7 +58,12 @@ function TerminalDataSurrogate(
         base_power,
         [:ir, :ii, :vr, :vi],
         4,
-        [PSY.StateTypes.Differential, PSY.StateTypes.Differential, PSY.StateTypes.Differential, PSY.StateTypes.Differential],
+        [
+            PSY.StateTypes.Differential,
+            PSY.StateTypes.Differential,
+            PSY.StateTypes.Differential,
+            PSY.StateTypes.Differential,
+        ],
         ext,
         IS.InfrastructureSystemsInternal(),
     )
@@ -68,13 +73,18 @@ function TerminalDataSurrogate(;
     name,
     τ = 0.0,
     window_size = 1,
-    steadystate_offset_correction = true, 
+    steadystate_offset_correction = true,
     trained_voltage_range = (0.0, 1.0),
     fc = 0.0,
     base_power = 100.0,
     states = [:ir, :ii, :vr, :vi],
     n_states = 4,
-    states_types = [PSY.StateTypes.Differential, PSY.StateTypes.Differential, PSY.StateTypes.Differential, PSY.StateTypes.Differential],
+    states_types = [
+        PSY.StateTypes.Differential,
+        PSY.StateTypes.Differential,
+        PSY.StateTypes.Differential,
+        PSY.StateTypes.Differential,
+    ],
     ext = Dict{String, Any}(),
     internal = IS.InfrastructureSystemsInternal(),
 )
@@ -100,7 +110,7 @@ function TerminalDataSurrogate(::Nothing)
         name = "init",
         τ = 0.0,
         window_size = 1,
-        steadystate_offset_correction = true, 
+        steadystate_offset_correction = true,
         trained_voltage_range = (0.0, 1.0),
         fc = 0.0,
         base_power = 100.0,
@@ -112,7 +122,8 @@ end
 PSY.get_name(value::TerminalDataSurrogate) = value.name
 get_τ(value::TerminalDataSurrogate) = value.τ
 get_window_size(value::TerminalDataSurrogate) = value.window_size
-get_steadystate_offset_correction(value::TerminalDataSurrogate) = value.steadystate_offset_correction
+get_steadystate_offset_correction(value::TerminalDataSurrogate) =
+    value.steadystate_offset_correction
 get_trained_voltage_range(value::TerminalDataSurrogate) = value.trained_voltage_range
 get_fc(value::TerminalDataSurrogate) = value.fc
 PSY.get_states(value::TerminalDataSurrogate) = value.states

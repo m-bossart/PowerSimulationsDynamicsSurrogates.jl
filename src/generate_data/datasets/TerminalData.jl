@@ -477,7 +477,7 @@ function generate_empty_plot(T::Type{TerminalData})
         rows = 2,
         cols = 2,
         specs = [
-            PlotlyJS.Spec() PlotlyJS.Spec() 
+            PlotlyJS.Spec() PlotlyJS.Spec()
             PlotlyJS.Spec() PlotlyJS.Spec()
         ],
         subplot_titles = ["vr" "vi" "ir" "ii"],

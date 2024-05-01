@@ -1,5 +1,5 @@
 
-function PSID.StaticWrapper(device::T, bus_ix::Int) where {T <: SourceLoad}
+function PSID.StaticWrapper(device::T, bus_ix::Int, p_range) where {T <: SourceLoad}
     bus = PSY.get_bus(device)
     return PSID.StaticWrapper{T, PSID.BUS_MAP[PSY.get_bustype(bus)]}(
         device,
@@ -8,6 +8,7 @@ function PSID.StaticWrapper(device::T, bus_ix::Int) where {T <: SourceLoad}
         Base.Ref(PSY.get_angle(bus)),
         Base.Ref(PSY.get_active_power(device)), #PSY.get_active_power(device))
         Base.Ref(PSY.get_reactive_power(device)), #PSY.get_reactive_power(device)
+        p_range,
         bus_ix,
         Dict{String, Any}(),
     )
@@ -15,11 +16,13 @@ end
 
 function PSID.initialize_static_device!(
     device::PSID.StaticWrapper{SourceLoad, T},
+    local_parameters::AbstractArray{<:PSID.ACCEPTED_REAL_TYPES},
 ) where {T <: PSID.BusCategory}
     return
 end
 
 function PSID.device!(
+    device_parameters::AbstractArray{<:PSID.ACCEPTED_REAL_TYPES},
     voltage_r::T,
     voltage_i::T,
     current_r::AbstractArray{T},

@@ -69,8 +69,8 @@
         add_data_trace!(p, d)
     end
     display(p)
-    @test length(dataset) == 4 
-    @test dataset[1].stable == true 
+    @test length(dataset) == 4
+    @test dataset[1].stable == true
 end
 
 @testset "1 bus system- generate terminal data from source" begin
@@ -156,7 +156,7 @@ end
     end
     display(p)
     @test length(dataset) == 2
-    @test dataset[1].stable == true 
+    @test dataset[1].stable == true
 end
 
 @testset "1 bus system- generate FullSolutionData" begin
@@ -238,8 +238,8 @@ end
         add_data_trace!(p, d)
     end
     display(p)
-    @test length(dataset) == 2 
-    @test dataset[1].stable == true 
+    @test length(dataset) == 2
+    @test dataset[1].stable == true
 end
 
 @testset "2 bus system- generate AllStatesData from generator" begin
@@ -301,8 +301,8 @@ end
         add_data_trace!(p, d)
     end
     display(p)
-    @test length(dataset) == 1 
-    @test dataset[1].stable == true 
+    @test length(dataset) == 1
+    @test dataset[1].stable == true
 end
 
 @testset "1 bus system- generate FullSolutionData from initial conditions" begin
@@ -324,7 +324,7 @@ end
     end
 
     sim = Simulation!(MassMatrixModel, sys, pwd(), (0.0, 1.0))
-    ics = [PSID.get_initial_conditions(sim)]
+    ics = [PSID.get_x0(sim)]
 
     operating_points = [GenerationLoadScale(generation_scale = 1.0, load_scale = 1.0)]
 
@@ -349,6 +349,6 @@ end
         add_data_trace!(p, d)
     end
     display(p)
-    @test length(dataset) == 1 
-    @test typeof(dataset[1].psid_result) == PSID.SimulationResults 
+    @test length(dataset) == 1
+    @test typeof(dataset[1].psid_result) == PSID.SimulationResults
 end

@@ -65,9 +65,11 @@ end
             target_lims[1],
         )
 
-    initializer = Flux.Chain(layer_initializer_input, Flux.Dense(3, 5, tanh; bias = true))
-    node = Flux.Chain(layer_node_input, Flux.Dense(7, 3, tanh; bias = true))
-    observer = Flux.Chain(Flux.Dense(3, 2, tanh; bias = true), layer_observer_output)
+    initializer =
+        Flux.f64(Flux.Chain(layer_initializer_input, Flux.Dense(3, 5, tanh; bias = true)))
+    node = Flux.f64(Flux.Chain(layer_node_input, Flux.Dense(7, 3, tanh; bias = true)))
+    observer =
+        Flux.f64(Flux.Chain(Flux.Dense(3, 2, tanh; bias = true), layer_observer_output))
 
     function SteadyStateNODEObs_simple(source)
         return SteadyStateNODEObs(

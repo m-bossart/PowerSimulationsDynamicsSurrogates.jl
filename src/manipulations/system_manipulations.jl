@@ -242,12 +242,13 @@ function _remove_internal_branches!(sys, bus_numbers)
         ),
     )
     for arc in internal_arcs
-        corresponding_branches = PSY.get_components(x-> PSY.get_arc(x) == arc , PSY.Branch, sys)
+        corresponding_branches =
+            PSY.get_components(x -> PSY.get_arc(x) == arc, PSY.Branch, sys)
         PSY.remove_component!(sys, arc)
         for branch in corresponding_branches
             PSY.remove_component!(sys, branch)
-        end 
-    end 
+        end
+    end
 end
 
 function _get_connecting_branch_power(sys, bus_numbers, powerflow_df)

@@ -38,10 +38,16 @@ end
     Random.seed!(1234)
     function gain(x)
         return x .* 10.0
-    end 
+    end
     v0_path = Lux.Chain(Lux.Dense(2, 2))
     i0_path = Lux.Chain(Lux.Dense(2, 2))
-    v_path = Lux.Chain(Lux.FlattenLayer(), Lux.WrappedFunction(gain), Lux.Dense(10, 100), Lux.Dense(100, 100),Lux.Dense(100, 2))
+    v_path = Lux.Chain(
+        Lux.FlattenLayer(),
+        Lux.WrappedFunction(gain),
+        Lux.Dense(10, 100),
+        Lux.Dense(100, 100),
+        Lux.Dense(100, 2),
+    )
     i_path = Lux.Chain(Lux.FlattenLayer(), Lux.Dense(10, 100), Lux.Dense(100, 2))
     model = Lux.Chain(Lux.Parallel(+, v0_path, i0_path, v_path, i_path))
 
@@ -58,11 +64,11 @@ end
             τ = 0.3,
             window_size = 5,
             fc = 0.0,
-            steadystate_offset_correction = true,    
+            steadystate_offset_correction = true,
             ext = Dict{String, Any}("model" => model, "ps" => ps, "st" => st),
         )
         display(s)
-        add_component!(sys, s, source)  
+        add_component!(sys, s, source)
     end
 
     #@show PowerFlows.solve_powerflow(PowerFlows.ACPowerFlow(), sys)["bus_results"]
@@ -95,10 +101,31 @@ end
     vr_surr_filt = get_state_series(results, ("source_1", :vr))
     ir_surr_filt = get_state_series(results, ("source_1", :ir))
 
-
     using PlotlyJS  #add PlotlyJS to test environment
-    display(PlotlyJS.plot([PlotlyJS.scatter(x = vbus[1], y= vbus[2], name="no filtering"), PlotlyJS.scatter(x = vbus_filt[1], y= vbus_filt[2], name="filter (0.1s)")]))
-    display(PlotlyJS.plot([PlotlyJS.scatter(x = vr_surr[1], y= vr_surr[2], name="no filtering"), PlotlyJS.scatter(x = vr_surr_filt[1], y= vr_surr_filt[2], name="filter (0.1s)")]))
-    display(PlotlyJS.plot([PlotlyJS.scatter(x = ir_surr[1], y= ir_surr[2], name="no filtering"), PlotlyJS.scatter(x = ir_surr_filt[1], y= ir_surr_filt[2], name="filter (0.1s)")]))
-
-end 
+    display(
+        PlotlyJS.plot([
+            PlotlyJS.scatter(x = vbus[1], y = vbus[2], name = "no filtering"),
+            PlotlyJS.scatter(x = vbus_filt[1], y = vbus_filt[2], name = "filter (0.1s)"),
+        ]),
+    )
+    display(
+        PlotlyJS.plot([
+            PlotlyJS.scatter(x = vr_surr[1], y = vr_surr[2], name = "no filtering"),
+            PlotlyJS.scatter(
+                x = vr_surr_filt[1],
+                y = vr_surr_filt[2],
+                name = "filter (0.1s)",
+            ),
+        ]),
+    )
+    display(
+        PlotlyJS.plot([
+            PlotlyJS.scatter(x = ir_surr[1], y = ir_surr[2], name = "no filtering"),
+            PlotlyJS.scatter(
+                x = ir_surr_filt[1],
+                y = ir_surr_filt[2],
+                name = "filter (0.1s)",
+            ),
+        ]),
+    )
+end

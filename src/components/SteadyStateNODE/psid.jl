@@ -23,8 +23,9 @@ function mass_matrix_ssnode_entries!(
 end
 
 function PSID.device!(
-    device_states::AbstractArray{T},
+    device_states::AbstractArray{<:PSID.ACCEPTED_REAL_TYPES},
     output_ode::AbstractArray{T},
+    device_parameters::AbstractArray{<:PSID.ACCEPTED_REAL_TYPES},
     voltage_r::T,
     voltage_i::T,
     current_r::AbstractArray{T},
@@ -53,9 +54,10 @@ function PSID.initialize_dynamic_device!(
     dynamic_device::PSID.DynamicWrapper{SteadyStateNODE},
     source::PSY.Source,
     ::AbstractVector,
+    device_parameters::AbstractVector,
+    device_states::AbstractVector,
 )
     n_states = PSY.get_n_states(dynamic_device)
-    device_states = zeros(n_states)
 
     #PowerFlow Data
     P0 = PSY.get_active_power(source)
@@ -96,16 +98,16 @@ function PSID.initialize_dynamic_device!(
     dynamic_device.ext["θ0"] = θ
     dynamic_device.ext["refs"] = refs
     dynamic_device.ext["initializer_error"] = x0 .- sol.zero
-    return device_states
+    return
 end
 
 function PSID.DynamicWrapper(
     device::PSY.Source,
     dynamic_device::SteadyStateNODE,
     bus_ix::Int,
-    bus_size::Int,
     ix_range,
     ode_range,
+    p_range,
     inner_var_range,
     sys_base_power,
     sys_base_freq,
@@ -127,9 +129,10 @@ function PSID.DynamicWrapper(
         collect(inner_var_range),
         collect(ix_range),
         collect(ode_range),
+        collect(p_range),
         bus_ix,
-        bus_size,
         Base.ImmutableDict(Dict(device_states .=> ix_range)...),
+        Base.ImmutableDict{Int, Vector{Int}}(),
         Base.ImmutableDict{Int, Vector{Int}}(),
         Base.ImmutableDict{Int, Vector{Int}}(),
         ext,

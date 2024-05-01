@@ -1,4 +1,5 @@
-PSID.get_delays(dynamic_injector::TerminalDataSurrogate) = [x*get_τ(dynamic_injector) for x in 1:get_window_size(dynamic_injector)+1]
+PSID.get_delays(dynamic_injector::TerminalDataSurrogate) =
+    [x * get_τ(dynamic_injector) for x in 1:(get_window_size(dynamic_injector) + 1)]
 PSID.is_valid(::TerminalDataSurrogate) = nothing
 PSID.get_inner_vars_count(::TerminalDataSurrogate) = 0
 PSID._get_frequency_state(d::PSID.DynamicWrapper{TerminalDataSurrogate}) = 0
@@ -17,7 +18,7 @@ function mass_matrix_entries!(
     pvs::PSID.DynamicWrapper{TerminalDataSurrogate},
     global_index::Base.ImmutableDict{Symbol, Int64},
 )
-    fc = get_fc(pvs.device) 
+    fc = get_fc(pvs.device)
     mass_matrix[global_index[:ir], global_index[:ir]] = fc
     mass_matrix[global_index[:ii], global_index[:ii]] = fc
     mass_matrix[global_index[:vr], global_index[:vr]] = fc
@@ -34,7 +35,7 @@ function PSID.DynamicWrapper(
     inner_var_range,
     sys_base_power,
     sys_base_freq,
-) 
+)
     device_states = PSY.get_states(dynamic_device)
 
     return PSID.DynamicWrapper(
@@ -67,6 +68,8 @@ function PSID.initialize_dynamic_device!(
     dynamic_device::PSID.DynamicWrapper{TerminalDataSurrogate},
     source::PSY.Source,
     ::AbstractVector,
+    device_parameters::AbstractVector,
+    device_states::AbstractVector,
 )
     ext_wrapper = PSID.get_ext(dynamic_device)
     device = PSID.get_device(dynamic_device)
@@ -87,7 +90,7 @@ function PSID.initialize_dynamic_device!(
 
     ext_wrapper["v0"] = [VR0, VI0]
     ext_wrapper["i0"] = [IR0, II0]
-    ext_wrapper["voltage_violation_warning"] = false 
+    ext_wrapper["voltage_violation_warning"] = false
 
     model = ext_device["model"]
     ps = ext_device["ps"]
@@ -100,19 +103,20 @@ function PSID.initialize_dynamic_device!(
     y, st = model(ss_input, ps, st)
     if get_steadystate_offset_correction(device)
         ext_wrapper["offset"] = y - [IR0, II0]
-        device_states = [IR0, II0, VR0, VI0]
+        device_states[1:4] = [IR0, II0, VR0, VI0]
         @warn "The surrogate model has a non-zero error at time zero which is corrected with an offset. Ir: $(ext_wrapper["offset"][1]), Ii: $(ext_wrapper["offset"][2])"
-    else 
+    else
         ext_wrapper["offset"] = [0.0, 0.0]
-        device_states = [y[1], y[2], VR0, VI0]
-    end 
+        device_states[1:4] = [y[1], y[2], VR0, VI0]
+    end
     PSID.set_V_ref(dynamic_device, Vm)
-    return device_states
+    return
 end
 
 function PSID.device!(
-    device_states::AbstractArray{T},
+    device_states::AbstractArray{<:PSID.ACCEPTED_REAL_TYPES},
     output_ode::AbstractArray{T},
+    device_parameters::AbstractArray{<:PSID.ACCEPTED_REAL_TYPES},
     voltage_r::T,
     voltage_i::T,
     current_r::AbstractArray{T},
@@ -134,11 +138,13 @@ function PSID.device!(
     model = ext_device["model"]
     ps = ext_device["ps"]
     st = ext_device["st"]
-    vm = sqrt(voltage_r ^2 + voltage_i^2)
-    if ((vm < trained_voltage_range[1]) || (vm > trained_voltage_range[2])) && t>0.0 && !ext_wrapper["voltage_violation_warning"]
+    vm = sqrt(voltage_r^2 + voltage_i^2)
+    if ((vm < trained_voltage_range[1]) || (vm > trained_voltage_range[2])) &&
+       t > 0.0 &&
+       !ext_wrapper["voltage_violation_warning"]
         @error "Voltage $vm outside of trained range ($trained_voltage_range) at time $t"
-        ext_wrapper["voltage_violation_warning"] = true 
-    end 
+        ext_wrapper["voltage_violation_warning"] = true
+    end
     #JUST USE ALL STEADY STATE VALUES:
     #v_ss = add_dim(hcat(fill(v0[1], window_size), fill(v0[2], window_size)))
     #i_ss = add_dim(hcat(fill(i0[1], window_size), fill(i0[2], window_size)))
@@ -176,10 +182,10 @@ function PSID.device!(
     )
     x = (v0, i0, v, i)
     y_pred, st = model(x, ps, st)
-    
-    output_ode[1] = y_pred[1] - offset[1] - ir  
+
+    output_ode[1] = y_pred[1] - offset[1] - ir
     output_ode[2] = y_pred[2] - offset[2] - ii
-    output_ode[3] = voltage_r - vr              
+    output_ode[3] = voltage_r - vr
     output_ode[4] = voltage_i - vi
     current_r[1] += y_pred[1] - offset[1]
     current_i[1] += y_pred[2] - offset[2]

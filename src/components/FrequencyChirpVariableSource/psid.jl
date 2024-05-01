@@ -22,8 +22,9 @@ function mass_matrix_chirp_entries!(
 end
 
 function PSID.device!(
-    device_states::AbstractArray{T},
+    device_states::AbstractArray{<:PSID.ACCEPTED_REAL_TYPES},
     output_ode::AbstractArray{T},
+    device_parameters::AbstractArray{<:PSID.ACCEPTED_REAL_TYPES},
     voltage_r::T,
     voltage_i::T,
     current_r::AbstractArray{T},
@@ -77,8 +78,9 @@ function PSID.initialize_dynamic_device!(
     dynamic_device::PSID.DynamicWrapper{FrequencyChirpVariableSource},
     source::PSY.Source,
     ::AbstractVector,
+    device_parameters::AbstractVector,
+    device_states::AbstractVector,
 )
-    device_states = zeros(PSY.get_n_states(dynamic_device))
 
     #PowerFlow Data
     P0 = PSY.get_active_power(source)
@@ -117,7 +119,7 @@ function PSID.initialize_dynamic_device!(
         device_states[2] = θ_internal
         device_states[3] = 1.0
     end
-    return device_states
+    return
 end
 
 PSID.get_inner_vars_count(::FrequencyChirpVariableSource) = 0
