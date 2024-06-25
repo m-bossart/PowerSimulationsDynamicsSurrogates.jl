@@ -345,7 +345,7 @@ function _match_operating_point(
     Q0,
     Vm0,
     θ0,
-    surrogate_params::Union{SteadyStateNODEObsParams, SteadyStateNODEParams},
+    surrogate_params::SteadyStateNODEParams,
 )
     for s in PSY.get_components(
         x -> typeof(PSY.get_dynamic_injector(x)) == SteadyStateNODE,

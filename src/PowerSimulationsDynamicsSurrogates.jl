@@ -2,9 +2,8 @@ module PowerSimulationsDynamicsSurrogates
 
 export ChirpVariableSource
 export FrequencyChirpVariableSource
+export CurrentPlayback
 export SourceLoad
-export SteadyStateNODEObs
-export get_SteadyStateNODEObs_states
 export SteadyStateNODE
 export get_SteadyStateNODE_states
 export SolutionPredictionSurrogate
@@ -42,7 +41,6 @@ export add_data_trace!
 # SurrogateParams
 export NODEParams
 export SteadyStateNODEParams
-export SteadyStateNODEObsParams
 export SourceParams
 export SourceLoadParams
 export TerminalDataSurrogateParams
@@ -101,6 +99,7 @@ import PowerSimulationsDynamics
 import PowerSystems
 import Sundials     #should remove this dependency 
 import Random
+import ComponentArrays
 
 const IS = InfrastructureSystems
 const PSY = PowerSystems
@@ -112,8 +111,8 @@ include("components/TerminalDataSurrogate/psy.jl")
 include("components/TerminalDataSurrogate/psid.jl")
 include("components/SteadyStateNODE/psy.jl")
 include("components/SteadyStateNODE/psid.jl")
-include("components/SteadyStateNODEObs/psy.jl")
-include("components/SteadyStateNODEObs/psid.jl")
+include("components/CurrentPlayback/psy.jl")
+include("components/CurrentPlayback/psid.jl")
 include("components/ChirpVariableSource/psy.jl")
 include("components/ChirpVariableSource/psid.jl")
 include("components/SourceLoad/psy.jl")

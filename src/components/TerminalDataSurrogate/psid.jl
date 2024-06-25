@@ -4,6 +4,10 @@ PSID.is_valid(::TerminalDataSurrogate) = nothing
 PSID.get_inner_vars_count(::TerminalDataSurrogate) = 0
 PSID._get_frequency_state(d::PSID.DynamicWrapper{TerminalDataSurrogate}) = 0
 
+PSID.get_params(x::TerminalDataSurrogate) = (; θ = PSY.get_ext(x)["ps"])
+PSID.get_params_metadata(::TerminalDataSurrogate) =
+    (; θ = PSID.ParamsMetadata(PSID.DEVICE_PARAM, false, false))    #TODO -change back to re-init
+
 function PSID.device_mass_matrix_entries!(
     mass_matrix::AbstractArray,
     dynamic_device::PSID.DynamicWrapper{TerminalDataSurrogate},
@@ -31,7 +35,6 @@ function PSID.DynamicWrapper(
     bus_ix::Int,
     ix_range,
     ode_range,
-    p_range,
     inner_var_range,
     sys_base_power,
     sys_base_freq,
@@ -42,20 +45,14 @@ function PSID.DynamicWrapper(
         dynamic_device,
         sys_base_power,
         sys_base_freq,
-        PSY.Source,
+        static_device,
         PSID.BUS_MAP[PSY.get_bustype(PSY.get_bus(static_device))],
-        Base.Ref(1.0),
-        Base.Ref(0.0),
-        Base.Ref(0.0),
-        Base.Ref(0.0),
-        Base.Ref(0.0),
+        1.0,
         collect(inner_var_range),
         collect(ix_range),
         collect(ode_range),
-        collect(p_range),
         bus_ix,
         Base.ImmutableDict(Dict(device_states .=> ix_range)...),
-        Base.ImmutableDict{Int, Vector{Int}}(),
         Base.ImmutableDict{Int, Vector{Int}}(),
         Base.ImmutableDict{Int, Vector{Int}}(),
         Dict{String, Any}(),
@@ -68,7 +65,7 @@ function PSID.initialize_dynamic_device!(
     dynamic_device::PSID.DynamicWrapper{TerminalDataSurrogate},
     source::PSY.Source,
     ::AbstractVector,
-    device_parameters::AbstractVector,
+    p::AbstractVector,
     device_states::AbstractVector,
 )
     ext_wrapper = PSID.get_ext(dynamic_device)
@@ -93,7 +90,7 @@ function PSID.initialize_dynamic_device!(
     ext_wrapper["voltage_violation_warning"] = false
 
     model = ext_device["model"]
-    ps = ext_device["ps"]
+    ps = p[:params][:θ]
     st = ext_device["st"]
     window_size = get_window_size(device)
     v_ss = add_dim(vcat(fill(VR0, (1, window_size)), fill(VI0, (1, window_size))))
@@ -109,14 +106,14 @@ function PSID.initialize_dynamic_device!(
         ext_wrapper["offset"] = [0.0, 0.0]
         device_states[1:4] = [y[1], y[2], VR0, VI0]
     end
-    PSID.set_V_ref(dynamic_device, Vm)
+    p[:refs][:V_ref] = Vm
     return
 end
 
 function PSID.device!(
     device_states::AbstractArray{<:PSID.ACCEPTED_REAL_TYPES},
     output_ode::AbstractArray{T},
-    device_parameters::AbstractArray{<:PSID.ACCEPTED_REAL_TYPES},
+    p::AbstractArray{<:PSID.ACCEPTED_REAL_TYPES},
     voltage_r::T,
     voltage_i::T,
     current_r::AbstractArray{T},
@@ -132,11 +129,11 @@ function PSID.device!(
     window_size = get_window_size(dynamic_device.device)
     trained_voltage_range = get_trained_voltage_range(dynamic_device.device)
     τ = get_τ(dynamic_device.device)
+    model = ext_device["model"]
     v0 = add_dim(ext_wrapper["v0"])
     i0 = add_dim(ext_wrapper["i0"])
     offset = ext_wrapper["offset"]
-    model = ext_device["model"]
-    ps = ext_device["ps"]
+    ps = p[:params][:θ]
     st = ext_device["st"]
     vm = sqrt(voltage_r^2 + voltage_i^2)
     if ((vm < trained_voltage_range[1]) || (vm > trained_voltage_range[2])) &&
