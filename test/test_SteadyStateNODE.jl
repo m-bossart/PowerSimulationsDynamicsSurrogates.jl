@@ -12,7 +12,6 @@
 end
 
 @testset "Compare to flux + execute simulation - Untrained Params" begin
-    Random.seed!(1234)
     sys = System("test/data_tests/ThreeBus.raw")
     add_source_to_ref(sys)
     #display(run_powerflow(sys)["flow_results"])
@@ -56,9 +55,10 @@ end
         ),
         (x) -> x,
     )
-
+    Random.seed!(1234)
     initializer =
         Flux.f64(Flux.Chain(layer_initializer_input, Flux.Dense(3, 5, tanh; bias = true)))
+    Random.seed!(3)
     node = Flux.f64(Flux.Chain(layer_node_input, Flux.Dense(7, 3, tanh; bias = true)))
 
     function SteadyStateNODE_simple(source)
@@ -133,14 +133,20 @@ end
 
     @test isapprox(
         surrogate_wrapper.ext["initializer_error"],
-        [-0.2624221835960246, -1.375540778144861, -0.44778197046358237, 2.391968158421383, 0.5268862044003568],
+        [
+            -0.2624221835960246,
+            -1.375540778144861,
+            -0.2441003958223837,
+            1.297850317193571,
+            -0.011542250287076644,
+        ],
         atol = 1e-10,
     )
     @test execute!(sim, IDA(), saveat = tsteps) == PSID.SIMULATION_FINALIZED
     results = read_results(sim)
     t, δ = get_state_series(results, ("generator-102-1", :δ))
-    @test isapprox(δ[1], 0.705062101939151, atol = 1e-9)
-    @test isapprox(δ[end], 0.5509885150404343, atol = 1e-9)
+    @test isapprox(δ[1], 0.7050620746521667, atol = 1e-9)
+    @test isapprox(δ[end], 0.5345286521782711, atol = 1e-9)
     #Plot results - for debug only 
     #=     p = plot()
         for b in get_components(Bus, sys)
