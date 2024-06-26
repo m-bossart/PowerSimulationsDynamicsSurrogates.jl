@@ -144,7 +144,9 @@ end
     )
     @test execute!(sim, IDA(), saveat = tsteps) == PSID.SIMULATION_FINALIZED
     results = read_results(sim)
-
+    t, δ = get_state_series(results, ("generator-102-1", :δ))
+    @test isapprox(δ[1], 0.705062101939151, atol = 1e-9)
+    @test isapprox(δ[end], 0.5509858250800244, atol = 1e-9)
     #Plot results - for debug only 
     #=     p = plot()
         for b in get_components(Bus, sys)
