@@ -1,6 +1,7 @@
 using Revise
 using NLsolve
 using Random
+using ComponentArrays
 using DataFrames
 using JSON3
 using LinearAlgebra
@@ -14,7 +15,6 @@ using Sundials
 using PowerSystemCaseBuilder
 using SciMLSensitivity
 using Lux
-using Flux  #TODO - move over to Lux; remove this dependency 
 using Test
 using Random
 using Logging

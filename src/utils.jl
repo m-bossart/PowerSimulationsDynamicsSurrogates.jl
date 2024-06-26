@@ -156,22 +156,54 @@ function min_max_normalization_inverse(x_prime, xmin, xmax, u, l)
 end
 
 function to_json_with_surrogates(sys, full_path)
+    dir = dirname(full_path)
+    mkpath(joinpath(dir, "surrogate_models"))
     for g in PSY.get_components(DataDrivenSurrogate, sys)
-        model = PSY.get_ext(g)["model"]
-        p = PSY.get_ext(g)["ps"]
-        st = PSY.get_ext(g)["st"]
-        dir = dirname(full_path)
-        mkpath(joinpath(dir, "surrogate_models"))
-        BSON.@save joinpath(dir, "surrogate_models", PSY.get_name(g)) model p st
-        PSY.set_ext!(
-            g,
-            Dict{String, Any}(
-                "model_path" => joinpath(dir, "surrogate_models", PSY.get_name(g)),
-                "model" => nothing,
-                "ps" => nothing,
-                "st" => nothing,
-            ),
-        )
+        if typeof(g) == SteadyStateNODE
+            model_node = PSY.get_ext(g)["model_node"]
+            p_node = PSY.get_ext(g)["ps_node"]
+            st_node = PSY.get_ext(g)["st_node"]
+            model_init = PSY.get_ext(g)["model_init"]
+            p_init = PSY.get_ext(g)["ps_init"]
+            st_init = PSY.get_ext(g)["st_init"]
+
+            mkpath(joinpath(dir, "surrogate_models", PSY.get_name(g)))
+            BSON.@save joinpath(dir, "surrogate_models", PSY.get_name(g), "node") model_node p_node st_node
+            BSON.@save joinpath(dir, "surrogate_models", PSY.get_name(g), "init") model_init p_init st_init
+            PSY.set_ext!(
+                g,
+                Dict{String, Any}(
+                    "node_path" =>
+                        joinpath(dir, "surrogate_models", PSY.get_name(g), "node"),
+                    "init_path" =>
+                        joinpath(dir, "surrogate_models", PSY.get_name(g), "init"),
+                    "model_node" => nothing,
+                    "ps_node" => nothing,
+                    "st_node" => nothing,
+                    "model_init" => nothing,
+                    "ps_init" => nothing,
+                    "st_init" => nothing,
+                ),
+            )
+        else
+            model = PSY.get_ext(g)["model"]
+            p = PSY.get_ext(g)["ps"]
+            st = PSY.get_ext(g)["st"]
+            dir = dirname(full_path)
+
+            mkpath(joinpath(dir, "surrogate_models", PSY.get_name(g)))
+            BSON.@save joinpath(dir, "surrogate_models", PSY.get_name(g), "nn") model p st
+            PSY.set_ext!(
+                g,
+                Dict{String, Any}(
+                    "model_path" =>
+                        joinpath(dir, "surrogate_models", PSY.get_name(g), "nn"),
+                    "model" => nothing,
+                    "ps" => nothing,
+                    "st" => nothing,
+                ),
+            )
+        end
     end
     PSY.to_json(sys, full_path; force = true)
 end
@@ -179,16 +211,34 @@ end
 function deserialize_with_surrogates(full_path)
     sys = PSY.System(full_path)
     for g in PSY.get_components(DataDrivenSurrogate, sys)
-        BSON.@load PSY.get_ext(g)["model_path"] model p st
-        PSY.set_ext!(
-            g,
-            Dict{String, Any}(
-                "model_path" => nothing,
-                "model" => model,
-                "ps" => p,
-                "st" => st,
-            ),
-        )
+        if typeof(g) == SteadyStateNODE
+            BSON.@load PSY.get_ext(g)["node_path"] model_node p_node st_node
+            BSON.@load PSY.get_ext(g)["init_path"] model_init p_init st_init
+            PSY.set_ext!(
+                g,
+                Dict{String, Any}(
+                    "node_path" => nothing,
+                    "init_path" => nothing,
+                    "model_node" => model_node,
+                    "ps_node" => p_node,
+                    "st_node" => st_node,
+                    "model_init" => model_init,
+                    "ps_init" => p_init,
+                    "st_init" => st_init,
+                ),
+            )
+        else
+            BSON.@load PSY.get_ext(g)["model_path"] model p st
+            PSY.set_ext!(
+                g,
+                Dict{String, Any}(
+                    "model_path" => nothing,
+                    "model" => model,
+                    "ps" => p,
+                    "st" => st,
+                ),
+            )
+        end
     end
     return sys
 end
