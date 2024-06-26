@@ -21,10 +21,10 @@ end
     tsteps = tspan[1]:tstep:tspan[2]
     input_min = [0.0, 0.0]
     input_max = [1.0, 1.0]
-    input_lims = (-1.0, 1.0)
+    input_lims = (0.0, 1.0)
     target_min = [0.0, 0.0]
     target_max = [1.0, 1.0]
-    target_lims = (-1.0, 1.0)
+    target_lims = (0.0, 1.0)
 
     #THESE LAYERS DO THE SCALING WITHIN THE FLUX NNs
     layer_initializer_input = Flux.Parallel(
@@ -133,20 +133,14 @@ end
 
     @test isapprox(
         surrogate_wrapper.ext["initializer_error"],
-        [
-            0.8620012947569395,
-            -1.5949281018523056,
-            0.4659432191773033,
-            0.3382842845487015,
-            -1.0813953248504833,
-        ],
+        [-0.2624221835960246, -1.375540778144861, -0.44778197046358237, 2.391968158421383, 0.5268862044003568],
         atol = 1e-10,
     )
     @test execute!(sim, IDA(), saveat = tsteps) == PSID.SIMULATION_FINALIZED
     results = read_results(sim)
     t, δ = get_state_series(results, ("generator-102-1", :δ))
     @test isapprox(δ[1], 0.705062101939151, atol = 1e-9)
-    @test isapprox(δ[end], 0.5509858250800244, atol = 1e-9)
+    @test isapprox(δ[end], 0.5509885150404343, atol = 1e-9)
     #Plot results - for debug only 
     #=     p = plot()
         for b in get_components(Bus, sys)
