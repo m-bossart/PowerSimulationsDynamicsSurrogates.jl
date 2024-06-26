@@ -60,6 +60,9 @@ end
         Flux.f64(Flux.Chain(layer_initializer_input, Flux.Dense(3, 5, tanh; bias = true)))
     Random.seed!(3)
     node = Flux.f64(Flux.Chain(layer_node_input, Flux.Dense(7, 3, tanh; bias = true)))
+    @test [0.39178863167762756, -0.3014172315597534] ==
+          Flux.destructure(initializer)[1][1:2]
+    @test [0.2890770435333252, 0.37868717312812805] == Flux.destructure(node)[1][1:2]
 
     function SteadyStateNODE_simple(source)
         return SteadyStateNODE(
