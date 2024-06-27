@@ -1,5 +1,4 @@
 using Revise
-using NLsolve
 using Random
 using ComponentArrays
 using DataFrames

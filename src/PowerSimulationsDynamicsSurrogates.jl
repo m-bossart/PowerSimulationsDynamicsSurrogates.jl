@@ -92,7 +92,6 @@ import InfrastructureSystems
 import JSON3
 import SciMLBase
 import NonlinearSolve
-import NLsolve      #TODO - convert models and remove dependency 
 import OrdinaryDiffEq   #should remove this dependency: pass solver to data generation function
 import DelayDiffEq      #should remove this dependency: pass solver to data generation function
 import PlotlyJS

@@ -2,7 +2,7 @@
 
 julia_version = "1.10.4"
 manifest_format = "2.0"
-project_hash = "d653e8dd173c86186957179fc69eef4b32210ea3"
+project_hash = "d7270d296da8fbc05b9fb81c6af15bb9cf206f2f"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "2314e58e823f0fd6ee02dbbecb997370f501dd4a"
@@ -1618,7 +1618,7 @@ uuid = "398b2ede-47ed-4edc-b52e-69e4a48b4336"
 version = "0.14.2"
 
 [[deps.PowerSimulationsDynamicsSurrogates]]
-deps = ["BSON", "ComponentArrays", "DataFrames", "DelayDiffEq", "Distributions", "InfrastructureSystems", "JSON3", "Kaleido_jll", "NLsolve", "NonlinearSolve", "OrdinaryDiffEq", "PlotlyJS", "PowerFlows", "PowerSimulationsDynamics", "PowerSystems", "Random", "SciMLBase", "Sundials"]
+deps = ["BSON", "ComponentArrays", "DataFrames", "DelayDiffEq", "Distributions", "InfrastructureSystems", "JSON3", "Kaleido_jll", "NonlinearSolve", "OrdinaryDiffEq", "PlotlyJS", "PowerFlows", "PowerSimulationsDynamics", "PowerSystems", "Random", "SciMLBase", "Sundials"]
 path = ".."
 uuid = "de933368-4bb5-470a-b916-9fff09bf2720"
 version = "0.1.0"
