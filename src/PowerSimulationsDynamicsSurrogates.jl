@@ -1,5 +1,6 @@
 module PowerSimulationsDynamicsSurrogates
 
+export SteamTurbineGov1Alt
 export ChirpVariableSource
 export FrequencyChirpVariableSource
 export CurrentPlayback
@@ -120,6 +121,8 @@ include("components/SourceLoad/psy.jl")
 include("components/SourceLoad/psid.jl")
 include("components/FrequencyChirpVariableSource/psy.jl")
 include("components/FrequencyChirpVariableSource/psid.jl")
+include("components/SteamTurbineGov1Alt/psy.jl")
+include("components/SteamTurbineGov1Alt/psid.jl")
 include("generate_data/Perturbations.jl")
 include("generate_data/OperatingPointChanges.jl")
 include("generate_data/datasets/generate.jl")
