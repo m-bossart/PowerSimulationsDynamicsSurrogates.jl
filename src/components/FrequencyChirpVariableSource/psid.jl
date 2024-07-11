@@ -141,10 +141,11 @@ function PSID.compute_output_current(
     V_R::Vector{Float64},
     V_I::Vector{Float64},
     dt::Union{Nothing, Float64},
+    unique_timestamps::Bool,
 )
     name = PSY.get_name(dynamic_device)
-    ts, Vt_internal = PSID.post_proc_state_series(res, (name, :Vt), dt)
-    _, θt_internal = PSID.post_proc_state_series(res, (name, :θt), dt)
+    ts, Vt_internal = PSID.post_proc_state_series(res, (name, :Vt), dt, unique_timestamps)
+    _, θt_internal = PSID.post_proc_state_series(res, (name, :θt), dt, unique_timestamps)
     Vr_internal = Vt_internal .* cos.(θt_internal)
     Vi_internal = Vt_internal .* sin.(θt_internal)
     R_th = PSY.get_R_th(dynamic_device)
