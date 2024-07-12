@@ -1,5 +1,7 @@
 module PowerSimulationsDynamicsSurrogates
 
+export TGFixedAlt
+export TGTypeIAlt
 export SteamTurbineGov1Alt
 export ChirpVariableSource
 export FrequencyChirpVariableSource
@@ -121,6 +123,10 @@ include("components/SourceLoad/psy.jl")
 include("components/SourceLoad/psid.jl")
 include("components/FrequencyChirpVariableSource/psy.jl")
 include("components/FrequencyChirpVariableSource/psid.jl")
+include("components/TGFixedAlt/psy.jl")
+include("components/TGFixedAlt/psid.jl")
+include("components/TGTypeIAlt/psy.jl")
+include("components/TGTypeIAlt/psid.jl")
 include("components/SteamTurbineGov1Alt/psy.jl")
 include("components/SteamTurbineGov1Alt/psid.jl")
 include("generate_data/Perturbations.jl")
