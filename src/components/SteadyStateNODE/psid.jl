@@ -120,6 +120,7 @@ function PSID.initialize_dynamic_device!(
         @warn("Initialization of SteadyStateNODE failed")
     else
         sol_x0 = sol.u
+        @error "nlsolve result in SteadyStateNODE $sol_x0"
         device_states .= sol_x0[1:n_states]
         refs = sol_x0[(n_states + 1):(n_states + 2)]
         ext_wrapper["θ0"] = θ
