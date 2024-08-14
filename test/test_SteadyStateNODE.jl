@@ -141,6 +141,89 @@ end
         plot!(p2, r1, label = "r1")
         display(plot(p, p2)) =#
 end
+EnzymeRules.inactive(::typeof(PowerSystems._get_multiplier), args...) = nothing #TODO - don't rely on inactivating get multiplier! 
+@testset "Sensitivity function- Untrained Params" begin
+    sys = System("test/data_tests/ThreeBus.raw")
+    add_source_to_ref(sys)
+    tspan = (0.0, 2.0)
+    tstep = 0.01
+    tsteps = tspan[1]:tstep:tspan[2]
+    input_min = [0.0, 0.0]
+    input_max = [1.0, 1.0]
+    input_lims = (0.0, 1.0)
+    target_min = [0.0, 0.0]
+    target_max = [1.0, 1.0]
+    target_lims = (0.0, 1.0)
 
-#TODO - add an optimization test where the SteadyStateNODE is actually trained inside a simulation. 
-# Think of a simple and easy test case for this as a proof of concept. 
+    layer_initializer_input =
+        Lux.Parallel(vcat, WrappedFunction((x) -> x), WrappedFunction((x) -> x))  #Second output only 
+    layer_node_input = Lux.Parallel(
+        vcat,
+        WrappedFunction((x) -> x),
+        WrappedFunction((x) -> x),
+        WrappedFunction((x) -> x),
+    )
+
+    initializer = Lux.f64(Lux.Chain(layer_initializer_input, Lux.Dense(3, 5, tanh)))
+    node = Lux.f64(Lux.Chain(layer_node_input, Lux.Dense(7, 3, tanh)))
+    rng = Random.default_rng()
+    Random.seed!(rng, 1234)
+    ps_initializer, st_initializer = Lux.setup(rng, initializer)
+    Random.seed!(rng, 3)
+    ps_node, st_node = Lux.setup(rng, node)
+
+    source_surrogate = [s for s in get_components(Source, sys)][1]
+    ssnode = SteadyStateNODE(
+        name = get_name(source_surrogate),
+        n_states = 3,
+        ext = Dict{String, Any}(
+            "model_node" => node,
+            "model_init" => initializer,
+            "ps_node" => ps_node,
+            "ps_init" => ps_initializer,
+            "st_node" => st_node,
+            "st_init" => st_initializer,
+        ),
+    )
+    add_component!(sys, ssnode, source_surrogate)
+    for g in PSY.get_components(Generator, sys)
+        dyn_g = dyn_gen_second_order(g)
+        add_component!(sys, dyn_g, g)
+    end
+    dyn_g = collect(PSY.get_components(DynamicGenerator, sys))[1]
+    pert = ControlReferenceChange(0.5, dyn_g, :P_ref, 0.799999)
+
+    sim = Simulation!(MassMatrixModel, sys, pwd(), tspan, pert)
+
+    @test execute!(sim, Rodas5(), saveat = 0.005) == PSID.SIMULATION_FINALIZED
+    results = read_results(sim)
+    t, δ = get_state_series(results, ("generator-102-1", :δ))
+
+    function plot_traces(δ, δ_gt)
+        display(plot([scatter(; y = δ_gt), scatter(; y = δ)]))
+    end
+    EnzymeRules.inactive(::typeof(plot_traces), args...) = nothing
+    function f_loss(p, δ, δ_gt)
+        #plot_traces(δ[1], δ_gt)
+        return sum(abs.(δ[1] - δ_gt))
+    end
+
+    f_forward, f_grad = get_sensitivity_functions(
+        sim,
+        [("InfBus", :θ, "node")],
+        [("generator-102-1", :δ)],
+        Rodas5(),
+        f_loss;
+        sensealg = ForwardDiffSensitivity(),
+        abstol = 1e-6,
+        reltol = 1e-6,
+        #dtmax = 0.005,
+        saveat = 0.005,
+    )
+    θ = get_parameter_values(sim, [("InfBus", :θ, "node")])
+    @test θ[1] == 0.2890770435333252
+    @test isapprox(f_forward(θ, [pert], δ), 0.0, atol = 1e-4)
+    rand_scaler = [rand() / 100.0 + 1.0 for x in 1:length(θ)]
+    @test isapprox(f_forward(θ .* rand_scaler, [pert], δ), 0.0, atol = 1e-4)
+    @test f_grad(θ * 1.001, [pert], δ)[1] == -0.0036760156308446312
+end

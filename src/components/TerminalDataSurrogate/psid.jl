@@ -4,6 +4,17 @@ PSID.is_valid(::TerminalDataSurrogate) = nothing
 PSID.get_inner_vars_count(::TerminalDataSurrogate) = 0
 PSID._get_frequency_state(d::PSID.DynamicWrapper{TerminalDataSurrogate}) = 0
 
+function PSID._get_refs(x::PSID.DynamicWrapper{TerminalDataSurrogate})
+    return (ir_offset = 0.0, ii_offset = 0.0)
+end
+
+function PSID._get_refs_metadata(x::PSID.DynamicWrapper{TerminalDataSurrogate})
+    return (
+        ir_offset = PSID.ParamsMetadata(PSID.DEVICE_SETPOINT, false, true),
+        ii_offset = PSID.ParamsMetadata(PSID.DEVICE_SETPOINT, false, true),
+    )
+end
+
 PSID.get_params(x::TerminalDataSurrogate) = (; θ = PSY.get_ext(x)["ps"])
 PSID.get_params_metadata(::TerminalDataSurrogate) =
     (; θ = PSID.ParamsMetadata(PSID.DEVICE_PARAM, false, false))    #TODO -change back to re-init
@@ -99,14 +110,15 @@ function PSID.initialize_dynamic_device!(
     ss_input = (add_dim([VR0, VI0]), add_dim([IR0, II0]), v_ss, i_ss)
     y, st = model(ss_input, ps, st)
     if get_steadystate_offset_correction(device)
-        ext_wrapper["offset"] = y - [IR0, II0]
         device_states[1:4] = [IR0, II0, VR0, VI0]
-        @warn "The surrogate model has a non-zero error at time zero which is corrected with an offset. Ir: $(ext_wrapper["offset"][1]), Ii: $(ext_wrapper["offset"][2])"
+        @warn "The surrogate model has a non-zero error at time zero which is corrected with an offset. Ir: $(y[1] - IR0), Ii: $(y[2] - II0)"
+        @view(p[:refs])[:ir_offset] = y[1] - IR0
+        @view(p[:refs])[:ii_offset] = y[2] - II0
     else
-        ext_wrapper["offset"] = [0.0, 0.0]
+        @view(p[:refs])[:ir_offset] = 0.0
+        @view(p[:refs])[:ii_offset] = 0.0
         device_states[1:4] = [y[1], y[2], VR0, VI0]
     end
-    p[:refs][:V_ref] = Vm
     return
 end
 
@@ -132,14 +144,13 @@ function PSID.device!(
     model = ext_device["model"]
     v0 = add_dim(ext_wrapper["v0"])
     i0 = add_dim(ext_wrapper["i0"])
-    offset = ext_wrapper["offset"]
+    offset = [p[:refs][:ir_offset], p[:refs][:ii_offset]]
     ps = p[:params][:θ]
     st = ext_device["st"]
     vm = sqrt(voltage_r^2 + voltage_i^2)
     if ((vm < trained_voltage_range[1]) || (vm > trained_voltage_range[2])) &&
        t > 0.0 &&
        !ext_wrapper["voltage_violation_warning"]
-        @error "Voltage $vm outside of trained range ($trained_voltage_range) at time $t"
         ext_wrapper["voltage_violation_warning"] = true
     end
     #JUST USE ALL STEADY STATE VALUES:

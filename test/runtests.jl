@@ -17,6 +17,10 @@ using Lux
 using Test
 using Random
 using Logging
+using PlotlyJS
+using Enzyme
+Enzyme.API.runtimeActivity!(true)  #Needed for "activity unstable" code: https://enzymead.github.io/Enzyme.jl/stable/faq/
+Enzyme.API.looseTypeAnalysis!(true)  #Required for using component arrays with Enzyme
 const PSY = PowerSystems
 const PSID = PowerSimulationsDynamics
 const PSIDS = PowerSimulationsDynamicsSurrogates
@@ -63,7 +67,7 @@ logger = PSY.configure_logging(;
     file_level = Logging.Error,
 )
 with_logger(logger) do
-    @time @testset "Begin PowerSimulationsDynamicsSurroagtes tests" begin
+    @time @testset "Begin PowerSimulationsDynamicsSurrogates tests" begin
         @includetests ARGS
     end
     #run tests

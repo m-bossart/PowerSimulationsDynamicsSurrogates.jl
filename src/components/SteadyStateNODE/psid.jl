@@ -5,6 +5,18 @@ function PSID._get_frequency_state(d::PSID.DynamicWrapper{SteadyStateNODE})
     return 0
 end
 
+function PSID._get_refs(x::PSID.DynamicWrapper{SteadyStateNODE})
+    return (s1 = 0.0, s2 = 0.0, θ0 = 0.0)
+end
+
+function PSID._get_refs_metadata(x::PSID.DynamicWrapper{SteadyStateNODE})
+    return (
+        s1 = PSID.ParamsMetadata(PSID.DEVICE_SETPOINT, false, true),
+        s2 = PSID.ParamsMetadata(PSID.DEVICE_SETPOINT, false, true),
+        θ0 = PSID.ParamsMetadata(PSID.DEVICE_SETPOINT, false, true),
+    )
+end
+
 PSID.get_params(x::SteadyStateNODE) =
     (; θ = (node = PSY.get_ext(x)["ps_node"], init = PSY.get_ext(x)["ps_init"]))
 PSID.get_params_metadata(::SteadyStateNODE) = (;
@@ -53,9 +65,9 @@ function PSID.device!(
     ps_node = p[:params][:θ][:node]
     st_node = ext_device["st_node"]
 
-    θ = ext_wrapper["θ0"]
+    θ = p[:refs][:θ0]
+    refs = [p[:refs][:s1], p[:refs][:s2]]
     vd, vq = PSID.ri_dq(θ) * [voltage_r, voltage_i]
-    refs = ext_wrapper["refs"]
     node_input = (device_states, [vd, vq], refs)
     y, _ = model_node(node_input, ps_node, st_node)
     output_ode .= y
@@ -120,11 +132,13 @@ function PSID.initialize_dynamic_device!(
         @warn("Initialization of SteadyStateNODE failed")
     else
         sol_x0 = sol.u
-        @error "nlsolve result in SteadyStateNODE $sol_x0"
+        #@warn "nlsolve result in SteadyStateNODE $sol_x0"
         device_states .= sol_x0[1:n_states]
         refs = sol_x0[(n_states + 1):(n_states + 2)]
-        ext_wrapper["θ0"] = θ
-        ext_wrapper["refs"] = refs
+
+        @view(p[:refs])[:s1] = refs[1]
+        @view(p[:refs])[:s2] = refs[2]
+        @view(p[:refs])[:θ0] = θ
         ext_wrapper["initializer_error"] = x0 .- sol_x0
     end
     return

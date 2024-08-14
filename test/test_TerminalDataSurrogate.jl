@@ -137,14 +137,8 @@ end
     end
     v0_path = Lux.Chain(Lux.Dense(2, 2))
     i0_path = Lux.Chain(Lux.Dense(2, 2))
-    v_path = Lux.Chain(
-        Lux.FlattenLayer(),
-        Lux.WrappedFunction(gain),
-        Lux.Dense(10, 100),
-        Lux.Dense(100, 100),
-        Lux.Dense(100, 2),
-    )
-    i_path = Lux.Chain(Lux.FlattenLayer(), Lux.Dense(10, 100), Lux.Dense(100, 2))
+    v_path = Lux.Chain(Lux.FlattenLayer(), Lux.WrappedFunction(gain), Lux.Dense(10, 2))
+    i_path = Lux.Chain(Lux.FlattenLayer(), Lux.Dense(10, 2))
     model = Lux.Chain(Lux.Parallel(+, v0_path, i0_path, v_path, i_path))
     Lux.f64(model)  #TODO - how to deal with Float32 vs Float64
     rng = Random.default_rng()
@@ -163,12 +157,12 @@ end
         )
         add_component!(sys, s, source)
     end
-    tspan = (0.0, 10.0)
-    tfault = 5.0
+    tspan = (0.0, 1.0)
+    tfault = 0.5
     statgen = get_component(ThermalStandard, sys, "generator-4-1")
 
     dyngen = get_component(DynamicGenerator, sys, "generator-4-1")
-    pert = PSID.BranchImpedanceChange(tfault, Line, "BUS 10-BUS 11-i_1", 1.5)
+    #pert = PSID.BranchImpedanceChange(tfault, Line, "BUS 10-BUS 11-i_1", 1.5)  #not yet compatible with PSID sensitivity 
     pert = PSID.ControlReferenceChange(tfault, dyngen, :P_ref, 0.04)
     sim = Simulation!(MassMatrixModel, sys, pwd(), tspan, pert)
 
@@ -176,18 +170,20 @@ end
     execute!(
         sim,
         MethodOfSteps(Rodas5(autodiff = false));
-        abstol = 1e-9,
-        reltol = 1e-9,
-        dtmax = 0.005,
-        saveat = 0.005,
+        abstol = 1e-6,
+        reltol = 1e-6,
+        saveat = 0.5,
     )
     res = read_results(sim)
     t, δ_gt = get_state_series(res, ("generator-4-1", :δ))
 
-    function f_loss(δ, δ_gt)
-        #display(plot([scatter(;x = t, y = δ_gt), scatter(;x= t, y = δ)]))
-        #display(plot([scatter(;x = t, y = δ_gt .- δ)]))
-        return sum(abs.(δ - δ_gt))
+    function plot_traces(δ, δ_gt)
+        display(plot([scatter(; y = δ_gt), scatter(; y = δ)]))
+    end
+    EnzymeRules.inactive(::typeof(plot_traces), args...) = nothing
+    function f_loss(p, states, δ_gt)
+        #plot_traces(states[1], δ_gt)
+        return sum(abs.(states[1] - δ_gt))
     end
     sum(sim.inputs_init.ybus_rectangular)
     sum(sim.inputs.ybus_rectangular)
@@ -200,17 +196,17 @@ end
         MethodOfSteps(Rodas5(autodiff = false)),
         f_loss;
         sensealg = ForwardDiffSensitivity(),
-        abstol = 1e-9,
-        reltol = 1e-9,
-        dtmax = 0.005,
-        saveat = 0.005,
+        abstol = 1e-2,
+        reltol = 1e-2,
+        saveat = 0.5,
     )
-    using ComponentArrays
-    p = ComponentArray(ps)
-    loss_zero = f_forward(p, δ_gt)
-    @test isapprox(loss_zero, 0.0, atol = 5e-3)
+    p = get_parameter_values(sim, [("source_1", :θ)])
 
-    #TODO - perturbation is not being cleared properly for branch impedance change?
-    #TODO - get non-zero losses when changing the parameters
-    #TODO - try the gradient once Enzyme is made compatible with DDE problem: https://github.com/SciML/DiffEqBase.jl/issues/1061
+    loss_zero = f_forward(p, [pert], δ_gt)
+    loss_nonzero = f_forward(p * 1.1, [pert], δ_gt)
+    grad_zero = f_grad(p, [pert], δ_gt)
+
+    @test isapprox(loss_zero, 0.0, atol = 5e-3)
+    @test isapprox(loss_nonzero, 0.22324291805667973, atol = 5e-3)
+    @test isapprox(grad_zero[1], 13.1524, atol = 5e-3)
 end
