@@ -208,7 +208,7 @@ EnzymeRules.inactive(::typeof(PowerSystems._get_multiplier), args...) = nothing 
         return sum(abs.(δ[1] - δ_gt))
     end
 
-    f_forward, f_grad = get_sensitivity_functions(
+    f_forward, f_grad, f_forward_zygote = get_sensitivity_functions(
         sim,
         [("InfBus", :θ, "node")],
         [("generator-102-1", :δ)],
@@ -225,5 +225,131 @@ EnzymeRules.inactive(::typeof(PowerSystems._get_multiplier), args...) = nothing 
     @test isapprox(f_forward(θ, [pert], δ), 0.0, atol = 1e-4)
     rand_scaler = [rand() / 100.0 + 1.0 for x in 1:length(θ)]
     @test isapprox(f_forward(θ .* rand_scaler, [pert], δ), 0.0, atol = 1e-4)
-    @test f_grad(θ * 1.001, [pert], δ)[1] == -0.0036760156308446312
+    @test f_forward(θ .* rand_scaler, [pert], δ) ==
+          f_forward_zygote(θ .* rand_scaler, [pert], δ)
+    @test f_grad(θ * 1.001, [pert], δ)[1] ==
+          Zygote.gradient(p -> f_forward_zygote(p, [pert], δ), θ * 1.001)[1][1] ==
+          -0.0036760156308446312
+end
+
+@testset "Sensitivity function- ReverseDiffAdjoint" begin
+    sys = System("test/data_tests/ThreeBus.raw")
+    add_source_to_ref(sys)
+    tspan = (0.0, 2.0)
+    tstep = 0.01
+    tsteps = tspan[1]:tstep:tspan[2]
+    input_min = [0.0, 0.0]
+    input_max = [1.0, 1.0]
+    input_lims = (0.0, 1.0)
+    target_min = [0.0, 0.0]
+    target_max = [1.0, 1.0]
+    target_lims = (0.0, 1.0)
+
+    layer_initializer_input =
+        Lux.Parallel(vcat, WrappedFunction((x) -> x), WrappedFunction((x) -> x))  #Second output only 
+    layer_node_input = Lux.Parallel(
+        vcat,
+        WrappedFunction((x) -> x),
+        WrappedFunction((x) -> x),
+        WrappedFunction((x) -> x),
+    )
+
+    initializer = Lux.f64(Lux.Chain(layer_initializer_input, Lux.Dense(3, 5, tanh)))
+    node = Lux.f64(Lux.Chain(layer_node_input, Lux.Dense(7, 3, tanh)))
+    rng = Random.default_rng()
+    Random.seed!(rng, 1234)
+    ps_initializer, st_initializer = Lux.setup(rng, initializer)
+    Random.seed!(rng, 3)
+    ps_node, st_node = Lux.setup(rng, node)
+
+    source_surrogate = [s for s in get_components(Source, sys)][1]
+    ssnode = SteadyStateNODE(
+        name = get_name(source_surrogate),
+        n_states = 3,
+        ext = Dict{String, Any}(
+            "model_node" => node,
+            "model_init" => initializer,
+            "ps_node" => ps_node,
+            "ps_init" => ps_initializer,
+            "st_node" => st_node,
+            "st_init" => st_initializer,
+        ),
+    )
+    add_component!(sys, ssnode, source_surrogate)
+    for g in PSY.get_components(Generator, sys)
+        dyn_g = dyn_gen_second_order(g)
+        add_component!(sys, dyn_g, g)
+    end
+    gen = get_component(ThermalStandard, sys, "generator-102-1")
+
+    dyn_gen = collect(PSY.get_components(DynamicGenerator, sys))[1]
+    pm = get_prime_mover(dyn_gen)
+    dyn_gen_new = DynamicGenerator(
+        name = get_name(dyn_gen),
+        ω_ref = get_ω_ref(dyn_gen),
+        machine = get_machine(dyn_gen),
+        shaft = get_shaft(dyn_gen),
+        avr = get_avr(dyn_gen),
+        prime_mover = TGFixedAlt(efficiency = get_efficiency(pm), P_ref = get_P_ref(pm)),
+        pss = get_pss(dyn_gen),
+        base_power = get_base_power(dyn_gen),
+    )
+    remove_component!(sys, dyn_gen)
+    add_component!(sys, dyn_gen_new, gen)
+    sim = Simulation!(MassMatrixModel, sys, pwd(), tspan)
+    P_ref_prev = get_P_ref(dyn_gen_new)
+    P_rev_new = 0.799999
+    state_index = PSID.make_global_state_map(sim.inputs)["generator-102-1"][:P_ref]
+    pert_state = PSID.PerturbState(1.0, state_index, (P_rev_new - P_ref_prev))
+
+    sim = Simulation!(MassMatrixModel, sys, pwd(), tspan, pert_state)
+    @test execute!(sim, Rodas5(), saveat = 0.005) == PSID.SIMULATION_FINALIZED
+
+    results = read_results(sim)
+    t, δ = get_state_series(results, ("generator-102-1", :δ))
+
+    function plot_traces(δ, δ_gt)
+        display(plot([scatter(; y = δ_gt), scatter(; y = δ)]))
+    end
+    EnzymeRules.inactive(::typeof(plot_traces), args...) = nothing
+    function f_loss(p, δ, δ_gt)
+        #plot_traces(δ[1], δ_gt)
+        return sum(abs.(δ[1] - δ_gt))
+    end
+
+    f_forward, f_grad, f_forward_zygote = get_sensitivity_functions(
+        sim,
+        [("InfBus", :θ, "node")],
+        [("generator-102-1", :δ)],
+        Rodas5(autodiff = false),
+        f_loss;
+        sensealg = ForwardDiffSensitivity(),  #TODO - fails with ReverseDiffAdjoint() and autodiff=true
+        abstol = 1e-6,
+        reltol = 1e-6,
+        #dtmax = 0.005,
+        saveat = 0.005,
+    )
+    θ = get_parameter_values(sim, [("InfBus", :θ, "node")])
+    @test θ[1] == 0.2890770435333252
+    @test isapprox(f_forward(θ, [pert_state], δ), 0.0, atol = 1e-4)
+    rand_scaler = [rand() / 100.0 + 1.0 for x in 1:length(θ)]
+    @test isapprox(f_forward(θ .* rand_scaler, [pert_state], δ), 0.0, atol = 1e-4)
+    @test f_forward(θ .* rand_scaler, [pert_state], δ) ==
+          f_forward_zygote(θ .* rand_scaler, [pert_state], δ)
+    grads_forward = Zygote.gradient(p -> f_forward_zygote(p, [pert_state], δ), θ * 1.001)[1]
+    @test f_grad(θ * 1.001, [pert_state], δ)[1] == grads_forward[1] == -3.902064054273069e-5
+    _, _, f_forward_zygote = get_sensitivity_functions(
+        sim,
+        [("InfBus", :θ, "node")],
+        [("generator-102-1", :δ)],
+        Rodas5(autodiff = false),         #TODO - fails with ReverseDiffAdjoint() and autodiff=true
+        f_loss;
+        sensealg = ReverseDiffAdjoint(),
+        abstol = 1e-6,
+        reltol = 1e-6,
+        #dtmax = 0.005,
+        saveat = 0.005,
+    )
+    grads_reverse = Zygote.gradient(p -> f_forward_zygote(p, [pert_state], δ), θ * 1.001)[1]
+    @test LinearAlgebra.norm(abs.(grads_reverse .- grads_forward)) < 0.0015
 end

@@ -104,6 +104,7 @@ import PowerSystems
 import Sundials     #should remove this dependency 
 import Random
 import ComponentArrays
+import Zygote
 
 const IS = InfrastructureSystems
 const PSY = PowerSystems
@@ -129,6 +130,7 @@ include("components/TGTypeIAlt/psy.jl")
 include("components/TGTypeIAlt/psid.jl")
 include("components/SteamTurbineGov1Alt/psy.jl")
 include("components/SteamTurbineGov1Alt/psid.jl")
+include("components/zygote_buffer_compatibility.jl")
 include("generate_data/Perturbations.jl")
 include("generate_data/OperatingPointChanges.jl")
 include("generate_data/datasets/generate.jl")

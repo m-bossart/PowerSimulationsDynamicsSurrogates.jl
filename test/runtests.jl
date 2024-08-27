@@ -18,6 +18,7 @@ using Test
 using Random
 using Logging
 using PlotlyJS
+using Zygote
 using Enzyme
 Enzyme.API.runtimeActivity!(true)  #Needed for "activity unstable" code: https://enzymead.github.io/Enzyme.jl/stable/faq/
 Enzyme.API.looseTypeAnalysis!(true)  #Required for using component arrays with Enzyme
@@ -66,22 +67,22 @@ logger = PSY.configure_logging(;
     console_level = Logging.Warn,  # Logging.Error, Logging.Warn, Logging.Debug
     file_level = Logging.Error,
 )
-with_logger(logger) do
-    @time @testset "Begin PowerSimulationsDynamicsSurrogates tests" begin
-        @includetests ARGS
-    end
-    #run tests
-    #include("test_CurrentPlayback.jl")
-    #include("test_TerminalDataSurrogate.jl")
-    #include("test_serialization.jl")
-    #include("test_SourceLoad.jl")
-    #include("test_onebus.jl")
-    #include("test_SteadyStateNODE.jl")  
-    #include("test_type_format.jl")
-    #include("test_data_generation.jl")
-    #include("test_dataset_aux.jl")  
-    #include("test_ChirpVariableSource.jl")
-    #include("test_FrequencyChirpVariableSource.jl")
+#with_logger(logger) do
+@time @testset "Begin PowerSimulationsDynamicsSurrogates tests" begin
+    @includetests ARGS
 end
+#run tests
+#include("test_CurrentPlayback.jl")
+#include("test_TerminalDataSurrogate.jl")
+#include("test_serialization.jl")
+#include("test_SourceLoad.jl")
+#include("test_onebus.jl")
+#include("test_SteadyStateNODE.jl")  
+#include("test_type_format.jl")
+#include("test_data_generation.jl")
+#include("test_dataset_aux.jl")  
+#include("test_ChirpVariableSource.jl")
+#include("test_FrequencyChirpVariableSource.jl")
+#end
 flush(logger)
 close(logger)
