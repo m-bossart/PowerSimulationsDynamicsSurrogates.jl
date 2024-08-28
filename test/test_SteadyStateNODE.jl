@@ -352,8 +352,10 @@ end
     )
     grads_reverse = Zygote.gradient(p -> f_forward_zygote(p, [pert_state], δ), θ * 1.001)[1]
     pert_state_new = PSID.PerturbState(0.5, state_index, (P_rev_new - P_ref_prev))
-    grads_reverse_2 = Zygote.gradient(p -> f_forward_zygote(p, [pert_state_new], δ), θ * 1.001)[1]
-    grads_reverse_3 = Zygote.gradient(p -> f_forward_zygote(p, [pert_state], δ), θ * 1.001)[1]
+    grads_reverse_2 =
+        Zygote.gradient(p -> f_forward_zygote(p, [pert_state_new], δ), θ * 1.001)[1]
+    grads_reverse_3 =
+        Zygote.gradient(p -> f_forward_zygote(p, [pert_state], δ), θ * 1.001)[1]
     @test grads_reverse[1] .- grads_reverse_3[1] == 0.0  #repeatable for same computation
     @test grads_reverse[1] .- grads_reverse_2[1] != 0.0  #time of perturbation impacts gradient
     #plt = plot()
