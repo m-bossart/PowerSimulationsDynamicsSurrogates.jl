@@ -447,18 +447,21 @@ function instantiate_solver(inputs)
     if occursin("MethodOfSteps", inputs.solver)
         return solver_map(inputs.solver)
     else
-        return solver_map(inputs.solver)()
+        return solver_map(inputs.solver)
     end
 end
 
 function solver_map(key)
     d = Dict(
-        "Rodas4" => OrdinaryDiffEq.Rodas4,
-        "Rodas5" => OrdinaryDiffEq.Rodas5,
-        "Rodas5P" => OrdinaryDiffEq.Rodas5P,
-        "TRBDF2" => OrdinaryDiffEq.TRBDF2,
-        "Tsit5" => OrdinaryDiffEq.Tsit5,
-        "IDA" => Sundials.IDA,
+        "Rodas4" => OrdinaryDiffEq.Rodas4(),
+        "Rodas5" => OrdinaryDiffEq.Rodas5(),
+        "Rodas5P" => OrdinaryDiffEq.Rodas5P(),
+        "Rodas4(autodiff=false)" => OrdinaryDiffEq.Rodas4(autodiff=false),
+        "Rodas5(autodiff=false)" => OrdinaryDiffEq.Rodas5(autodiff=false),
+        "Rodas5P(autodiff=false)" => OrdinaryDiffEq.Rodas5P(autodiff=false),
+        "TRBDF2" => OrdinaryDiffEq.TRBDF2(),
+        "Tsit5" => OrdinaryDiffEq.Tsit5(),
+        "IDA" => Sundials.IDA(),
         "MethodOfSteps(Rodas5(autodiff=false))" =>
             DelayDiffEq.MethodOfSteps(OrdinaryDiffEq.Rodas5(autodiff = false)),
         "MethodOfSteps(Rodas5P(autodiff=false))" =>
