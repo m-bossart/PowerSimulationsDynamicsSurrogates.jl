@@ -17,7 +17,7 @@ end
 
 PSID.get_params(x::TerminalDataSurrogate) = (; θ = PSY.get_ext(x)["ps"])
 PSID.get_params_metadata(::TerminalDataSurrogate) =
-    (; θ = PSID.ParamsMetadata(PSID.DEVICE_PARAM, false, false))    #TODO -change back to re-init
+    (; θ = PSID.ParamsMetadata(PSID.DEVICE_PARAM, false, true))
 
 function PSID.device_mass_matrix_entries!(
     mass_matrix::AbstractArray,
@@ -142,8 +142,7 @@ function PSID.device!(
     trained_voltage_range = get_trained_voltage_range(dynamic_device.device)
     τ = get_τ(dynamic_device.device)
     model = ext_device["model"]
-    v0 = add_dim(ext_wrapper["v0"])
-    i0 = add_dim(ext_wrapper["i0"])
+
     offset = [p[:refs][:ir_offset], p[:refs][:ii_offset]]
     ps = p[:params][:θ]
     st = ext_device["st"]
@@ -153,10 +152,6 @@ function PSID.device!(
        !ext_wrapper["voltage_violation_warning"]
         ext_wrapper["voltage_violation_warning"] = true
     end
-    #JUST USE ALL STEADY STATE VALUES:
-    #v_ss = add_dim(hcat(fill(v0[1], window_size), fill(v0[2], window_size)))
-    #i_ss = add_dim(hcat(fill(i0[1], window_size), fill(i0[2], window_size)))
-    #x = (v0, i0, v_ss, i_ss)
 
     ix_range = dynamic_device.ix_range
     ir_ix = ix_range[1]
@@ -168,26 +163,19 @@ function PSID.device!(
     ii = device_states[2]
     vr = device_states[3]
     vi = device_states[4]
+    v0 = Array{typeof(ext_wrapper["v0"][1])}(undef, (2, 1))
+    v0 .= ext_wrapper["v0"]
+    i0 = Array{typeof(ext_wrapper["i0"][1])}(undef, (2, 1))
+    i0 .= ext_wrapper["i0"]
+    v = Array{typeof(vr)}(undef, (2, window_size, 1))
+    i = Array{typeof(vr)}(undef, (2, window_size, 1))
+    v[1, :, 1] =
+        vcat([h(nothing, t - N * τ; idxs = vr_ix) for N in (window_size - 1):-1:1], [vr])
+    v[2, :, 1] =
+        vcat([h(nothing, t - N * τ; idxs = vi_ix) for N in (window_size - 1):-1:1], [vi])
+    i[1, :, 1] = [h(nothing, t - N * τ; idxs = ir_ix) for N in window_size:-1:1]
+    i[2, :, 1] = [h(nothing, t - N * τ; idxs = ii_ix) for N in window_size:-1:1]
 
-    v = add_dim(
-        vcat(
-            hcat(
-                [h(nothing, t - N * τ; idxs = vr_ix) for N in (window_size - 1):-1:1]',
-                [vr],
-            ),
-            hcat(
-                [h(nothing, t - N * τ; idxs = vi_ix) for N in (window_size - 1):-1:1]',
-                [vi],
-            ),
-        ),
-    )
-
-    i = add_dim(
-        vcat(
-            [h(nothing, t - N * τ; idxs = ir_ix) for N in window_size:-1:1]',
-            [h(nothing, t - N * τ; idxs = ii_ix) for N in window_size:-1:1]',
-        ),
-    )
     x = (v0, i0, v, i)
     y_pred, st = model(x, ps, st)
 

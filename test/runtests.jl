@@ -62,7 +62,7 @@ macro includetests(testarg...)
         end
     end
 end
-
+##
 logger = PSY.configure_logging(;
     console_level = Logging.Warn,  # Logging.Error, Logging.Warn, Logging.Debug
     file_level = Logging.Error,

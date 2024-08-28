@@ -118,3 +118,81 @@ function PSID.initialize_dynamic_device!(
     end
     return
 end
+
+function PSID.initialize_dynamic_device!(
+    dynamic_device::PSID.DynamicWrapper{TerminalDataSurrogate},
+    source::PSY.Source,
+    ::AbstractVector,
+    p::Zygote.Buffer,
+    device_states::Zygote.Buffer,
+)
+    ext_wrapper = PSID.get_ext(dynamic_device)
+    device = PSID.get_device(dynamic_device)
+    ext_device = PSY.get_ext(device)
+
+    P0 = PSY.get_active_power(source)
+    Q0 = PSY.get_reactive_power(source)
+    Vm = PSY.get_magnitude(PSY.get_bus(source))
+    θ = PSY.get_angle(PSY.get_bus(source))
+    S0 = P0 + Q0 * 1im
+
+    VR0 = Vm * cos(θ)
+    VI0 = Vm * sin(θ)
+    V = VR0 + VI0 * 1im
+    I = conj(S0 / V)
+    IR0 = real(I)
+    II0 = imag(I)
+
+    ext_wrapper["v0"] = [VR0, VI0]
+    ext_wrapper["i0"] = [IR0, II0]
+    ext_wrapper["voltage_violation_warning"] = false
+
+    model = ext_device["model"]
+    ps = p[:params][:θ]
+    st = ext_device["st"]
+    window_size = get_window_size(device)
+    #@error typeof(device_states[1])
+    v_ss = Zygote.Buffer(Array{Float64}(undef, (2, window_size, 1)))
+    for i in eachindex(v_ss)
+        if isodd(i)
+            v_ss[i] = VR0
+        else
+            v_ss[i] = VI0
+        end
+    end
+    i_ss = Zygote.Buffer(Array{Float64}(undef, (2, window_size, 1)))
+    for i in eachindex(i_ss)
+        if isodd(i)
+            i_ss[i] = IR0
+        else
+            i_ss[i] = II0
+        end
+    end
+    v0 = Zygote.Buffer(Array{Float64}(undef, (2, 1)))
+    v0[1] = VR0
+    v0[2] = VI0
+    i0 = Zygote.Buffer(Array{Float64}(undef, (2, 1)))
+    i0[1] = IR0
+    i0[2] = II0
+    #@assert size(copy(v_ss))[1] == 2
+    ss_input = (copy(v0), copy(i0), copy(v_ss), copy(i_ss))
+    y, st = model(ss_input, ps, st)
+    p_refs = _make_buffer(p[:refs])
+    if get_steadystate_offset_correction(device)
+        device_states[1] = IR0
+        device_states[2] = II0
+        device_states[3] = VR0
+        device_states[4] = VI0
+        p_refs[1] = y[1] - IR0
+        p_refs[2] = y[2] - II0
+    else
+        p_refs[1] = 0.0
+        p_refs[2] = 0.0
+        device_states[1] = y[1]
+        device_states[2] = y[2]
+        device_states[3] = VR0
+        device_states[4] = VI0
+    end
+    p[:refs] = copy(p_refs)
+    return
+end
