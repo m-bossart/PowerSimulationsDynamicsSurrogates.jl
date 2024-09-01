@@ -161,10 +161,10 @@ function to_json_with_surrogates(sys, full_path)
     for g in PSY.get_components(DataDrivenSurrogate, sys)
         if typeof(g) == SteadyStateNODE
             model_node = PSY.get_ext(g)["model_node"]
-            p_node = PSY.get_ext(g)["ps_node"]
+            p_node = NamedTuple(PSY.get_ext(g)["ps_node"])  #serializing/deserializing ComponentArray fails with BSON
             st_node = PSY.get_ext(g)["st_node"]
             model_init = PSY.get_ext(g)["model_init"]
-            p_init = PSY.get_ext(g)["ps_init"]
+            p_init = NamedTuple(PSY.get_ext(g)["ps_init"])  #serializing/deserializing ComponentArray fails with BSON
             st_init = PSY.get_ext(g)["st_init"]
 
             mkpath(joinpath(dir, "surrogate_models", PSY.get_name(g)))
@@ -187,7 +187,7 @@ function to_json_with_surrogates(sys, full_path)
             )
         else
             model = PSY.get_ext(g)["model"]
-            p = PSY.get_ext(g)["ps"]
+            p = NamedTuple(PSY.get_ext(g)["ps"])    #serializing/deserializing ComponentArray fails with BSON
             st = PSY.get_ext(g)["st"]
             dir = dirname(full_path)
 
@@ -220,10 +220,10 @@ function deserialize_with_surrogates(full_path)
                     "node_path" => nothing,
                     "init_path" => nothing,
                     "model_node" => model_node,
-                    "ps_node" => p_node,
+                    "ps_node" => ComponentArrays.ComponentArray(p_node),        #serializing/deserializing ComponentArray fails with BSON
                     "st_node" => st_node,
                     "model_init" => model_init,
-                    "ps_init" => p_init,
+                    "ps_init" => ComponentArrays.ComponentArray(p_init),        #serializing/deserializing ComponentArray fails with BSON
                     "st_init" => st_init,
                 ),
             )
@@ -234,7 +234,7 @@ function deserialize_with_surrogates(full_path)
                 Dict{String, Any}(
                     "model_path" => nothing,
                     "model" => model,
-                    "ps" => p,
+                    "ps" => ComponentArrays.ComponentArray(p),                  #serializing/deserializing ComponentArray fails with BSON
                     "st" => st,
                 ),
             )

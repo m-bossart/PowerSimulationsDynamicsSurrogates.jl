@@ -60,7 +60,8 @@ end
             Lux.Dense(5, 2),
         )
         Random.seed!(rng, 0)
-        p_node, st_node = Lux.setup(rng, model_node)
+        p_node_nt, st_node = Lux.setup(rng, model_node)
+        p_node = ComponentArray(p_node_nt)
         model_init = Lux.Chain(
             WrappedFunction(x -> x .* sin(1.5)),
             Lux.Dense(2, 5, NNlib.relu),
