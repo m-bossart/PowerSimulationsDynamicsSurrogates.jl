@@ -173,10 +173,6 @@ function to_json_with_surrogates(sys, full_path)
             PSY.set_ext!(
                 g,
                 Dict{String, Any}(
-                    "node_path" =>
-                        joinpath(dir, "surrogate_models", PSY.get_name(g), "node"),
-                    "init_path" =>
-                        joinpath(dir, "surrogate_models", PSY.get_name(g), "init"),
                     "model_node" => nothing,
                     "ps_node" => nothing,
                     "st_node" => nothing,
@@ -196,8 +192,6 @@ function to_json_with_surrogates(sys, full_path)
             PSY.set_ext!(
                 g,
                 Dict{String, Any}(
-                    "model_path" =>
-                        joinpath(dir, "surrogate_models", PSY.get_name(g), "nn"),
                     "model" => nothing,
                     "ps" => nothing,
                     "st" => nothing,
@@ -209,16 +203,15 @@ function to_json_with_surrogates(sys, full_path)
 end
 
 function deserialize_with_surrogates(full_path)
+    dir = dirname(full_path)
     sys = PSY.System(full_path)
     for g in PSY.get_components(DataDrivenSurrogate, sys)
         if typeof(g) == SteadyStateNODE
-            BSON.@load PSY.get_ext(g)["node_path"] model_node p_node st_node
-            BSON.@load PSY.get_ext(g)["init_path"] model_init p_init st_init
+            BSON.@load joinpath(dir, "surrogate_models", PSY.get_name(g), "node") model_node p_node st_node
+            BSON.@load joinpath(dir, "surrogate_models", PSY.get_name(g), "init") model_init p_init st_init
             PSY.set_ext!(
                 g,
                 Dict{String, Any}(
-                    "node_path" => nothing,
-                    "init_path" => nothing,
                     "model_node" => model_node,
                     "ps_node" => ComponentArrays.ComponentArray(p_node),        #serializing/deserializing ComponentArray fails with BSON
                     "st_node" => st_node,
@@ -228,11 +221,10 @@ function deserialize_with_surrogates(full_path)
                 ),
             )
         else
-            BSON.@load PSY.get_ext(g)["model_path"] model p st
+            BSON.@load joinpath(dir, "surrogate_models", PSY.get_name(g), "nn") model p st
             PSY.set_ext!(
                 g,
                 Dict{String, Any}(
-                    "model_path" => nothing,
                     "model" => model,
                     "ps" => ComponentArrays.ComponentArray(p),                  #serializing/deserializing ComponentArray fails with BSON
                     "st" => st,
