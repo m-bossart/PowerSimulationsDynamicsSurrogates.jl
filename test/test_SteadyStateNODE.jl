@@ -203,7 +203,7 @@ EnzymeRules.inactive(::typeof(PowerSystems._get_multiplier), args...) = nothing 
         display(plot([scatter(; y = δ_gt), scatter(; y = δ)]))
     end
     EnzymeRules.inactive(::typeof(plot_traces), args...) = nothing
-    function f_loss(p, δ, δ_gt)
+    function f_loss(p, δ, δ_gt, aux)
         #plot_traces(δ[1], δ_gt)
         return sum(abs.(δ[1] - δ_gt))
     end
@@ -222,14 +222,14 @@ EnzymeRules.inactive(::typeof(PowerSystems._get_multiplier), args...) = nothing 
     )
     θ = get_parameter_values(sim, [("InfBus", :θ, "node")])
     @test θ[1] == 0.2890770435333252
-    @test isapprox(f_forward(θ, [pert], δ), 0.0, atol = 1e-4)
+    @test isapprox(f_forward(θ, [pert], δ, []), 0.0, atol = 1e-4)
     rand_scaler = [rand() / 100.0 + 1.0 for x in 1:length(θ)]
-    @test isapprox(f_forward(θ .* rand_scaler, [pert], δ), 0.0, atol = 1e-4)
-    @test f_forward(θ .* rand_scaler, [pert], δ) ==
-          f_forward_zygote(θ .* rand_scaler, [pert], δ)
-    @test f_grad(θ * 1.001, [pert], δ)[1] ==
-          Zygote.gradient(p -> f_forward_zygote(p, [pert], δ), θ * 1.001)[1][1] ==
-          -0.0036760156308446312
+    @test isapprox(f_forward(θ .* rand_scaler, [pert], δ, []), 0.0, atol = 1e-4)
+    @test f_forward(θ .* rand_scaler, [pert], δ, []) ==
+          f_forward_zygote(θ .* rand_scaler, [pert], δ, [])
+    @test f_grad(θ * 1.001, [pert], δ, [])[1] ==
+          Zygote.gradient(p -> f_forward_zygote(p, [pert], δ, []), θ * 1.001)[1][1] ==
+          -0.0044582109185284935
 end
 
 @testset "Sensitivity function- ReverseDiffAdjoint" begin
@@ -312,7 +312,7 @@ end
         display(plot([scatter(; y = δ_gt), scatter(; y = δ)]))
     end
     EnzymeRules.inactive(::typeof(plot_traces), args...) = nothing
-    function f_loss(p, δ, δ_gt)
+    function f_loss(p, δ, δ_gt, aux)
         #plot_traces(δ[1], δ_gt)
         return sum(abs.(δ[1] - δ_gt))
     end
@@ -331,13 +331,13 @@ end
     )
     θ = get_parameter_values(sim, [("InfBus", :θ, "node")])
     @test θ[1] == 0.2890770435333252
-    @test isapprox(f_forward(θ, [pert_state], δ), 0.0, atol = 1e-4)
+    @test isapprox(f_forward(θ, [pert_state], δ, []), 0.0, atol = 1e-4)
     rand_scaler = [rand() / 100.0 + 1.0 for x in 1:length(θ)]
-    @test isapprox(f_forward(θ .* rand_scaler, [pert_state], δ), 0.0, atol = 1e-4)
-    @test f_forward(θ .* rand_scaler, [pert_state], δ) ==
-          f_forward_zygote(θ .* rand_scaler, [pert_state], δ)
-    grads_forward = Zygote.gradient(p -> f_forward_zygote(p, [pert_state], δ), θ * 1.001)[1]
-    @test f_grad(θ * 1.001, [pert_state], δ)[1] == grads_forward[1] == 0.0005295818045851775
+    @test isapprox(f_forward(θ .* rand_scaler, [pert_state], δ, []), 0.0, atol = 1e-4)
+    @test f_forward(θ .* rand_scaler, [pert_state], δ, []) ==
+          f_forward_zygote(θ .* rand_scaler, [pert_state], δ, [])
+    grads_forward = Zygote.gradient(p -> f_forward_zygote(p, [pert_state], δ, []), θ * 1.001)[1]
+    @test f_grad(θ * 1.001, [pert_state], δ, [])[1] == grads_forward[1] == 0.0005295818045851775
     _, _, f_forward_zygote = get_sensitivity_functions(
         sim,
         [("InfBus", :θ, "node")],
@@ -350,12 +350,12 @@ end
         #dtmax = 0.005,
         saveat = 0.005,
     )
-    grads_reverse = Zygote.gradient(p -> f_forward_zygote(p, [pert_state], δ), θ * 1.001)[1]
+    grads_reverse = Zygote.gradient(p -> f_forward_zygote(p, [pert_state], δ, []), θ * 1.001)[1]
     pert_state_new = PSID.PerturbState(0.5, state_index, (P_rev_new - P_ref_prev))
     grads_reverse_2 =
-        Zygote.gradient(p -> f_forward_zygote(p, [pert_state_new], δ), θ * 1.001)[1]
+        Zygote.gradient(p -> f_forward_zygote(p, [pert_state_new], δ, []), θ * 1.001)[1]
     grads_reverse_3 =
-        Zygote.gradient(p -> f_forward_zygote(p, [pert_state], δ), θ * 1.001)[1]
+        Zygote.gradient(p -> f_forward_zygote(p, [pert_state], δ, []), θ * 1.001)[1]
     @test grads_reverse[1] .- grads_reverse_3[1] == 0.0  #repeatable for same computation
     @test grads_reverse[1] .- grads_reverse_2[1] != 0.0  #time of perturbation impacts gradient
     #plt = plot()

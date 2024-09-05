@@ -181,7 +181,7 @@ end
         display(plot([scatter(; y = δ_gt), scatter(; y = δ)]))
     end
     EnzymeRules.inactive(::typeof(plot_traces), args...) = nothing
-    function f_loss(p, states, δ_gt)
+    function f_loss(p, states, δ_gt, aux)
         #plot_traces(states[1], δ_gt)
         return sum(abs.(states[1] - δ_gt))
     end
@@ -203,12 +203,12 @@ end
     θ = get_parameter_values(sim, [("source_1", :θ)])
     @test θ[1] == -0.03485802561044693
 
-    @test isapprox(f_forward(θ, [pert], δ_gt), 0.0, atol = 1e-4)
-    @test f_forward(θ * 1.1, [pert], δ_gt) ==
-          f_forward_zygote(θ * 1.1, [pert], δ_gt) ==
+    @test isapprox(f_forward(θ, [pert], δ_gt, []), 0.0, atol = 1e-4)
+    @test f_forward(θ * 1.1, [pert], δ_gt, []) ==
+          f_forward_zygote(θ * 1.1, [pert], δ_gt, []) ==
           0.00014678274008739223
-    @test f_grad(θ, [pert], δ_gt)[1] ==
-          Zygote.gradient(p -> f_forward_zygote(p, [pert], δ_gt), θ)[1][1] ==
+    @test f_grad(θ, [pert], δ_gt, [])[1] ==
+          Zygote.gradient(p -> f_forward_zygote(p, [pert], δ_gt, []), θ)[1][1] ==
           1.282165740218522
 end
 
@@ -295,7 +295,7 @@ end
         display(plot([scatter(; y = δ_gt), scatter(; y = δ)]))
     end
     EnzymeRules.inactive(::typeof(plot_traces), args...) = nothing
-    function f_loss(p, states, δ_gt)
+    function f_loss(p, states, δ_gt, aux)
         #plot_traces(states[1], δ_gt)
         return sum(abs.(states[1] - δ_gt))
     end
@@ -317,12 +317,12 @@ end
     θ = get_parameter_values(sim, [("source_1", :θ)])
     @test θ[1] == -0.03485802561044693
 
-    @test isapprox(f_forward(θ, [pert], δ_gt), 0.0, atol = 1e-4)
-    @test f_forward(θ * 1.1, [pert], δ_gt) ==
-          f_forward_zygote(θ * 1.1, [pert], δ_gt) ==
+    @test isapprox(f_forward(θ, [pert], δ_gt, []), 0.0, atol = 1e-4)
+    @test f_forward(θ * 1.1, [pert], δ_gt, []) ==
+          f_forward_zygote(θ * 1.1, [pert], δ_gt, []) ==
           0.0001078865300969678
-    grads_forward = Zygote.gradient(p -> f_forward_zygote(p, [pert], δ_gt), θ)[1]
-    @test f_grad(θ, [pert], δ_gt)[1] == grads_forward[1] == -235.918809191912
+    grads_forward = Zygote.gradient(p -> f_forward_zygote(p, [pert], δ_gt, []), θ)[1]
+    @test f_grad(θ, [pert], δ_gt, [])[1] == grads_forward[1] == -235.918809191912
 
     f_forward, f_grad, f_forward_zygote = get_sensitivity_functions(
         sim,
@@ -336,8 +336,8 @@ end
         saveat = 0.1,
     )
 
-    @test Zygote.gradient(p -> f_forward_zygote(p, [pert], δ_gt), θ * 1.001)[1][30] ==
+    @test Zygote.gradient(p -> f_forward_zygote(p, [pert], δ_gt, []), θ * 1.001)[1][30] ==
           2.4045264581218362e-5
-    @test Zygote.gradient(p -> f_forward_zygote(p, [pert], δ_gt), θ * 2.0)[1][30] ==
+    @test Zygote.gradient(p -> f_forward_zygote(p, [pert], δ_gt, []), θ * 2.0)[1][30] ==
           0.000608750618994236
 end

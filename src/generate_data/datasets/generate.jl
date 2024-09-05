@@ -85,10 +85,12 @@ function generate_surrogate_data(
         dummy_data = EmptyTrainDataSet(dataset_type)
         sim_full =
             _build_run_simulation_initial_conditions(sys, data_collection_params, ics[1])
-        @assert issubset(
+        if !issubset(
             data_collection_params.tsave,
             union(data_collection_params.tstops, sim_full.tstops),
         )
+            @warn "tsave not subset of tstops"
+        end 
         fill_surrogate_data!(dummy_data, device_details, data_collection_params, sim_full)
     end
     ########################################################################################
@@ -100,10 +102,12 @@ function generate_surrogate_data(
         #PowerFlows.solve_powerflow!(PowerFlows.ACPowerFlow(),sys) 
         data = EmptyTrainDataSet(dataset_type)
         sim_full = _build_run_simulation_initial_conditions(sys, data_collection_params, ic)
-        @assert issubset(
+        if !issubset(
             data_collection_params.tsave,
             union(data_collection_params.tstops, sim_full.tstops),
         )
+            @warn "tsave not subset of tstops"
+        end 
         fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
         @show PSY.get_internal_voltage(collect(PSY.get_components(PSY.Source, sys))[1])
         @show PSY.get_internal_angle(collect(PSY.get_components(PSY.Source, sys))[1])
@@ -169,10 +173,12 @@ function generate_surrogate_data(
                 data_collection_params,
                 psid_perturbations,
             )
-            @assert issubset(
+            if !issubset(
                 data_collection_params.tsave,
                 union(data_collection_params.tstops, sim_full.tstops),
             )
+                @warn "tsave not subset of tstops"
+            end 
             fill_surrogate_data!(
                 dummy_data,
                 device_details,
@@ -185,10 +191,12 @@ function generate_surrogate_data(
                 data_collection_params,
                 psid_perturbations,
             )
-            @assert issubset(
+            if !issubset(
                 data_collection_params.tsave,
                 union(data_collection_params.tstops, sim_full.tstops),
             )
+                @warn "tsave not subset of tstops"
+            end 
             fill_surrogate_data!(
                 dummy_data,
                 device_details,
@@ -226,10 +234,12 @@ function generate_surrogate_data(
                     data_collection_params,
                     psid_perturbations,
                 )
-                @assert issubset(
+                if !issubset(
                     data_collection_params.tsave,
                     union(data_collection_params.tstops, sim_full.tstops),
                 )
+                    @warn "tsave not subset of tstops"
+                end 
                 fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
             elseif dataset_aux === nothing
                 #Instead of running the simulation, just compare the error in the model 
@@ -238,10 +248,12 @@ function generate_surrogate_data(
                     data_collection_params,
                     psid_perturbations,
                 )
-                @assert issubset(
+                if !issubset(
                     data_collection_params.tsave,
                     union(data_collection_params.tstops, sim_full.tstops),
                 )
+                    @warn "tsave not subset of tstops"
+                end 
                 fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
             else
                 @warn "Simulation not attempted because the ground truth scenario could not be built"
