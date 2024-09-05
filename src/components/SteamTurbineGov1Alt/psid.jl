@@ -173,7 +173,7 @@ PSID.get_params(x::SteamTurbineGov1Alt) = (
 PSID.get_params_metadata(::SteamTurbineGov1Alt) = (
     R = PSID.ParamsMetadata(PSID.DEVICE_PARAM, false, true),
     T1 = PSID.ParamsMetadata(PSID.DEVICE_PARAM, false, true),
-    valve_position = (
+    valve_position_limits = (
         min = PSID.ParamsMetadata(PSID.DEVICE_PARAM, false, true),
         max = PSID.ParamsMetadata(PSID.DEVICE_PARAM, false, true),
     ),
