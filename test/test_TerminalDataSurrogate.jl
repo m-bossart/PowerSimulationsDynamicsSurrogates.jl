@@ -71,9 +71,6 @@ end
         add_component!(sys, s, source)
     end
 
-    #@show PowerFlows.solve_powerflow(PowerFlows.ACPowerFlow(), sys)["bus_results"]
-    #@show PowerFlows.solve_powerflow(PowerFlows.ACPowerFlow(), sys)["flow_results"]
-
     tspan = (0.0, 10.0)
     tfault = 5.0
     pert = PSID.BranchImpedanceChange(tfault, Line, "BUS 10-BUS 11-i_1", 1.5)
@@ -81,8 +78,13 @@ end
     sim = Simulation!(MassMatrixModel, sys, pwd(), tspan, pert)
     show_components(sys, Line)
     @test sim.status == PSID.BUILT
-    @test execute!(sim, MethodOfSteps(Rodas5(autodiff = false))) ==
-          PSID.SIMULATION_FINALIZED
+    @test execute!(
+        sim,
+        MethodOfSteps(Rodas5P(autodiff = false)),
+        saveat = 0.1,
+        reltol = 1e-8,
+        abstol = 1e-11,
+    ) == PSID.SIMULATION_FINALIZED
     results = read_results(sim)
 
     vbus = get_voltage_magnitude_series(results, 8)
@@ -93,41 +95,184 @@ end
     sim = Simulation!(MassMatrixModel, sys, pwd(), tspan, pert)
     show_components(sys, Line)
     @test sim.status == PSID.BUILT
-    @test execute!(sim, MethodOfSteps(Rodas5(autodiff = false))) ==
-          PSID.SIMULATION_FINALIZED
+    @test execute!(
+        sim,
+        MethodOfSteps(Rodas5P(autodiff = false)),
+        saveat = 0.1,
+        reltol = 1e-8,
+        abstol = 1e-11,
+    ) == PSID.SIMULATION_FINALIZED
     results = read_results(sim)
 
     vbus_filt = get_voltage_magnitude_series(results, 8)
     vr_surr_filt = get_state_series(results, ("source_1", :vr))
     ir_surr_filt = get_state_series(results, ("source_1", :ir))
 
-    using PlotlyJS  #add PlotlyJS to test environment
-    display(
-        PlotlyJS.plot([
-            PlotlyJS.scatter(x = vbus[1], y = vbus[2], name = "no filtering"),
-            PlotlyJS.scatter(x = vbus_filt[1], y = vbus_filt[2], name = "filter (0.1s)"),
-        ]),
+    @test sum(vr_surr[2]) == 95.37524456676604
+    @test sum(vr_surr_filt[2]) == 95.34139542343429
+
+    #using PlotlyJS  #add PlotlyJS to test environment
+    #display(
+    #    PlotlyJS.plot([
+    #        PlotlyJS.scatter(x = vbus[1], y = vbus[2], name = "no filtering"),
+    #        PlotlyJS.scatter(x = vbus_filt[1], y = vbus_filt[2], name = "filter (0.1s)"),
+    #    ]),
+    #)
+    #display(
+    #    PlotlyJS.plot([
+    #        PlotlyJS.scatter(x = vr_surr[1], y = vr_surr[2], name = "no filtering"),
+    #        PlotlyJS.scatter(
+    #            x = vr_surr_filt[1],
+    #            y = vr_surr_filt[2],
+    #            name = "filter (0.1s)",
+    #        ),
+    #    ]),
+    #)
+    #display(
+    #    PlotlyJS.plot([
+    #        PlotlyJS.scatter(x = ir_surr[1], y = ir_surr[2], name = "no filtering"),
+    #        PlotlyJS.scatter(
+    #            x = ir_surr_filt[1],
+    #            y = ir_surr_filt[2],
+    #            name = "filter (0.1s)",
+    #        ),
+    #    ]),
+    #)
+end
+
+@testset "Test Basepower scaling" begin
+    tspan = (0.0, 1.0)
+    tstep = 0.01
+    tsteps = tspan[1]:tstep:tspan[2]
+    Random.seed!(1234)
+    function gain(x)
+        return x .* 10.0
+    end
+    v0_path = Lux.Chain(Lux.Dense(2, 2))
+    i0_path = Lux.Chain(Lux.Dense(2, 2))
+    v_path = Lux.Chain(
+        Lux.FlattenLayer(),
+        Lux.WrappedFunction(gain),
+        Lux.Dense(10, 100),
+        Lux.Dense(100, 100),
+        Lux.Dense(100, 2),
     )
-    display(
-        PlotlyJS.plot([
-            PlotlyJS.scatter(x = vr_surr[1], y = vr_surr[2], name = "no filtering"),
-            PlotlyJS.scatter(
-                x = vr_surr_filt[1],
-                y = vr_surr_filt[2],
-                name = "filter (0.1s)",
-            ),
-        ]),
+    i_path = Lux.Chain(Lux.FlattenLayer(), Lux.Dense(10, 100), Lux.Dense(100, 2))
+    model = Lux.Chain(Lux.Parallel(+, v0_path, i0_path, v_path, i_path))
+
+    rng = Random.default_rng()
+    Random.seed!(rng, 0)
+    ps, st = Lux.setup(rng, model)
+
+    sys_full = build_system(PSIDSystems, "psid_11bus_andes")
+    solve_powerflow(ACPowerFlow(), sys_full)
+    sys, _ = PSIDS.create_validation_system_from_buses(sys_full, [1, 2, 5, 6, 7, 8])
+    show_components(sys, ACBus, [:number])
+    s = collect(get_components(Source, sys))[1]
+    solve_ac_powerflow!(sys)
+    #set_base_power!(s, 100.0/2)
+
+    set_active_power!(s, get_active_power(s) / 2)
+    set_reactive_power!(s, get_reactive_power(s) / 2)
+
+    #@assert false 
+    s_new = Source(
+        name = "newname",
+        available = get_available(s),
+        bus = get_bus(s),
+        active_power = get_active_power(s),
+        reactive_power = get_reactive_power(s),
+        R_th = get_R_th(s),
+        X_th = get_X_th(s),
     )
-    display(
-        PlotlyJS.plot([
-            PlotlyJS.scatter(x = ir_surr[1], y = ir_surr[2], name = "no filtering"),
-            PlotlyJS.scatter(
-                x = ir_surr_filt[1],
-                y = ir_surr_filt[2],
-                name = "filter (0.1s)",
-            ),
-        ]),
-    )
+    add_component!(sys, s_new)
+    display(sys)
+    sources = get_components(Source, sys)
+    for source in sources
+        s = TerminalDataSurrogate(
+            name = get_name(source),
+            τ = 0.3,
+            window_size = 5,
+            fc = 0.0,
+            steadystate_offset_correction = true,
+            ext = Dict{String, Any}("model" => model, "ps" => ps, "st" => st),
+        )
+        display(s)
+        add_component!(sys, s, source)
+        s_in_system = get_component(TerminalDataSurrogate, sys, get_name(source))
+
+        set_base_power!(s_in_system, 100.0 / length(sources))
+    end
+
+    tspan = (0.0, 10.0)
+    tfault = 5.0
+    pert = PSID.BranchImpedanceChange(tfault, Line, "BUS 10-BUS 11-i_1", 1.5)
+
+    sim = Simulation!(MassMatrixModel, sys, pwd(), tspan, pert)
+    show_components(sys, Line)
+    @test sim.status == PSID.BUILT
+    @test execute!(
+        sim,
+        MethodOfSteps(Rodas5P(autodiff = false)),
+        saveat = 0.1,
+        reltol = 1e-8,
+        abstol = 1e-11,
+    ) == PSID.SIMULATION_FINALIZED
+    results = read_results(sim)
+
+    vbus = get_voltage_magnitude_series(results, 8)
+    vr_surr = get_state_series(results, ("source_1", :vr))
+    ir_surr = get_state_series(results, ("source_1", :ir))
+
+    set_fc!(get_component(TerminalDataSurrogate, sys, "source_1"), 0.1)     #add filtering
+    set_fc!(get_component(TerminalDataSurrogate, sys, "newname"), 0.1)     #add filtering
+
+    sim = Simulation!(MassMatrixModel, sys, pwd(), tspan, pert)
+    show_components(sys, Line)
+    @test sim.status == PSID.BUILT
+    @test execute!(
+        sim,
+        MethodOfSteps(Rodas5P(autodiff = false)),
+        saveat = 0.1,
+        reltol = 1e-8,
+        abstol = 1e-11,
+    ) == PSID.SIMULATION_FINALIZED
+    results = read_results(sim)
+
+    vbus_filt = get_voltage_magnitude_series(results, 8)
+    vr_surr_filt = get_state_series(results, ("source_1", :vr))
+    ir_surr_filt = get_state_series(results, ("source_1", :ir))
+
+    @test sum(vr_surr[2]) == 95.37487158388667
+    @test sum(vr_surr_filt[2]) == 95.34139540068229
+
+    #using PlotlyJS  #add PlotlyJS to test environment
+    #display(
+    #    PlotlyJS.plot([
+    #        PlotlyJS.scatter(x = vbus[1], y = vbus[2], name = "no filtering"),
+    #        PlotlyJS.scatter(x = vbus_filt[1], y = vbus_filt[2], name = "filter (0.1s)"),
+    #    ]),
+    #)
+    #display(
+    #    PlotlyJS.plot([
+    #        PlotlyJS.scatter(x = vr_surr[1], y = vr_surr[2], name = "no filtering"),
+    #        PlotlyJS.scatter(
+    #            x = vr_surr_filt[1],
+    #            y = vr_surr_filt[2],
+    #            name = "filter (0.1s)",
+    #        ),
+    #    ]),
+    #)
+    #display(
+    #    PlotlyJS.plot([
+    #        PlotlyJS.scatter(x = ir_surr[1], y = ir_surr[2], name = "no filtering"),
+    #        PlotlyJS.scatter(
+    #            x = ir_surr_filt[1],
+    #            y = ir_surr_filt[2],
+    #            name = "filter (0.1s)",
+    #        ),
+    #    ]),
+    #)
 end
 
 @testset "Sensitivity - TerminalDataSurrogate" begin
@@ -206,10 +351,10 @@ end
     @test isapprox(f_forward(θ, [pert], δ_gt, []), 0.0, atol = 1e-4)
     @test f_forward(θ * 1.1, [pert], δ_gt, []) ==
           f_forward_zygote(θ * 1.1, [pert], δ_gt, []) ==
-          0.00014678274008739223
+          0.00014677407628382877
     @test f_grad(θ, [pert], δ_gt, [])[1] ==
           Zygote.gradient(p -> f_forward_zygote(p, [pert], δ_gt, []), θ)[1][1] ==
-          1.282165740218522
+          9.26538894066859
 end
 
 @testset "Sensitivity - TerminalDataSurrogate - ReverseDiffAdjoint" begin
@@ -240,6 +385,8 @@ end
             ext = Dict{String, Any}("model" => model, "ps" => ps, "st" => st),
         )
         add_component!(sys, s, source)
+        s_in_system = get_component(TerminalDataSurrogate, sys, get_name(source))
+        set_base_power!(s_in_system, 100.0)
     end
     tspan = (0.0, 1.0)
     tfault = 0.6
@@ -320,9 +467,9 @@ end
     @test isapprox(f_forward(θ, [pert], δ_gt, []), 0.0, atol = 1e-4)
     @test f_forward(θ * 1.1, [pert], δ_gt, []) ==
           f_forward_zygote(θ * 1.1, [pert], δ_gt, []) ==
-          0.0001078865300969678
+          0.00010788599295485923
     grads_forward = Zygote.gradient(p -> f_forward_zygote(p, [pert], δ_gt, []), θ)[1]
-    @test f_grad(θ, [pert], δ_gt, [])[1] == grads_forward[1] == -235.918809191912
+    @test f_grad(θ, [pert], δ_gt, [])[1] == grads_forward[1] == -170.10717294865816
 
     f_forward, f_grad, f_forward_zygote = get_sensitivity_functions(
         sim,
@@ -337,7 +484,7 @@ end
     )
 
     @test Zygote.gradient(p -> f_forward_zygote(p, [pert], δ_gt, []), θ * 1.001)[1][30] ==
-          2.4045264581218362e-5
+          2.4040948119363748e-5
     @test Zygote.gradient(p -> f_forward_zygote(p, [pert], δ_gt, []), θ * 2.0)[1][30] ==
-          0.000608750618994236
+          0.0004445025697350502
 end

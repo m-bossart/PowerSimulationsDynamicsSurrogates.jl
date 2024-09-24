@@ -191,11 +191,7 @@ function to_json_with_surrogates(sys, full_path)
             BSON.@save joinpath(dir, "surrogate_models", PSY.get_name(g), "nn") model p st
             PSY.set_ext!(
                 g,
-                Dict{String, Any}(
-                    "model" => nothing,
-                    "ps" => nothing,
-                    "st" => nothing,
-                ),
+                Dict{String, Any}("model" => nothing, "ps" => nothing, "st" => nothing),
             )
         end
     end

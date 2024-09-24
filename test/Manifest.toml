@@ -1671,7 +1671,9 @@ version = "0.10.3"
 
 [[deps.PowerSimulationsDynamics]]
 deps = ["ChainRulesCore", "ComponentArrays", "DataFrames", "DataStructures", "DiffEqBase", "DocStringExtensions", "Enzyme", "FastClosures", "ForwardDiff", "InfrastructureSystems", "LinearAlgebra", "Logging", "NLsolve", "NonlinearSolve", "PowerFlows", "PowerNetworkMatrices", "PowerSystems", "PrettyTables", "Random", "SciMLBase", "SciMLSensitivity", "SparseArrays", "TimerOutputs", "Zygote"]
-path = "../../PowerSimulationsDynamics.jl"
+git-tree-sha1 = "b6b17b9e10fb942a1cf8a3f2f0b7e6a2d39d4cd7"
+repo-rev = "aabf6b8"
+repo-url = "https://github.com/NREL-Sienna/PowerSimulationsDynamics.jl"
 uuid = "398b2ede-47ed-4edc-b52e-69e4a48b4336"
 version = "0.14.2"
 
@@ -1689,8 +1691,8 @@ version = "1.2.5"
 
 [[deps.PowerSystems]]
 deps = ["CSV", "DataFrames", "DataStructures", "Dates", "DocStringExtensions", "InfrastructureSystems", "InteractiveUtils", "JSON3", "LinearAlgebra", "Logging", "PowerFlowData", "PrettyTables", "TimeSeries", "UUIDs", "Unicode", "YAML"]
-git-tree-sha1 = "8f981df056b2ccf11342abfc632a9f495174f631"
-repo-rev = "mb/mutable-system"
+git-tree-sha1 = "afb001060c5c1b147dfb4dbda52c03c5b08a5730"
+repo-rev = "mutable-system-3.3"
 repo-url = "https://github.com/NREL-Sienna/PowerSystems.jl"
 uuid = "bcd98974-b02a-5e2f-9ee0-a103f5c450dd"
 version = "3.3.0"

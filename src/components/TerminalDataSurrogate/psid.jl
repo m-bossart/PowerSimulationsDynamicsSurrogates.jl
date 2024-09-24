@@ -83,8 +83,10 @@ function PSID.initialize_dynamic_device!(
     device = PSID.get_device(dynamic_device)
     ext_device = PSY.get_ext(device)
 
-    P0 = PSY.get_active_power(source)
-    Q0 = PSY.get_reactive_power(source)
+    basepower = PSY.get_base_power(dynamic_device)
+    sys_Sbase = PSID.get_system_base_power(dynamic_device)
+    P0 = PSY.get_active_power(source) * (sys_Sbase / basepower)
+    Q0 = PSY.get_reactive_power(source) * (sys_Sbase / basepower)
     Vm = PSY.get_magnitude(PSY.get_bus(source))
     θ = PSY.get_angle(PSY.get_bus(source))
     S0 = P0 + Q0 * 1im
@@ -183,7 +185,9 @@ function PSID.device!(
     output_ode[2] = y_pred[2] - offset[2] - ii
     output_ode[3] = voltage_r - vr
     output_ode[4] = voltage_i - vi
-    current_r[1] += y_pred[1] - offset[1]
-    current_i[1] += y_pred[2] - offset[2]
+    basepower = PSY.get_base_power(dynamic_device)
+    sys_Sbase = PSID.get_system_base_power(dynamic_device)
+    current_r[1] += (y_pred[1] - offset[1]) * (basepower / sys_Sbase)
+    current_i[1] += (y_pred[2] - offset[2]) * (basepower / sys_Sbase)
     return
 end

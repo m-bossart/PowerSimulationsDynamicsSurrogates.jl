@@ -90,7 +90,7 @@ function generate_surrogate_data(
             union(data_collection_params.tstops, sim_full.tstops),
         )
             @warn "tsave not subset of tstops"
-        end 
+        end
         fill_surrogate_data!(dummy_data, device_details, data_collection_params, sim_full)
     end
     ########################################################################################
@@ -107,7 +107,7 @@ function generate_surrogate_data(
             union(data_collection_params.tstops, sim_full.tstops),
         )
             @warn "tsave not subset of tstops"
-        end 
+        end
         fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
         @show PSY.get_internal_voltage(collect(PSY.get_components(PSY.Source, sys))[1])
         @show PSY.get_internal_angle(collect(PSY.get_components(PSY.Source, sys))[1])
@@ -178,7 +178,7 @@ function generate_surrogate_data(
                 union(data_collection_params.tstops, sim_full.tstops),
             )
                 @warn "tsave not subset of tstops"
-            end 
+            end
             fill_surrogate_data!(
                 dummy_data,
                 device_details,
@@ -196,7 +196,7 @@ function generate_surrogate_data(
                 union(data_collection_params.tstops, sim_full.tstops),
             )
                 @warn "tsave not subset of tstops"
-            end 
+            end
             fill_surrogate_data!(
                 dummy_data,
                 device_details,
@@ -239,7 +239,7 @@ function generate_surrogate_data(
                     union(data_collection_params.tstops, sim_full.tstops),
                 )
                     @warn "tsave not subset of tstops"
-                end 
+                end
                 fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
             elseif dataset_aux === nothing
                 #Instead of running the simulation, just compare the error in the model 
@@ -253,7 +253,7 @@ function generate_surrogate_data(
                     union(data_collection_params.tstops, sim_full.tstops),
                 )
                     @warn "tsave not subset of tstops"
-                end 
+                end
                 fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
             else
                 @warn "Simulation not attempted because the ground truth scenario could not be built"

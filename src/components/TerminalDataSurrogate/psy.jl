@@ -126,6 +126,7 @@ get_steadystate_offset_correction(value::TerminalDataSurrogate) =
     value.steadystate_offset_correction
 get_trained_voltage_range(value::TerminalDataSurrogate) = value.trained_voltage_range
 get_fc(value::TerminalDataSurrogate) = value.fc
+PSY.get_base_power(value::TerminalDataSurrogate) = value.base_power
 PSY.get_states(value::TerminalDataSurrogate) = value.states
 PSY.get_n_states(value::TerminalDataSurrogate) = value.n_states
 PSY.get_states_types(value::TerminalDataSurrogate) = value.states_types

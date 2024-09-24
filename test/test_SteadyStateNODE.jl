@@ -336,8 +336,11 @@ end
     @test isapprox(f_forward(θ .* rand_scaler, [pert_state], δ, []), 0.0, atol = 1e-4)
     @test f_forward(θ .* rand_scaler, [pert_state], δ, []) ==
           f_forward_zygote(θ .* rand_scaler, [pert_state], δ, [])
-    grads_forward = Zygote.gradient(p -> f_forward_zygote(p, [pert_state], δ, []), θ * 1.001)[1]
-    @test f_grad(θ * 1.001, [pert_state], δ, [])[1] == grads_forward[1] == 0.0005295818045851775
+    grads_forward =
+        Zygote.gradient(p -> f_forward_zygote(p, [pert_state], δ, []), θ * 1.001)[1]
+    @test f_grad(θ * 1.001, [pert_state], δ, [])[1] ==
+          grads_forward[1] ==
+          -3.902064054273069e-5
     _, _, f_forward_zygote = get_sensitivity_functions(
         sim,
         [("InfBus", :θ, "node")],
@@ -350,7 +353,8 @@ end
         #dtmax = 0.005,
         saveat = 0.005,
     )
-    grads_reverse = Zygote.gradient(p -> f_forward_zygote(p, [pert_state], δ, []), θ * 1.001)[1]
+    grads_reverse =
+        Zygote.gradient(p -> f_forward_zygote(p, [pert_state], δ, []), θ * 1.001)[1]
     pert_state_new = PSID.PerturbState(0.5, state_index, (P_rev_new - P_ref_prev))
     grads_reverse_2 =
         Zygote.gradient(p -> f_forward_zygote(p, [pert_state_new], δ, []), θ * 1.001)[1]
