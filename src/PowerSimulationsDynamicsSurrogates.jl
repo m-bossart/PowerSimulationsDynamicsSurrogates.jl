@@ -11,6 +11,7 @@ export SteadyStateNODE
 export get_SteadyStateNODE_states
 export SolutionPredictionSurrogate
 export TerminalDataSurrogate
+export IdealTerminalDataSurrogate
 export get_name
 export get_initializer_structure
 export get_initializer_parameters
@@ -114,6 +115,8 @@ include("utils.jl")
 include("components/abstract_component_types.jl")
 include("components/TerminalDataSurrogate/psy.jl")
 include("components/TerminalDataSurrogate/psid.jl")
+include("components/IdealTerminalDataSurrogate/psy.jl")
+include("components/IdealTerminalDataSurrogate/psid.jl")
 include("components/SteadyStateNODE/psy.jl")
 include("components/SteadyStateNODE/psid.jl")
 include("components/CurrentPlayback/psy.jl")
