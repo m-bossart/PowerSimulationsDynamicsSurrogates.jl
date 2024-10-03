@@ -466,6 +466,10 @@ function solver_map(key)
             DelayDiffEq.MethodOfSteps(OrdinaryDiffEq.Rodas5(autodiff = false)),
         "MethodOfSteps(Rodas5P(autodiff=false))" =>
             DelayDiffEq.MethodOfSteps(OrdinaryDiffEq.Rodas5P(autodiff = false)),
+        "MethodOfSteps(Rodas5)" =>
+            DelayDiffEq.MethodOfSteps(OrdinaryDiffEq.Rodas5()),
+        "MethodOfSteps(Rodas5P)" =>
+            DelayDiffEq.MethodOfSteps(OrdinaryDiffEq.Rodas5P()),
         #"IDA(linear_solver = :KLU)" => Sundials.IDA(linear_solver = :KLU),
     )
     return d[key]

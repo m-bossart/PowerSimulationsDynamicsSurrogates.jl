@@ -65,7 +65,7 @@ end
     #display(plt)
 end
 
-@testset "Build and Execute IdealTerminalDataSurrogate Simulation with Pref Perturbation " begin
+@testset "Build and Execute IdealTerminalDataSurrogate Simulation with BranchTrip Perturbation " begin
     tspan = (0.0, 10.0)
     Random.seed!(1234)
     tfault = 5.0
