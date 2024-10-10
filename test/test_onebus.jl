@@ -1,6 +1,6 @@
 @testset "one bus system" begin
     sys = System("test/data_tests/OneBus.raw")
-    slack_bus = [b for b in PSY.get_components(Bus, sys) if b.bustype == BusTypes.REF][1]
+    slack_bus = [b for b in PSY.get_components(Bus, sys) if b.bustype == ACBusTypes.REF][1]
     inf_source = Source(
         name = "InfBus", #name
         available = true, #availability

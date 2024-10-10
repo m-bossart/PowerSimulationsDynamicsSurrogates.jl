@@ -210,7 +210,7 @@ function update_operating_point!(
             @error "Device from auxiliary system not found in main system"
         end
         PSY.set_active_power!(g_new, PSY.get_active_power(g_new) * generation_scale)
-        if PSY.get_bustype(PSY.get_bus(g_new)) == PSY.BusTypes.PQ
+        if PSY.get_bustype(PSY.get_bus(g_new)) == PSY.ACBusTypes.PQ
             PSY.set_reactive_power!(g_new, PSY.get_reactive_power(g_new) * generation_scale)
         end
     end
@@ -221,7 +221,7 @@ function update_operating_point!(
             @error "Device from auxiliary system not found in main system"
         end
         PSY.set_active_power!(g_new, PSY.get_active_power(g_new) * generation_scale)
-        if PSY.get_bustype(PSY.get_bus(g_new)) == PSY.BusTypes.PQ
+        if PSY.get_bustype(PSY.get_bus(g_new)) == PSY.ACBusTypes.PQ
             PSY.set_reactive_power!(g_new, PSY.get_reactive_power(g_new) * generation_scale)
         end
     end
@@ -291,16 +291,14 @@ function update_operating_point!(
         if g_new === nothing
             @error "Device from auxiliary system not found in main system"
         end
-        PSY.set_active_power!(
-            g_new,
+        P =
             rand() * (generator_power_range[2] - generator_power_range[1]) +
-            generator_power_range[1],
-        )
-        PSY.set_magnitude!(
-            PSY.get_bus(g_new),
+            generator_power_range[1]
+        PSY.set_active_power!(g_new, P)
+        Vm =
             rand() * (generator_voltage_range[2] - generator_voltage_range[1]) +
-            generator_voltage_range[1],
-        )
+            generator_voltage_range[1]
+        PSY.set_magnitude!(PSY.get_bus(g_new), Vm)
     end
     for l in PSY.get_components(PSY.ElectricLoad, sys_aux)  #Search in sys_aux, implement in sys
         l_name = PSY.get_name(l)
@@ -309,20 +307,18 @@ function update_operating_point!(
             @error "Device from auxiliary system not found in main system"
         end
         if typeof(l) <: PSY.StaticLoad
-            PSY.set_impedance_active_power!(
-                l_new,
+            Pload =
                 PSY.get_impedance_active_power(l_new) * (
                     rand() * (load_multiplier_range[2] - load_multiplier_range[1]) +
                     load_multiplier_range[1]
-                ),
-            )
-            PSY.set_impedance_reactive_power!(
-                l_new,
+                )
+            PSY.set_impedance_active_power!(l_new, Pload)
+            Qload =
                 PSY.get_impedance_reactive_power(l_new) * (
                     rand() * (load_multiplier_range[2] - load_multiplier_range[1]) +
                     load_multiplier_range[1]
-                ),
-            )
+                )
+            PSY.set_impedance_reactive_power!(l_new, Qload)
         elseif typeof(l) <: PSY.FixedAdmittance
             PSY.set_Y!(
                 l_new,

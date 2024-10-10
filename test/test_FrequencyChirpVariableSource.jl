@@ -2,8 +2,8 @@ include(joinpath(dirname(@__FILE__), "data_tests/dynamic_test_data.jl"))
 
 @testset "PSY Frequency Chirp Source 1" begin
     sys = PSY.System(100)
-    bus = PSY.Bus(nothing)
-    PSY.set_bustype!(bus, BusTypes.SLACK)
+    bus = PSY.ACBus(nothing)
+    PSY.set_bustype!(bus, ACBusTypes.SLACK)
     PSY.add_component!(sys, bus)
     source = PSY.Source(nothing)
     PSY.set_bus!(source, bus)
@@ -15,8 +15,8 @@ end
 
 @testset "PSY Frequency Chirp Source 2" begin
     sys = PSY.System(100)
-    bus = PSY.Bus(nothing)
-    PSY.set_bustype!(bus, BusTypes.REF)
+    bus = PSY.ACBus(nothing)
+    PSY.set_bustype!(bus, ACBusTypes.REF)
     PSY.add_component!(sys, bus)
     source = PSY.Source(nothing)
     PSY.set_bus!(source, bus)
@@ -45,11 +45,11 @@ end
 function add_source_to_ref(sys::PSY.System)
     for g in PSY.get_components(StaticInjection, sys)
         isa(g, ElectricLoad) && continue
-        g.bus.bustype == BusTypes.REF &&
+        g.bus.bustype == ACBusTypes.REF &&
             error("A device is already attached to the REF bus")
     end
 
-    slack_bus = [b for b in PSY.get_components(Bus, sys) if b.bustype == BusTypes.REF][1]
+    slack_bus = [b for b in PSY.get_components(Bus, sys) if b.bustype == ACBusTypes.REF][1]
     inf_source = Source(
         name = "InfBus", #name
         available = true, #availability

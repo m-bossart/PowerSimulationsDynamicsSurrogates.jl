@@ -1,98 +1,69 @@
 """
-    mutable struct TerminalDataSurrogate{
-        M <: DataDrivenModelArchitecture,
-        D <: PSY.DynamicInjection,
-    } <: LearnedSolutionSurrogate
+    mutable struct TerminalDataSurrogate <: DirectSolutionSurrogate <: PSID.DynamicInjection
         name::String
-        available::Bool
-        bus::PSY.Bus
-        active_power::Float64
-        reactive_power::Float64
-        active_power_limits::PSY.MinMax
-        reactive_power_limits::Union{Nothing, PSY.MinMax}
-        internal_voltage::Float64  
-        internal_angle::Float64     
-        model_architecture::M      
-        underlying_dynamic_model::D 
-        n_past_timesteps::Int64
-        services::Vector{PSY.Service}
+        τ::Float64  
+        window_size::Int64  
+        base_power::Float64
+        states::Vector{Symbol}
+        n_states::Int
         ext::Dict{String, Any}
-        internal::IS.InfrastructureSystemsInternal
+        internal::InfrastructureSystemsInternal
     end
 
 Experimental surrogate
 
 # Arguments
 - `name::String`
-- `available::Bool`: 
-- `bus::Bus`: 
-- `active_power::Float64`: 
-- `reactive_power::Float64`:
-- `active_power_limits::PSY.MinMax`:
-- `reactive_power_limits::Union{Nothing, PSY.MinMax}`:
-- `internal_voltage::Float64`:
-- `internal_angle::Float64`:
-- `model_architecture::M` :     
-- `underlying_dynamic_model::D`: 
-- `n_past_timesteps::Int64`: 
-- `services::Vector{Service}`
+- `τ::Float64`: The fixed time interval between delayed inputs
+- `window_size::Int64`: The number of delaye inputs
+- `base_power::Float64`: Base power
+- `states::Vector{Symbol}`: 
+- `n_states::Int`:
+- `n_states::Vector{StateTypes}`: 
 - `ext::Dict{String, Any}`
 - `internal::InfrastructureSystemsInternal`: power system internal reference, do not modify
 """
-mutable struct TerminalDataSurrogate{
-    M <: DataDrivenModelArchitecture,
-    D <: PSY.DynamicInjection,
-} <: LearnedSolutionSurrogate
+mutable struct TerminalDataSurrogate <: DirectSolutionSurrogate
     name::String
-    available::Bool
-    bus::PSY.Bus
-    active_power::Float64
-    reactive_power::Float64
-    active_power_limits::PSY.MinMax
-    reactive_power_limits::Union{Nothing, PSY.MinMax}
-    internal_voltage::Float64
-    internal_angle::Float64
-    model_architecture::M
-    underlying_dynamic_model::D
-    θ_ref_frame::Float64
-    n_past_timesteps::Int64
-    services::Vector{PSY.Service}
+    τ::Float64
+    window_size::Int64
+    steadystate_offset_correction::Bool
+    trained_voltage_range::Tuple{Float64, Float64}
+    fc::Float64
+    base_power::Float64
+    states::Vector{Symbol}
+    n_states::Int
+    states_types::Vector{PSY.StateTypes}
     ext::Dict{String, Any}
     internal::IS.InfrastructureSystemsInternal
 end
 
 function TerminalDataSurrogate(
     name,
-    available,
-    bus,
-    active_power,
-    reactive_power,
-    active_power_limits,
-    reactive_power_limits,
-    internal_voltage,
-    internal_angle,
-    model_architecture,
-    underlying_dynamic_model,
-    θ_ref_frame,
-    n_past_timesteps,
-    services = PSY.Service[],
+    τ = 0.0,
+    window_size = 1,
+    steadystate_offset_correction = true,
+    trained_voltage_range = (0.0, 1.0),
+    fc = 0.0,
+    base_power = 100.0,
     ext = Dict{String, Any}(),
 )
     TerminalDataSurrogate(
         name,
-        available,
-        bus,
-        active_power,
-        reactive_power,
-        active_power_limits,
-        reactive_power_limits,
-        internal_voltage,
-        internal_angle,
-        model_architecture,
-        underlying_dynamic_model,
-        θ_ref_frame,
-        n_past_timesteps,
-        services,
+        τ,
+        window_size,
+        steadystate_offset_correction,
+        trained_voltage_range,
+        fc,
+        base_power,
+        [:ir, :ii, :vr, :vi],
+        4,
+        [
+            PSY.StateTypes.Differential,
+            PSY.StateTypes.Differential,
+            PSY.StateTypes.Differential,
+            PSY.StateTypes.Differential,
+        ],
         ext,
         IS.InfrastructureSystemsInternal(),
     )
@@ -100,38 +71,36 @@ end
 
 function TerminalDataSurrogate(;
     name,
-    available,
-    bus,
-    active_power,
-    reactive_power,
-    active_power_limits,
-    reactive_power_limits,
-    internal_voltage,
-    internal_angle,
-    model_architecture,
-    underlying_dynamic_model,
-    θ_ref_frame,
-    n_past_timesteps,
-    services = PSY.Service[],
+    τ = 0.0,
+    window_size = 1,
+    steadystate_offset_correction = true,
+    trained_voltage_range = (0.0, 1.0),
+    fc = 0.0,
+    base_power = 100.0,
+    states = [:ir, :ii, :vr, :vi],
+    n_states = 4,
+    states_types = [
+        PSY.StateTypes.Differential,
+        PSY.StateTypes.Differential,
+        PSY.StateTypes.Differential,
+        PSY.StateTypes.Differential,
+    ],
     ext = Dict{String, Any}(),
+    internal = IS.InfrastructureSystemsInternal(),
 )
     TerminalDataSurrogate(
         name,
-        available,
-        bus,
-        active_power,
-        reactive_power,
-        active_power_limits,
-        reactive_power_limits,
-        internal_voltage,
-        internal_angle,
-        model_architecture,
-        underlying_dynamic_model,
-        θ_ref_frame,
-        n_past_timesteps,
-        services,
+        τ,
+        window_size,
+        steadystate_offset_correction,
+        trained_voltage_range,
+        fc,
+        base_power,
+        states,
+        n_states,
+        states_types,
         ext,
-        IS.InfrastructureSystemsInternal(),
+        internal,
     )
 end
 
@@ -139,74 +108,31 @@ end
 function TerminalDataSurrogate(::Nothing)
     TerminalDataSurrogate(;
         name = "init",
-        available = false,
-        bus = PSY.Bus(nothing),
-        active_power = 0.0,
-        reactive_power = 0.0,
-        active_power_limits = (min = 0.0, max = 1.0),
-        reactive_power_limits = (min = 0.0, max = 1.0),
-        internal_voltage = 0.0,
-        internal_angle = 0.0,
-        model_architecture = FullyConnected(nothing),
-        underlying_dynamic_model = PSY.GenericDER(nothing),
-        θ_ref_frame = 0.0,
-        n_past_timesteps = 0,
-        services = PSY.Service[],
+        τ = 0.0,
+        window_size = 1,
+        steadystate_offset_correction = true,
+        trained_voltage_range = (0.0, 1.0),
+        fc = 0.0,
+        base_power = 100.0,
         ext = Dict{String, Any}(),
     )
 end
 
 #If function exists in PSY, overload it here. 
-"""Get [`TerminalDataSurrogate`](@ref) `name`."""
 PSY.get_name(value::TerminalDataSurrogate) = value.name
-"""Get [`TerminalDataSurrogate`](@ref) `available`."""
-PSY.get_available(value::TerminalDataSurrogate) = value.available
-"""Get [`TerminalDataSurrogate`](@ref) `bus`."""
-PSY.get_bus(value::TerminalDataSurrogate) = value.bus
-"""Get [`TerminalDataSurrogate`](@ref) `active_power`."""
-PSY.get_active_power(value::TerminalDataSurrogate) = value.active_power
-"""Get [`TerminalDataSurrogate`](@ref) `reactive_power`."""
-PSY.get_reactive_power(value::TerminalDataSurrogate) = value.reactive_power
-"""Get [`TerminalDataSurrogate`](@ref) `active_power_limits`."""
-PSY.get_active_power_limits(value::TerminalDataSurrogate) = value.active_power_limits
-"""Get [`TerminalDataSurrogate`](@ref) `reactive_power_limits`."""
-PSY.get_reactive_power_limits(value::TerminalDataSurrogate) = value.reactive_power_limits
-"""Get [`TerminalDataSurrogate`](@ref) `internal_voltage`."""
-PSY.get_internal_voltage(value::TerminalDataSurrogate) = value.internal_voltage
-"""Get [`TerminalDataSurrogate`](@ref) `internal_angle`."""
-PSY.get_internal_angle(value::TerminalDataSurrogate) = value.internal_angle
-"""Get [`FullyConnected`](@ref) `model_architecture`."""
-get_model_architecture(value::TerminalDataSurrogate) = value.model_architecture
-"""Get [`FullyConnected`](@ref) `underlying_dynamic_model`."""
-get_underlying_dynamic_model(value::TerminalDataSurrogate) = value.underlying_dynamic_model
-"""Get [`FullyConnected`](@ref) `θ_ref_frame`."""
-get_θ_ref_frame(value::TerminalDataSurrogate) = value.θ_ref_frame
-"""Get [`TerminalDataSurrogate`](@ref) `n_past_timesteps`."""
-get_n_past_timesteps(value::TerminalDataSurrogate) = value.n_past_timesteps
-"""Get [`TerminalDataSurrogate`](@ref) `ext`."""
+get_τ(value::TerminalDataSurrogate) = value.τ
+get_window_size(value::TerminalDataSurrogate) = value.window_size
+get_steadystate_offset_correction(value::TerminalDataSurrogate) =
+    value.steadystate_offset_correction
+get_trained_voltage_range(value::TerminalDataSurrogate) = value.trained_voltage_range
+get_fc(value::TerminalDataSurrogate) = value.fc
+PSY.get_base_power(value::TerminalDataSurrogate) = value.base_power
+PSY.get_states(value::TerminalDataSurrogate) = value.states
+PSY.get_n_states(value::TerminalDataSurrogate) = value.n_states
+PSY.get_states_types(value::TerminalDataSurrogate) = value.states_types
 PSY.get_ext(value::TerminalDataSurrogate) = value.ext
-"""Get [`TerminalDataSurrogate`](@ref) `internal`."""
 PSY.get_internal(value::TerminalDataSurrogate) = value.internal
 
-"""Set [`TerminalDataSurrogate`](@ref) `available`."""
-PSY.set_available!(value::TerminalDataSurrogate, val) = value.available = val
-"""Set [`TerminalDataSurrogate`](@ref) `bus`."""
-PSY.set_bus!(value::TerminalDataSurrogate, val) = value.bus = val
-"""Set [`TerminalDataSurrogate`](@ref) `active_power`."""
-PSY.set_active_power!(value::TerminalDataSurrogate, val) = value.active_power = val
-"""Set [`TerminalDataSurrogate`](@ref) `reactive_power`."""
-PSY.set_reactive_power!(value::TerminalDataSurrogate, val) = value.reactive_power = val
-"""Set [`TerminalDataSurrogate`](@ref) `active_power_limits`."""
-PSY.set_active_power_limits!(value::TerminalDataSurrogate, val) =
-    value.active_power_limits = val
-"""Set [`TerminalDataSurrogate`](@ref) `reactive_power_limits`."""
-PSY.set_reactive_power_limits!(value::TerminalDataSurrogate, val) =
-    value.reactive_power_limits = val
-"""Set [`TerminalDataSurrogate`](@ref) `internal_voltage`."""
-PSY.set_internal_voltage!(value::TerminalDataSurrogate, val) = value.internal_voltage = val
-"""Set [`TerminalDataSurrogate`](@ref) `internal_angle`."""
-PSY.set_internal_angle!(value::TerminalDataSurrogate, val) = value.internal_angle = val
-"""Get [`FullyConnected`](@ref) `θ_ref_frame`."""
-set_θ_ref_frame!(value::TerminalDataSurrogate, val) = value.θ_ref_frame = val
-"""Set [`TerminalDataSurrogate`](@ref) `ext`."""
+PSY.set_base_power!(value::TerminalDataSurrogate, val) = value.base_power = val
 PSY.set_ext!(value::TerminalDataSurrogate, val) = value.ext = val
+set_fc!(value::TerminalDataSurrogate, val) = value.fc = val

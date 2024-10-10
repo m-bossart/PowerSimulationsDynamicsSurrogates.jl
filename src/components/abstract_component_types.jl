@@ -1,5 +1,6 @@
-abstract type LearnedDynamicsSurrogate <: PSY.DynamicInjection end
-abstract type LearnedSolutionSurrogate <: PSY.StaticInjection end
+abstract type DataDrivenSurrogate <: PSY.DynamicInjection end
+abstract type TimeSteppingSurrogate <: DataDrivenSurrogate end
+abstract type DirectSolutionSurrogate <: DataDrivenSurrogate end
 
 abstract type SurrogateModelParams end
 
@@ -105,67 +106,32 @@ function SteadyStateNODEParams(;
     )
 end
 
-mutable struct SteadyStateNODEObsParams <: SurrogateModelParams
+mutable struct SourceParams <: SurrogateModelParams
     type::String
     name::String
-    n_ports::Int64
-    initializer_layer_type::String
-    initializer_n_layer::Int64
-    initializer_width_layers_relative_input::Int64
-    initializer_activation::String
-    dynamic_layer_type::String
-    dynamic_hidden_states::Int64
-    dynamic_n_layer::Int64
-    dynamic_width_layers_relative_input::Int64
-    dynamic_activation::String
-    dynamic_σ2_initialization::Float64
-    dynamic_last_layer_bias::Bool
-    observation_layer_type::String
-    observation_n_layer::Int64
-    observation_width_layers_relative_input::Int64
-    observation_activation::String
 end
 
-function SteadyStateNODEObsParams(;
-    type = "SteadyStateNODEObsParams",
-    name = "surrogate-SteadyStateNODEObs",
-    n_ports = 1,
-    initializer_layer_type = "dense",
-    initializer_n_layer = 0,
-    initializer_width_layers_relative_input = 0,
-    initializer_activation = "tanh",
-    dynamic_layer_type = "dense",
-    dynamic_hidden_states = 5,
-    dynamic_n_layer = 1,
-    dynamic_width_layers_relative_input = 4,
-    dynamic_activation = "tanh",
-    dynamic_σ2_initialization = 0.0,
-    dynamic_last_layer_bias = false,
-    observation_layer_type = "dense",
-    observation_n_layer = 0,
-    observation_width_layers_relative_input = 0,
-    observation_activation = "tanh",
+function SourceParams(; type = "SourceParams", name = "surrogate-Source")
+    SourceParams(type, name)
+end
+
+mutable struct SourceLoadParams <: SurrogateModelParams
+    type::String
+    name::String
+end
+function SourceLoadParams(; type = "SourceLoadParams", name = "surrogate-SourceLoad")
+    SourceLoadParams(type, name)
+end
+
+mutable struct TerminalDataSurrogateParams <: SurrogateModelParams
+    type::String
+    name::String
+end
+function TerminalDataSurrogateParams(;
+    type = "TerminalDataSurrogateParams",
+    name = "surrogate-TerminalDataSurrogate",
 )
-    SteadyStateNODEObsParams(
-        type,
-        name,
-        n_ports,
-        initializer_layer_type,
-        initializer_n_layer,
-        initializer_width_layers_relative_input,
-        initializer_activation,
-        dynamic_layer_type,
-        dynamic_hidden_states,
-        dynamic_n_layer,
-        dynamic_width_layers_relative_input,
-        dynamic_activation,
-        dynamic_σ2_initialization,
-        dynamic_last_layer_bias,
-        observation_layer_type,
-        observation_n_layer,
-        observation_width_layers_relative_input,
-        observation_activation,
-    )
+    TerminalDataSurrogateParams(type, name)
 end
 
 mutable struct ClassicGenParams <: SurrogateModelParams
