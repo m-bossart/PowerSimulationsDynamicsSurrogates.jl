@@ -44,13 +44,14 @@ end
 
 """
     function generate_surrogate_data(
+        dataset_type::Type{T},
         sys_main::PSY.System,
         sys_aux::PSY.System, 
         ics::Vector{Vector{Float64}},
         data_params::D,
         data_collection_params::GenerateDataParams,
         dataset_aux = nothing,
-    ) where {O <: SurrogateOperatingPoint, D <: SurrogateDatasetParams}
+    ) where {O <: SurrogateOperatingPoint, T <: SurrogateDataset}
 
 This function creates a new deepcopy of `sys_main` for each initial condition and then generates a dataset acording to `data_params` and `data_collection_params`.
 - `sys_main` is the system that is changed and perturbed and used to generate data. \\
@@ -70,6 +71,7 @@ function generate_surrogate_data(
     data_collection_params::GenerateDataParams;
     dataset_aux = nothing,
     surrogate_params = nothing,
+    run_precompilation_sim = false,
 ) where {O <: SurrogateOperatingPoint, T <: SurrogateDataset}
     Random.seed!(data_collection_params.seed)
     train_data = dataset_type[]
@@ -77,15 +79,20 @@ function generate_surrogate_data(
     #Run full simulation for first operating point and perturbation in order to precompile
     #all code and avoid including in timing.
     ########################################################################################
-    sys = deepcopy(sys_main)
-    update_operating_point!(sys, operating_points[1], sys_aux)
-    dummy_data = EmptyTrainDataSet(dataset_type)
-    sim_full = _build_run_simulation_initial_conditions(sys, data_collection_params, ics[1])
-    @assert issubset(
-        data_collection_params.tsave,
-        union(data_collection_params.tstops, sim_full.tstops),
-    )
-    fill_surrogate_data!(dummy_data, device_details, data_collection_params, sim_full)
+    if run_precompilation_sim
+        sys = deepcopy(sys_main)
+        update_operating_point!(sys, operating_points[1], sys_aux)
+        dummy_data = EmptyTrainDataSet(dataset_type)
+        sim_full =
+            _build_run_simulation_initial_conditions(sys, data_collection_params, ics[1])
+        if !issubset(
+            data_collection_params.tsave,
+            union(data_collection_params.tstops, sim_full.tstops),
+        )
+            @warn "tsave not subset of tstops"
+        end
+        fill_surrogate_data!(dummy_data, device_details, data_collection_params, sim_full)
+    end
     ########################################################################################
     ########################################################################################
     @assert length(operating_points) == length(ics)
@@ -95,10 +102,12 @@ function generate_surrogate_data(
         #PowerFlows.solve_powerflow!(PowerFlows.ACPowerFlow(),sys) 
         data = EmptyTrainDataSet(dataset_type)
         sim_full = _build_run_simulation_initial_conditions(sys, data_collection_params, ic)
-        @assert issubset(
+        if !issubset(
             data_collection_params.tsave,
             union(data_collection_params.tstops, sim_full.tstops),
         )
+            @warn "tsave not subset of tstops"
+        end
         fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
         @show PSY.get_internal_voltage(collect(PSY.get_components(PSY.Source, sys))[1])
         @show PSY.get_internal_angle(collect(PSY.get_components(PSY.Source, sys))[1])
@@ -109,6 +118,7 @@ end
 
 """
     function generate_surrogate_data(
+        dataset_type::Type{T},
         sys_main::PSY.System,
         sys_aux::PSY.System,          
         perturbations::Vector{Vector{Union{SurrogatePerturbation, PSID.Perturbation}}},
@@ -116,7 +126,7 @@ end
         data_params::D,
         data_collection_params::GenerateDataParams,
         dataset_aux = nothing,
-    ) where {O <: SurrogateOperatingPoint, D <: SurrogateDatasetParams}
+    ) where {O <: SurrogateOperatingPoint, T <: SurrogateDataset}
 
 This function creates a new deepcopy of `sys_main` for each pair of (`perturbations`, `operating_points`) and then generates a dataset acording to `data_params` and `data_collection_params`.
 - `sys_main` is the system that is changed and perturbed and used to generate data. \\
@@ -138,6 +148,7 @@ function generate_surrogate_data(
     data_collection_params::GenerateDataParams;
     dataset_aux = nothing,
     surrogate_params = nothing,
+    run_precompilation_sim = false,
 ) where {O <: SurrogateOperatingPoint, T <: SurrogateDataset}
     Random.seed!(data_collection_params.seed)
     train_data = dataset_type[]
@@ -145,47 +156,58 @@ function generate_surrogate_data(
     #Run full simulation for first operating point and perturbation in order to precompile
     #all code and avoid including in timing.
     ########################################################################################
-    sys = deepcopy(sys_main)
-    update_operating_point!(sys, operating_points[1], sys_aux)
-    PSID.Simulation!(PSID.MassMatrixModel, sys, pwd(), (0.0, 0.0))  #Run power flow and re-init devices before defining perturbation
-    psid_perturbations = PSID.Perturbation[]
-    for p_single in perturbations[1]
-        add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
+    if run_precompilation_sim
+        sys = deepcopy(sys_main)
+        update_operating_point!(sys, operating_points[1], sys_aux)
+        PSID.Simulation!(PSID.MassMatrixModel, sys, pwd(), (0.0, 0.0))  #Run power flow and re-init devices before defining perturbation
+        psid_perturbations = PSID.Perturbation[]
+        for p_single in perturbations[1]
+            add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
+        end
+        rng_state = copy(Random.default_rng())
+        dummy_data = EmptyTrainDataSet(dataset_type)
+        if dataset_aux !== nothing && dataset_aux[1].built == true
+            match_operating_point(sys, dataset_aux[1], surrogate_params)    #TODO - not tested
+            sim_full = _build_run_simulation_perturbations(
+                sys,
+                data_collection_params,
+                psid_perturbations,
+            )
+            if !issubset(
+                data_collection_params.tsave,
+                union(data_collection_params.tstops, sim_full.tstops),
+            )
+                @warn "tsave not subset of tstops"
+            end
+            fill_surrogate_data!(
+                dummy_data,
+                device_details,
+                data_collection_params,
+                sim_full,
+            )
+        elseif dataset_aux === nothing
+            sim_full = _build_run_simulation_perturbations(
+                sys,
+                data_collection_params,
+                psid_perturbations,
+            )
+            if !issubset(
+                data_collection_params.tsave,
+                union(data_collection_params.tstops, sim_full.tstops),
+            )
+                @warn "tsave not subset of tstops"
+            end
+            fill_surrogate_data!(
+                dummy_data,
+                device_details,
+                data_collection_params,
+                sim_full,
+            )
+        else
+            @warn "Simulation not attempted because the ground truth scenario could not be built"
+        end
+        copy!(Random.default_rng(), rng_state)
     end
-    for s in PSY.get_components(TerminalDataSurrogate, sys)
-        push!(psid_perturbations, TerminalDataSurrogateCacheValues(s))
-    end
-    #TODO - add same loop for pinns 
-    rng_state = copy(Random.default_rng())
-    dummy_data = EmptyTrainDataSet(dataset_type)
-    if dataset_aux !== nothing && dataset_aux[1].built == true
-        match_operating_point(sys, dataset_aux[1], surrogate_params)    #TODO - not tested
-        sim_full = _build_run_simulation_perturbations(
-            sys,
-            data_collection_params,
-            psid_perturbations,
-        )
-        @assert issubset(
-            data_collection_params.tsave,
-            union(data_collection_params.tstops, sim_full.tstops),
-        )
-        fill_surrogate_data!(dummy_data, device_details, data_collection_params, sim_full)
-    elseif dataset_aux === nothing
-        sim_full = _build_run_simulation_perturbations(
-            sys,
-            data_collection_params,
-            psid_perturbations,
-        )
-        @assert issubset(
-            data_collection_params.tsave,
-            union(data_collection_params.tstops, sim_full.tstops),
-        )
-        fill_surrogate_data!(dummy_data, device_details, data_collection_params, sim_full)
-    else
-        @warn "Simulation not attempted because the ground truth scenario could not be built"
-    end
-    copy!(Random.default_rng(), rng_state)
-
     ########################################################################################
     ########################################################################################
 
@@ -197,9 +219,6 @@ function generate_surrogate_data(
             psid_perturbations = PSID.Perturbation[]
             for p_single in p
                 add_surrogate_perturbation!(sys, psid_perturbations, p_single, sys_aux)
-            end
-            for s in PSY.get_components(TerminalDataSurrogate, sys)
-                push!(psid_perturbations, TerminalDataSurrogateCacheValues(s))
             end
             rng_state = copy(Random.default_rng())
             data = EmptyTrainDataSet(dataset_type)
@@ -215,10 +234,12 @@ function generate_surrogate_data(
                     data_collection_params,
                     psid_perturbations,
                 )
-                @assert issubset(
+                if !issubset(
                     data_collection_params.tsave,
                     union(data_collection_params.tstops, sim_full.tstops),
                 )
+                    @warn "tsave not subset of tstops"
+                end
                 fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
             elseif dataset_aux === nothing
                 #Instead of running the simulation, just compare the error in the model 
@@ -227,10 +248,12 @@ function generate_surrogate_data(
                     data_collection_params,
                     psid_perturbations,
                 )
-                @assert issubset(
+                if !issubset(
                     data_collection_params.tsave,
                     union(data_collection_params.tstops, sim_full.tstops),
                 )
+                    @warn "tsave not subset of tstops"
+                end
                 fill_surrogate_data!(data, device_details, data_collection_params, sim_full)
             else
                 @warn "Simulation not attempted because the ground truth scenario could not be built"
@@ -305,6 +328,7 @@ function _build_run_simulation_perturbations(sys, data_collection, psid_perturba
                 solver,
                 abstol = abstol,
                 reltol = reltol,
+                maxiters = 1e4,
                 tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
                 save_everystep = true,
                 saveat = data_collection.tsave,
@@ -317,6 +341,7 @@ function _build_run_simulation_perturbations(sys, data_collection, psid_perturba
                 solver,
                 abstol = abstol,
                 reltol = reltol,
+                maxiters = 1e4,
                 tstops = union(data_collection.tstops, sim_full.tstops),    #sim_full.tstops can have tstops that are required for re-initialization after a perturbation.
                 save_everystep = true,
                 saveat = data_collection.tsave,

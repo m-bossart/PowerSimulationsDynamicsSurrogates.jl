@@ -35,7 +35,7 @@ function fill_surrogate_data!(
         bus_data_dict = Dict{Int64, Dict{Symbol, AbstractArray}}()
         @show device_details
         for (bus_name, _) in device_details
-            bus_number = PSY.get_number(PSY.get_component(PSY.Bus, sys, bus_name))
+            bus_number = PSY.get_number(PSY.get_component(PSY.ACBus, sys, bus_name))
             _fill_bus_data!(
                 bus_data_dict,
                 bus_number,

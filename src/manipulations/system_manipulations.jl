@@ -21,7 +21,7 @@ function create_validation_system_from_buses(
         PSY.get_number.(
             PSY.get_components(
                 x -> PSY.get_number(x) ∉ surrogate_bus_numbers,
-                PSY.Bus,
+                PSY.ACBus,
                 sys_full,
             ),
         )
@@ -76,7 +76,7 @@ function create_train_system_from_buses(
         PSY.get_number.(
             PSY.get_components(
                 x -> PSY.get_number(x) ∉ surrogate_bus_numbers,
-                PSY.Bus,
+                PSY.ACBus,
                 sys_full,
             ),
         )
@@ -112,28 +112,28 @@ function _add_sources!(sys, connecting_branch_data, location)
     bus_numbers_powers = Dict()
     for (ix, data) in enumerate(connecting_branch_data)
         if (data.inner_terminal == :from) && (location == :inner)   #Building the validation system
-            bus = PSY.get_component(PSY.Bus, sys, data.from_bus_name)
+            bus = PSY.get_component(PSY.ACBus, sys, data.from_bus_name)
             if !haskey(bus_numbers_powers, bus)
                 bus_numbers_powers[bus] = data.P_from_to
             else
                 bus_numbers_powers[bus] += data.P_from_to
             end
         elseif (data.inner_terminal == :to) && (location == :outer) #Building the train system
-            bus = PSY.get_component(PSY.Bus, sys, data.from_bus_name)
+            bus = PSY.get_component(PSY.ACBus, sys, data.from_bus_name)
             if !haskey(bus_numbers_powers, bus)
                 bus_numbers_powers[bus] = data.P_from_to * -1
             else
                 bus_numbers_powers[bus] += data.P_from_to * -1
             end
         elseif (data.inner_terminal == :to) && (location == :inner)  #Building the validation system
-            bus = PSY.get_component(PSY.Bus, sys, data.to_bus_name)
+            bus = PSY.get_component(PSY.ACBus, sys, data.to_bus_name)
             if !haskey(bus_numbers_powers, bus)
                 bus_numbers_powers[bus] = data.P_to_from
             else
                 bus_numbers_powers[bus] += data.P_to_from
             end
         elseif (data.inner_terminal == :from) && (location == :outer) #Building the train system
-            bus = PSY.get_component(PSY.Bus, sys, data.to_bus_name)
+            bus = PSY.get_component(PSY.ACBus, sys, data.to_bus_name)
             if !haskey(bus_numbers_powers, bus)
                 bus_numbers_powers[bus] = data.P_to_from * -1
             else
@@ -145,7 +145,8 @@ function _add_sources!(sys, connecting_branch_data, location)
     end
     for (ix, (bus, active_power)) in enumerate(bus_numbers_powers)
         @assert bus !== nothing
-        PSY.get_bustype(bus) !== PSY.BusTypes.REF && PSY.set_bustype!(bus, PSY.BusTypes.PV)
+        PSY.get_bustype(bus) !== PSY.ACBusTypes.REF &&
+            PSY.set_bustype!(bus, PSY.ACBusTypes.PV)
         if length(
             collect(PSY.get_components(x -> PSY.get_bus(x) == bus, PSY.Source, sys)),
         ) == 0  #If there is already a source at bus, don't build another one (double line case) 
@@ -166,19 +167,23 @@ function _add_sources!(sys, connecting_branch_data, location)
 end
 function _ensure_a_reference_bus!(sys)
     reference_buses =
-        PSY.get_components(x -> (PSY.get_bustype(x) == PSY.BusTypes.REF), PSY.Bus, sys)
+        PSY.get_components(x -> (PSY.get_bustype(x) == PSY.ACBusTypes.REF), PSY.ACBus, sys)
     if length(reference_buses) == 0
-        first_bus = collect(PSY.get_components(PSY.Bus, sys))[1]
-        PSY.set_bustype!(first_bus, PSY.BusTypes.REF)
+        first_bus = collect(PSY.get_components(PSY.ACBus, sys))[1]
+        PSY.set_bustype!(first_bus, PSY.ACBusTypes.REF)
         @assert length(
-            PSY.get_components(x -> (PSY.get_bustype(x) == PSY.BusTypes.REF), PSY.Bus, sys),
+            PSY.get_components(
+                x -> (PSY.get_bustype(x) == PSY.ACBusTypes.REF),
+                PSY.ACBus,
+                sys,
+            ),
         ) == 1
     end
 end
 
 function _check_connectivity(sys, bus_numbers)
     for b in bus_numbers
-        bus = collect(PSY.get_components(x -> PSY.get_number(x) == b, PSY.Bus, sys))[1]
+        bus = collect(PSY.get_components(x -> PSY.get_number(x) == b, PSY.ACBus, sys))[1]
         connected_branches = collect(
             PSY.get_components(
                 x ->
@@ -218,7 +223,8 @@ function _remove_static_and_dynamic_injectors!(sys, bus_numbers)
 end
 
 function _remove_buses!(sys, bus_numbers)
-    buses = collect(PSY.get_components(x -> PSY.get_number(x) ∈ bus_numbers, PSY.Bus, sys))
+    buses =
+        collect(PSY.get_components(x -> PSY.get_number(x) ∈ bus_numbers, PSY.ACBus, sys))
     for b in buses
         PSY.remove_component!(sys, b)
     end
@@ -226,19 +232,22 @@ end
 
 #Removes only the branches within the bus_numbers (both sides)
 function _remove_internal_branches!(sys, bus_numbers)
-    internal_branches = collect(
+    internal_arcs = collect(
         PSY.get_components(
             x ->
-                (PSY.get_number(PSY.get_from(PSY.get_arc(x)))) ∈ bus_numbers &&
-                    (PSY.get_number(PSY.get_to(PSY.get_arc(x)))) ∈ bus_numbers,
-            PSY.Branch,
+                (PSY.get_number(PSY.get_from(x))) ∈ bus_numbers &&
+                    (PSY.get_number(PSY.get_to(x))) ∈ bus_numbers,
+            PSY.Arc,
             sys,
         ),
     )
-    for branch in internal_branches
-        arc = PSY.get_arc(branch)
+    for arc in internal_arcs
+        corresponding_branches =
+            PSY.get_components(x -> PSY.get_arc(x) == arc, PSY.Branch, sys)
         PSY.remove_component!(sys, arc)
-        PSY.remove_component!(sys, branch)
+        for branch in corresponding_branches
+            PSY.remove_component!(sys, branch)
+        end
     end
 end
 

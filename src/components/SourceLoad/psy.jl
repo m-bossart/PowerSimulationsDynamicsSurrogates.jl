@@ -1,7 +1,7 @@
 mutable struct SourceLoad <: PSY.StaticInjection
     name::String
     available::Bool
-    bus::PSY.Bus
+    bus::PSY.ACBus
     base_power::Float64
     constant_active_power::Float64
     constant_reactive_power::Float64
@@ -117,8 +117,8 @@ function SourceLoad(::Nothing)
     SourceLoad(;
         name = "init",
         available = false,
-        bus = PSY.Bus(nothing),
-        base_poewr = 0.0,
+        bus = PSY.ACBus(nothing),
+        base_power = 0.0,
         constant_active_power = 0.0,
         constant_reactive_power = 0.0,
         impedance_active_power = 0.0,
@@ -190,3 +190,5 @@ PSY.set_ext!(value::SourceLoad, val) = value.ext = val
 #ASSUME ONLY CONSTANT IMPEDANCE 
 PSY.set_active_power!(value::SourceLoad, val) = value.impedance_active_power = val
 PSY.set_reactive_power!(value::SourceLoad, val) = value.impedance_reactive_power = val
+
+PSY.get_reactive_power_limits(::SourceLoad) = (min = -Inf, max = Inf)

@@ -5,7 +5,7 @@ mutable struct TerminalData <: SurrogateDataset
     stable::Bool
     built::Bool
     solve_time::Float64
-    device_terminal_data::Dict{String, Dict{Symbol, AbstractArray}} #string is device name, "symbol is :vr, :vi, :ir, :ii, :p, :q", arrays are the data
+    device_terminal_data::Dict{String, Dict{Symbol, AbstractArray}} #string is device name, symbol is :vr, :vi, :ir, :ii, :p, :q, arrays are the data
 end
 
 function TerminalData(;
@@ -315,13 +315,37 @@ function match_operating_point(sys, data_aux::TerminalData, surrogate_params)
     PSY.set_units_base_system!(sys, settings_unit_cache)
 end
 
+function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::SourceParams)
+    for s in PSY.get_components(PSY.Source, sys)
+        PSY.set_active_power!(s, P0)
+        PSY.set_reactive_power!(s, Q0)
+        PSY.set_internal_voltage!(s, Vm0)
+        PSY.set_internal_angle!(s, θ0)
+        b = PSY.get_bus(s)
+        PSY.set_magnitude!(b, Vm0)
+        PSY.set_angle!(b, θ0)
+    end
+end
+
+function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::SourceLoadParams)
+    for s in PSY.get_components(SourceLoad, sys)
+        PSY.set_active_power!(s, P0)
+        PSY.set_reactive_power!(s, Q0)
+        #PSY.set_internal_voltage!(s, Vm0)
+        #PSY.set_internal_angle!(s, θ0)
+        b = PSY.get_bus(s)
+        PSY.set_magnitude!(b, Vm0)
+        PSY.set_angle!(b, θ0)
+    end
+end
+
 function _match_operating_point(
     sys,
     P0,
     Q0,
     Vm0,
     θ0,
-    surrogate_params::Union{SteadyStateNODEObsParams, SteadyStateNODEParams},
+    surrogate_params::SteadyStateNODEParams,
 )
     for s in PSY.get_components(
         x -> typeof(PSY.get_dynamic_injector(x)) == SteadyStateNODE,
@@ -420,17 +444,32 @@ function _match_operating_point(sys, P0, Q0, Vm0, θ0, surrogate_params::MultiDe
 end
 
 function instantiate_solver(inputs)
-    return solver_map(inputs.solver)()
+    if occursin("MethodOfSteps", inputs.solver)
+        return solver_map(inputs.solver)
+    else
+        return solver_map(inputs.solver)
+    end
 end
 
 function solver_map(key)
     d = Dict(
-        "Rodas4" => OrdinaryDiffEq.Rodas4,
-        "Rodas5" => OrdinaryDiffEq.Rodas5,
-        "Rodas5P" => OrdinaryDiffEq.Rodas5P,
-        "TRBDF2" => OrdinaryDiffEq.TRBDF2,
-        "Tsit5" => OrdinaryDiffEq.Tsit5,
-        "IDA" => Sundials.IDA,
+        "Rodas4" => OrdinaryDiffEq.Rodas4(),
+        "Rodas5" => OrdinaryDiffEq.Rodas5(),
+        "Rodas5P" => OrdinaryDiffEq.Rodas5P(),
+        "Rodas4(autodiff=false)" => OrdinaryDiffEq.Rodas4(autodiff = false),
+        "Rodas5(autodiff=false)" => OrdinaryDiffEq.Rodas5(autodiff = false),
+        "Rodas5P(autodiff=false)" => OrdinaryDiffEq.Rodas5P(autodiff = false),
+        "TRBDF2" => OrdinaryDiffEq.TRBDF2(),
+        "Tsit5" => OrdinaryDiffEq.Tsit5(),
+        "IDA" => Sundials.IDA(),
+        "MethodOfSteps(Rodas5(autodiff=false))" =>
+            DelayDiffEq.MethodOfSteps(OrdinaryDiffEq.Rodas5(autodiff = false)),
+        "MethodOfSteps(Rodas5P(autodiff=false))" =>
+            DelayDiffEq.MethodOfSteps(OrdinaryDiffEq.Rodas5P(autodiff = false)),
+        "MethodOfSteps(Rodas5)" =>
+            DelayDiffEq.MethodOfSteps(OrdinaryDiffEq.Rodas5()),
+        "MethodOfSteps(Rodas5P)" =>
+            DelayDiffEq.MethodOfSteps(OrdinaryDiffEq.Rodas5P()),
         #"IDA(linear_solver = :KLU)" => Sundials.IDA(linear_solver = :KLU),
     )
     return d[key]
@@ -443,13 +482,12 @@ end
 function generate_empty_plot(T::Type{TerminalData})
     p = PlotlyJS.make_subplots(
         rows = 2,
-        cols = 4,
+        cols = 2,
         specs = [
-            PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec()
-            PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec()
-            PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec() PlotlyJS.Spec()
+            PlotlyJS.Spec() PlotlyJS.Spec()
+            PlotlyJS.Spec() PlotlyJS.Spec()
         ],
-        subplot_titles = ["vr" "vi" "ir" "ii" "P" "Q" "im" "iθ"],
+        subplot_titles = ["vr" "vi" "ir" "ii"],
         vertical_spacing = 0.1,
     )
     return p
@@ -461,8 +499,8 @@ function add_data_trace!(p, data::TerminalData; mode = "lines", color = "", name
         Vi = device_data_dict[:vi]
         Ir = device_data_dict[:ir]
         Ii = device_data_dict[:ii]
-        P = device_data_dict[:p]
-        Q = device_data_dict[:q]
+        #P = device_data_dict[:p]
+        #Q = device_data_dict[:q]
 
         PlotlyJS.add_trace!(
             p,
@@ -483,6 +521,7 @@ function add_data_trace!(p, data::TerminalData; mode = "lines", color = "", name
                 y = Vi,
                 marker = PlotlyJS.attr(color = color),
                 mode = mode,
+                #showlegend=false,
                 name = string(device_name, name),
             ),
             row = 1,
@@ -495,30 +534,7 @@ function add_data_trace!(p, data::TerminalData; mode = "lines", color = "", name
                 y = Ir,
                 marker = PlotlyJS.attr(color = color),
                 mode = mode,
-                name = string(device_name, name),
-            ),
-            row = 1,
-            col = 3,
-        )
-        PlotlyJS.add_trace!(
-            p,
-            PlotlyJS.scatter(;
-                x = data.tsteps,
-                y = Ii,
-                marker = PlotlyJS.attr(color = color),
-                mode = mode,
-                name = string(device_name, name),
-            ),
-            row = 1,
-            col = 4,
-        )
-        PlotlyJS.add_trace!(
-            p,
-            PlotlyJS.scatter(;
-                x = data.tsteps,
-                y = P,
-                marker = PlotlyJS.attr(color = color),
-                mode = mode,
+                #showlegend=false,
                 name = string(device_name, name),
             ),
             row = 2,
@@ -528,9 +544,10 @@ function add_data_trace!(p, data::TerminalData; mode = "lines", color = "", name
             p,
             PlotlyJS.scatter(;
                 x = data.tsteps,
-                y = Q,
+                y = Ii,
                 marker = PlotlyJS.attr(color = color),
                 mode = mode,
+                #showlegend=false,
                 name = string(device_name, name),
             ),
             row = 2,

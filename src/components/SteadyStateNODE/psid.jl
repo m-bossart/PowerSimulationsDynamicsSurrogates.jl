@@ -5,6 +5,27 @@ function PSID._get_frequency_state(d::PSID.DynamicWrapper{SteadyStateNODE})
     return 0
 end
 
+function PSID._get_refs(x::PSID.DynamicWrapper{SteadyStateNODE})
+    return (s1 = 0.0, s2 = 0.0, θ0 = 0.0)
+end
+
+function PSID._get_refs_metadata(x::PSID.DynamicWrapper{SteadyStateNODE})
+    return (
+        s1 = PSID.ParamsMetadata(PSID.DEVICE_SETPOINT, false, true),
+        s2 = PSID.ParamsMetadata(PSID.DEVICE_SETPOINT, false, true),
+        θ0 = PSID.ParamsMetadata(PSID.DEVICE_SETPOINT, false, true),
+    )
+end
+
+PSID.get_params(x::SteadyStateNODE) =
+    (; θ = (node = PSY.get_ext(x)["ps_node"], init = PSY.get_ext(x)["ps_init"]))
+PSID.get_params_metadata(::SteadyStateNODE) = (;
+    θ = (
+        node = PSID.ParamsMetadata(PSID.DEVICE_PARAM, false, true),
+        init = PSID.ParamsMetadata(PSID.DEVICE_PARAM, false, true),
+    ),
+)
+
 function PSID.device_mass_matrix_entries!(
     mass_matrix::AbstractArray,
     dynamic_device::PSID.DynamicWrapper{SteadyStateNODE},
@@ -23,8 +44,9 @@ function mass_matrix_ssnode_entries!(
 end
 
 function PSID.device!(
-    device_states::AbstractArray{T},
+    device_states::AbstractArray{<:PSID.ACCEPTED_REAL_TYPES},
     output_ode::AbstractArray{T},
+    p::AbstractArray{<:PSID.ACCEPTED_REAL_TYPES},
     voltage_r::T,
     voltage_i::T,
     current_r::AbstractArray{T},
@@ -32,17 +54,24 @@ function PSID.device!(
     ::AbstractArray{T},
     ::AbstractArray{T},
     dynamic_device::PSID.DynamicWrapper{SteadyStateNODE},
+    h,
     t,
 ) where {T <: PSID.ACCEPTED_REAL_TYPES}
-    θ = dynamic_device.ext["θ0"]
+    ext_wrapper = PSID.get_ext(dynamic_device)
+    device = PSID.get_device(dynamic_device)
+    ext_device = PSY.get_ext(device)
+
+    model_node = ext_device["model_node"]
+    ps_node = p[:params][:θ][:node]
+    st_node = ext_device["st_node"]
+
+    θ = p[:refs][:θ0]
+    refs = [p[:refs][:s1], p[:refs][:s2]]
     vd, vq = PSID.ri_dq(θ) * [voltage_r, voltage_i]
-    v_scaled = _input_scale(dynamic_device, [vd, vq])
-    refs = dynamic_device.ext["refs"]
-    output_ode .= _forward_pass_node(dynamic_device, device_states, v_scaled, refs)
-    id_scale = device_states[1]
-    iq_scale = device_states[2]
-    id, iq = _target_scale_inverse(dynamic_device, [id_scale, iq_scale])
-    ir, ii = PSID.dq_ri(θ) * [id, iq]
+    node_input = (device_states, [vd, vq], refs)
+    y, _ = model_node(node_input, ps_node, st_node)
+    output_ode .= y
+    ir, ii = PSID.dq_ri(θ) * [device_states[1], device_states[2]]
     current_r[1] += ir
     current_i[1] += ii
     return
@@ -52,9 +81,21 @@ function PSID.initialize_dynamic_device!(
     dynamic_device::PSID.DynamicWrapper{SteadyStateNODE},
     source::PSY.Source,
     ::AbstractVector,
+    p::AbstractVector,
+    device_states::AbstractVector,
 )
+    ext_wrapper = PSID.get_ext(dynamic_device)
+    device = PSID.get_device(dynamic_device)
+    ext_device = PSY.get_ext(device)
+
+    model_init = ext_device["model_init"]
+    ps_init = p[:params][:θ][:init]
+    st_init = ext_device["st_init"]
+    model_node = ext_device["model_node"]
+    ps_node = p[:params][:θ][:node]
+    st_node = ext_device["st_node"]
+
     n_states = PSY.get_n_states(dynamic_device)
-    device_states = zeros(n_states)
 
     #PowerFlow Data
     P0 = PSY.get_active_power(source)
@@ -71,35 +112,40 @@ function PSID.initialize_dynamic_device!(
 
     Vd, Vq = PSID.ri_dq(θ) * [V_R, V_I] #Vd should be zero by definition 
     Id, Iq = PSID.ri_dq(θ) * [I_R, I_I]
-    _, Vq_scale = _input_scale(dynamic_device, [Vd, Vq])
-    Id_scale, Iq_scale = _target_scale(dynamic_device, [Id, Iq])    #Was input_scale! bug fixed
-    function f!(out, x)
-        input_scaled = _input_scale(dynamic_device, [Vd, Vq])
-        out[1:n_states] .= _forward_pass_node(
-            dynamic_device,
-            x[1:n_states],
-            input_scaled,
-            x[(n_states + 1):(n_states + 2)],
-        )
-        x1, x2 = _target_scale_inverse(dynamic_device, [x[1], x[2]])
-        out[n_states + 1] = x1 - Id
-        out[n_states + 2] = x2 - Iq
+    function f!(out, x, ps_node)
+        node_input = (x[1:n_states], [Vd, Vq], x[(n_states + 1):(n_states + 2)])
+        y, _ = model_node(node_input, ps_node, st_node)
+        out[1:n_states] .= y
+        out[n_states + 1] = x[1] - Id
+        out[n_states + 2] = x[2] - Iq
     end
-    x0 = _forward_pass_initializer(dynamic_device, Vq_scale, [Id_scale, Iq_scale])
-    sol = NLsolve.nlsolve(f!, x0)
-    if !NLsolve.converged(sol)
-        @warn("Initialization in SteadyStateNODE failed")
+    input_init = ([Vq], [Id, Iq])
+    x0, _ = model_init(input_init, ps_init, st_init)
+    prob = NonlinearSolve.NonlinearProblem{true}(f!, x0, ps_node)
+    sol = NonlinearSolve.solve(
+        prob,
+        NonlinearSolve.TrustRegion();
+        reltol = PSID.STRICT_NLSOLVE_F_TOLERANCE,
+        abstol = PSID.STRICT_NLSOLVE_F_TOLERANCE,
+    )
+    if !SciMLBase.successful_retcode(sol)
+        @warn("Initialization of SteadyStateNODE failed")
+    else
+        sol_x0 = sol.u
+        #@warn "nlsolve result in SteadyStateNODE $sol_x0"
+        device_states .= sol_x0[1:n_states]
+        refs = sol_x0[(n_states + 1):(n_states + 2)]
+
+        @view(p[:refs])[:s1] = refs[1]
+        @view(p[:refs])[:s2] = refs[2]
+        @view(p[:refs])[:θ0] = θ
+        ext_wrapper["initializer_error"] = x0 .- sol_x0
     end
-    device_states = sol.zero[1:n_states]
-    refs = sol.zero[(n_states + 1):(n_states + 2)]
-    dynamic_device.ext["θ0"] = θ
-    dynamic_device.ext["refs"] = refs
-    dynamic_device.ext["initializer_error"] = x0 .- sol.zero
-    return device_states
+    return
 end
 
 function PSID.DynamicWrapper(
-    device::PSY.Source,
+    static_device::PSY.Source,
     dynamic_device::SteadyStateNODE,
     bus_ix::Int,
     ix_range,
@@ -109,19 +155,14 @@ function PSID.DynamicWrapper(
     sys_base_freq,
 )
     device_states = PSY.get_states(dynamic_device)
-    ext = _allocate_weights_and_biases(dynamic_device)
 
     return PSID.DynamicWrapper(
         dynamic_device,
         sys_base_power,
         sys_base_freq,
-        PSY.Source,
-        PSID.BUS_MAP[PSY.get_bustype(PSY.get_bus(device))],
-        Base.Ref(1.0),
-        Base.Ref(0.0),
-        Base.Ref(0.0),
-        Base.Ref(0.0),
-        Base.Ref(0.0),
+        static_device,
+        PSID.BUS_MAP[PSY.get_bustype(PSY.get_bus(static_device))],
+        1.0,
         collect(inner_var_range),
         collect(ix_range),
         collect(ode_range),
@@ -129,101 +170,8 @@ function PSID.DynamicWrapper(
         Base.ImmutableDict(Dict(device_states .=> ix_range)...),
         Base.ImmutableDict{Int, Vector{Int}}(),
         Base.ImmutableDict{Int, Vector{Int}}(),
-        ext,
+        Dict{String, Any}(),
     )
-end
-
-function _allocate_weights_and_biases(dynamic_device::SteadyStateNODE)
-    ext = Dict{String, Any}()
-
-    #Allocate weights and biases in initializer
-    Ws = []
-    bs = []
-    layers = get_initializer_structure(dynamic_device)
-    p = get_initializer_parameters(dynamic_device)
-    p_index_start = 0
-    _ = _push_layer_weights_and_biases!(Ws, bs, layers, p, p_index_start)
-    ext["initializer"] = Dict{String, Vector{AbstractArray}}("W" => Ws, "b" => bs)
-
-    #Allocate weights and biases in node
-    Ws = []
-    bs = []
-    layers = get_node_structure(dynamic_device)
-    p = get_node_parameters(dynamic_device)
-    p_index_start = 0
-    _ = _push_layer_weights_and_biases!(Ws, bs, layers, p, p_index_start)
-    ext["node"] = Dict{String, Vector{AbstractArray}}("W" => Ws, "b" => bs)
-
-    return ext
-end
-
-get_W_initializer(wrapper::PSID.DynamicWrapper{SteadyStateNODE}) =
-    wrapper.ext["initializer"]["W"]
-get_b_initializer(wrapper::PSID.DynamicWrapper{SteadyStateNODE}) =
-    wrapper.ext["initializer"]["b"]
-
-get_W_node(wrapper::PSID.DynamicWrapper{SteadyStateNODE}) = wrapper.ext["node"]["W"]
-get_b_node(wrapper::PSID.DynamicWrapper{SteadyStateNODE}) = wrapper.ext["node"]["b"]
-
-function _input_scale(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, x)
-    xmin = get_input_min(wrapper.device)
-    xmax = get_input_max(wrapper.device)
-    l, u = get_input_lims(wrapper.device)
-    return min_max_normalization(x, xmin, xmax, u, l)
-end
-
-function _target_scale(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, x)
-    xmin = get_target_min(wrapper.device)
-    xmax = get_target_max(wrapper.device)
-    l, u = get_target_lims(wrapper.device)
-    return min_max_normalization(x, xmin, xmax, u, l)
-end
-
-function _target_scale_inverse(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, x)
-    xmin = get_target_min(wrapper.device)
-    xmax = get_target_max(wrapper.device)
-    l, u = get_target_lims(wrapper.device)
-    return min_max_normalization_inverse(x, xmin, xmax, u, l)
-end
-
-function _forward_pass_initializer(
-    wrapper::PSID.DynamicWrapper{SteadyStateNODE},
-    input,
-    target,
-)
-    x = vcat(input, target)
-    W_index = 1
-    b_index = 1
-    W = get_W_initializer(wrapper)
-    b = get_b_initializer(wrapper)
-    for layer in get_initializer_structure(wrapper.device)
-        x = W[W_index] * x
-        W_index += 1
-        if layer[3] == true
-            x += b[b_index]
-            b_index += 1
-        end
-        x = activation_map(layer[4]).(x)
-    end
-    return x
-end
-
-function _forward_pass_node(wrapper::PSID.DynamicWrapper{SteadyStateNODE}, r, ex, refs)
-    input = vcat(r, ex, refs)
-    W_index = 1
-    b_index = 1
-    W = get_W_node(wrapper)
-    b = get_b_node(wrapper)
-    for layer in get_node_structure(wrapper.device)
-        input = W[W_index] * input
-        W_index += 1
-        if layer[3] == true
-            input += b[b_index]
-            b_index += 1
-        end
-        input = activation_map(layer[4]).(input)
-    end
-    return input
 end
 
 #TODO - this function doesn't work yet. Need the dynamic wrapper to computer the output current.

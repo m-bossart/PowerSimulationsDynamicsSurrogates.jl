@@ -22,8 +22,9 @@ function mass_matrix_chirp_entries!(
 end
 
 function PSID.device!(
-    device_states::AbstractArray{T},
+    device_states::AbstractArray{<:PSID.ACCEPTED_REAL_TYPES},
     output_ode::AbstractArray{T},
+    device_parameters::AbstractArray{<:PSID.ACCEPTED_REAL_TYPES},
     voltage_r::T,
     voltage_i::T,
     current_r::AbstractArray{T},
@@ -31,6 +32,7 @@ function PSID.device!(
     ::AbstractArray{T},
     ::AbstractArray{T},
     dynamic_device::PSID.DynamicWrapper{ChirpVariableSource},
+    h,
     t,
 ) where {T <: PSID.ACCEPTED_REAL_TYPES}
 
@@ -73,9 +75,9 @@ function PSID.initialize_dynamic_device!(
     dynamic_device::PSID.DynamicWrapper{ChirpVariableSource},
     source::PSY.Source,
     ::AbstractVector,
+    device_parameters::AbstractVector,
+    device_states::AbstractVector,
 )
-    device_states = zeros(PSY.get_n_states(dynamic_device))
-
     #PowerFlow Data
     P0 = PSY.get_active_power(source)
     Q0 = PSY.get_reactive_power(source)
@@ -91,7 +93,7 @@ function PSID.initialize_dynamic_device!(
     R_th = PSY.get_R_th(source)
     X_th = PSY.get_X_th(source)
     Zmag = R_th^2 + X_th^2
-    function f!(out, x)
+    function f!(out, x, params) #TODO - deal with case where relevant parameters (R_th, X_th) come from the static device 
         V_R_internal = x[1]
         V_I_internal = x[2]
 
@@ -101,11 +103,17 @@ function PSID.initialize_dynamic_device!(
             R_th * (V_I_internal - V_I) / Zmag - X_th * (V_R_internal - V_R) / Zmag - I_I
     end
     x0 = [V_R, V_I]
-    sol = NLsolve.nlsolve(f!, x0)
-    if !NLsolve.converged(sol)
+    prob = NonlinearSolve.NonlinearProblem{true}(f!, x0, nothing)
+    sol = NonlinearSolve.solve(
+        prob,
+        NonlinearSolve.TrustRegion();
+        reltol = PSID.STRICT_NLSOLVE_F_TOLERANCE,
+        abstol = PSID.STRICT_NLSOLVE_F_TOLERANCE,
+    )
+    if !SciMLBase.successful_retcode(sol)
         @warn("Initialization in Chirp Signal Source failed")
     else
-        sol_x0 = sol.zero
+        sol_x0 = sol.u
         #Update terminal voltages
         V_internal = sqrt(sol_x0[1]^2 + sol_x0[2]^2)
         θ_internal = atan(sol_x0[2], sol_x0[1])
@@ -113,7 +121,7 @@ function PSID.initialize_dynamic_device!(
         device_states[1] = V_internal
         device_states[2] = θ_internal
     end
-    return device_states
+    return
 end
 
 PSID.get_inner_vars_count(::ChirpVariableSource) = 0
